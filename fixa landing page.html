@@ -1,0 +1,1048 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fixa | Find Trusted Artisans Near You</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+
+    <style>
+        /* === 0. GLOBAL RESETS & VARIABLES === */
+        :root {
+            --color-dark-navy-1: rgb(0, 23, 43);
+            --color-dark-navy-2: rgb(5, 35, 65);
+            --color-gold: #FFC300;
+            --color-white: #ffffff;
+            --color-text-light: rgba(255, 255, 255, 0.8);
+            --color-gray-dark: #f0f0f0;
+            --color-gray-text: #4a4a4a;
+            --padding-section: 80px 0;
+            --transition-speed: 0.3s;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            color: var(--color-gray-text);
+            line-height: 1.6;
+            background-color: var(--color-white);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        h2 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: var(--color-dark-navy-1);
+            text-align: center;
+            margin-bottom: 50px;
+        }
+        
+        /* === 1. NAVIGATION (NAVBAR) === */
+        .navbar {
+            background-color: rgba(0, 23, 43, 0.95);
+            padding: 15px 0;
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 1000;
+            transition: background-color var(--transition-speed), box-shadow var(--transition-speed);
+        }
+
+        .navbar.sticky {
+            background-color: var(--color-dark-navy-1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .navbar .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: var(--color-white);
+            text-decoration: none;
+        }
+
+        .nav-links {
+            list-style: none;
+            display: flex;
+            gap: 25px;
+        }
+
+        .nav-links a {
+            color: var(--color-text-light);
+            text-decoration: none;
+            font-weight: 600;
+            transition: color var(--transition-speed);
+        }
+
+        .nav-links a:hover {
+            color: var(--color-gold);
+        }
+        
+        /* Buttons - Global Style */
+        .btn {
+            display: inline-block;
+            padding: 12px 25px;
+            font-size: 1rem;
+            font-weight: 700;
+            border-radius: 6px;
+            text-decoration: none;
+            text-align: center;
+            transition: all var(--transition-speed);
+        }
+
+        .btn-primary {
+            background-color: var(--color-gold);
+            color: var(--color-dark-navy-1);
+            border: 2px solid var(--color-gold);
+        }
+
+        .btn-primary:hover {
+            background-color: #ffd74a;
+            box-shadow: 0 4px 10px rgba(255, 195, 0, 0.4);
+        }
+
+        .btn-secondary {
+            background-color: transparent;
+            color: var(--color-white);
+            border: 2px solid rgba(255, 255, 255, 0.5);
+        }
+        
+        .btn-secondary:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-color: var(--color-white);
+        }
+
+        /* === 2. HERO SECTION (Top Banner) === */
+        #hero {
+            background: linear-gradient(135deg, var(--color-dark-navy-1), var(--color-dark-navy-2));
+            color: var(--color-white);
+            padding: 150px 0 100px;
+            min-height: 85vh;
+            display: flex;
+            align-items: center;
+        }
+
+        #hero .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 40px;
+        }
+
+        .hero-content {
+            flex: 1;
+            max-width: 55%;
+        }
+        
+        .hero-headline {
+            font-size: 3.5rem;
+            line-height: 1.2;
+            margin-bottom: 15px;
+            font-weight: 800;
+        }
+
+        .highlight-gold {
+            color: var(--color-gold);
+        }
+
+        .hero-subtext {
+            font-size: 1.3rem;
+            color: var(--color-text-light);
+            margin-bottom: 40px;
+        }
+
+        .hero-cta-group {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .btn-large {
+            padding: 15px 30px;
+            font-size: 1.1rem;
+        }
+
+        .hero-visual {
+            flex: 1;
+            max-width: 45%;
+        }
+        
+        /* Leaflet Map Styles */
+        .hero-visual #fixa-map {
+            width: 100%;
+            height: 100%;
+            display: block;
+            border-radius: 12px;
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        /* === 3. ABOUT SECTION (USP) === */
+        #about {
+            padding: var(--padding-section);
+            background-color: var(--color-white);
+        }
+
+        .about-text {
+            max-width: 800px;
+            margin: 0 auto 50px;
+            text-align: center;
+            font-size: 1.15rem;
+            color: var(--color-gray-text);
+        }
+
+        .usp-grid {
+            display: flex;
+            justify-content: space-around;
+            text-align: center;
+            gap: 20px;
+        }
+
+        .usp-item {
+            flex-basis: 22%;
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid var(--color-gray-dark);
+            transition: transform var(--transition-speed), box-shadow var(--transition-speed);
+        }
+
+        .usp-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.08);
+        }
+
+        .usp-icon {
+            font-size: 2.5rem;
+            color: var(--color-gold);
+            margin-bottom: 15px;
+        }
+
+        .usp-item h3 {
+            font-size: 1.2rem;
+            font-weight: 700;
+        }
+
+        /* === 4. HOW IT WORKS (3-Step Process) === */
+        #how-it-works {
+            padding: var(--padding-section);
+            background-color: var(--color-gray-dark);
+        }
+
+        .step-container {
+            display: flex;
+            justify-content: space-between;
+            gap: 30px;
+        }
+
+        .step-item {
+            flex: 1;
+            text-align: center;
+            padding: 30px;
+            background-color: var(--color-white);
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+            transition: transform var(--transition-speed);
+        }
+
+        .step-item:hover {
+            transform: translateY(-8px);
+        }
+
+        .step-icon-circle {
+            width: 70px;
+            height: 70px;
+            background-color: var(--color-dark-navy-1);
+            color: var(--color-gold);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.8rem;
+            margin: 0 auto 20px;
+        }
+
+        .step-item h3 {
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            color: var(--color-dark-navy-1);
+        }
+
+        /* === 5. FEATURED CATEGORIES === */
+        #categories {
+            padding: var(--padding-section);
+            text-align: center;
+        }
+
+        .category-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 30px;
+        }
+
+        .category-card {
+            background-color: var(--color-white);
+            border: 1px solid var(--color-gray-dark);
+            border-radius: 10px;
+            padding: 30px;
+            text-decoration: none;
+            color: var(--color-gray-text);
+            transition: all var(--transition-speed);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .category-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .category-icon {
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+            color: var(--color-dark-navy-1);
+        }
+
+        .category-card h3 {
+            font-size: 1.3rem;
+            font-weight: 600;
+        }
+
+        .category-hover-text {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 23, 43, 0.9);
+            color: var(--color-gold);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.5rem;
+            font-weight: 700;
+            opacity: 0;
+            transition: opacity var(--transition-speed);
+        }
+
+        .category-card:hover .category-hover-text {
+            opacity: 1;
+        }
+
+        /* === 6. TESTIMONIALS === */
+        #testimonials {
+            padding: var(--padding-section);
+            background-color: var(--color-gray-dark);
+        }
+
+        .testimonial-grid {
+            display: flex;
+            gap: 30px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .testimonial-card {
+            flex: 1;
+            background-color: var(--color-white);
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+        }
+
+        .quote-icon {
+            font-size: 2rem;
+            color: var(--color-gold);
+            margin-bottom: 10px;
+        }
+
+        .quote-text {
+            font-style: italic;
+            font-size: 1.1rem;
+            margin-bottom: 20px;
+            color: var(--color-gray-text);
+        }
+
+        .author-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        /* NEW: Avatar Image Style */
+        .avatar-img {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid var(--color-gold); /* Premium touch */
+        }
+
+
+        .name-service p {
+            margin: 0;
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .name-service strong {
+            display: block;
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--color-dark-navy-1);
+        }
+
+        /* === 7. DOWNLOAD APP / CTA SECTION === */
+        #download-cta {
+            background: var(--color-dark-navy-1);
+            padding: var(--padding-section);
+            color: var(--color-white);
+            text-align: center;
+        }
+
+        #download-cta .container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 80px;
+        }
+
+        .download-text-content {
+            text-align: left;
+            max-width: 500px;
+        }
+
+        .download-text-content h2 {
+            color: var(--color-white);
+            text-align: left;
+            font-size: 2.2rem;
+        }
+
+        .download-text-content p {
+            font-size: 1.1rem;
+            margin-bottom: 30px;
+            color: var(--color-text-light);
+        }
+
+        .app-store-buttons a {
+            margin-right: 15px;
+            display: inline-block;
+            background-color: #222;
+            padding: 10px 20px;
+            border-radius: 6px;
+            color: var(--color-white);
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+
+        .download-mockup img {
+            max-width: 300px;
+            height: auto;
+            border-radius: 25px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+        }
+
+
+        /* === 8. FOOTER === */
+        .footer {
+            background-color: #001220;
+            color: var(--color-text-light);
+            padding: 50px 0 20px;
+            font-size: 0.9rem;
+        }
+
+        .footer-grid {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 40px;
+        }
+
+        .footer-info {
+            max-width: 300px;
+        }
+
+        .footer-info .logo {
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .footer-links h4 {
+            font-size: 1.1rem;
+            color: var(--color-white);
+            margin-bottom: 15px;
+        }
+
+        .footer-links ul {
+            list-style: none;
+        }
+
+        .footer-links a {
+            color: var(--color-text-light);
+            text-decoration: none;
+            display: block;
+            margin-bottom: 8px;
+            transition: color var(--transition-speed);
+        }
+        
+        .footer-links a:hover {
+            color: var(--color-gold);
+        }
+
+        .social-icons a {
+            color: var(--color-text-light);
+            font-size: 1.5rem;
+            margin-right: 15px;
+            transition: color var(--transition-speed);
+        }
+
+        .social-icons a:hover {
+            color: var(--color-gold);
+        }
+
+
+        .footer-bottom {
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding-top: 20px;
+            text-align: center;
+        }
+
+
+        /* ------------------------------------------------------------------ */
+        /* 9. RESPONSIVENESS ADJUSTMENTS (Tablet & Mobile) */
+        /* ------------------------------------------------------------------ */
+
+        /* TABLET (Max-width: 992px) */
+        @media (max-width: 992px) {
+            /* Hero Section */
+            #hero .container {
+                flex-direction: column;
+                text-align: center;
+            }
+            .hero-content {
+                max-width: 100%;
+                text-align: center;
+                padding-top: 50px;
+            }
+            .hero-headline {
+                font-size: 3rem;
+            }
+            .hero-cta-group {
+                justify-content: center;
+            }
+            .hero-visual {
+                max-width: 80%;
+            }
+
+            /* About Section & How It Works (Stack columns) */
+            .usp-grid, .step-container, .testimonial-grid {
+                flex-direction: column;
+                gap: 25px;
+            }
+
+            /* Categories (2 Columns) */
+            .category-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            /* Download CTA */
+            #download-cta .container {
+                flex-direction: column;
+                gap: 40px;
+            }
+            .download-text-content {
+                text-align: center;
+                max-width: 100%;
+            }
+            .download-text-content h2 {
+                text-align: center;
+            }
+            .download-mockup img {
+                max-width: 250px;
+            }
+            
+            /* Footer */
+            .footer-grid {
+                flex-wrap: wrap;
+                justify-content: space-around;
+                gap: 30px;
+            }
+            .footer-info {
+                flex-basis: 100%;
+                text-align: center;
+            }
+            .footer-links {
+                flex-basis: 40%;
+                text-align: center;
+            }
+            .social-icons {
+                text-align: center;
+            }
+        }
+
+        /* MOBILE (Max-width: 600px) */
+        @media (max-width: 600px) {
+            /* Navbar */
+            .navbar .container {
+                flex-direction: column;
+                gap: 10px;
+            }
+            .nav-links {
+                gap: 15px;
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            /* Hero */
+            .hero-headline {
+                font-size: 2rem;
+            }
+            .hero-subtext {
+                font-size: 1rem;
+            }
+            .hero-cta-group {
+                flex-direction: column;
+                gap: 10px;
+            }
+            .btn-large {
+                width: 100%;
+                padding: 12px 20px;
+            }
+            
+            /* Global Adjustments */
+            h2 {
+                font-size: 2rem;
+                margin-bottom: 30px;
+            }
+            .usp-item, .step-item {
+                padding: 20px;
+            }
+            
+            /* Categories (1 Column) */
+            .category-grid {
+                grid-template-columns: 1fr;
+            }
+
+            /* Footer */
+            .footer-links {
+                flex-basis: 100%;
+            }
+            
+            .app-store-buttons {
+                display: flex;
+                flex-direction: row;
+                gap: 10px;
+            }
+            .app-store-buttons a {
+                margin: 0;
+            }
+        }
+             .logo-wrapper {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 25px;
+    }
+
+    .logo-icon {
+      width: 60px; /* hand + spanner icon size */
+      height: auto;
+      margin-right: 12px;
+    }
+
+    .logo-text {
+      font-size: 2rem;
+      font-weight: bold;
+      color: gold;
+      letter-spacing: 1px;
+    }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar" id="navbar">
+        <div class="container">
+          <div class="logo-wrapper">
+      <img src="fixa-logo.png" alt="Hand holding spanner" class="logo-icon">
+      <div class="logo-text">Fixa</div>
+    </div>
+            <ul class="nav-links">
+                <li><a href="#hero" class="scroll-link">Home</a></li>
+                <li><a href="#about" class="scroll-link">About</a></li>
+                <li><a href="#categories" class="scroll-link">Categories</a></li>
+                <li><a href="#testimonials" class="scroll-link">Reviews</a></li>
+                <li><a href="signin.html" class="btn btn-primary">Sign In</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <section id="hero">
+        <div class="container">
+            <div class="hero-content fade-in">
+                <h1 class="hero-headline">
+                    Fix Your <span class="highlight-gold" id="typing-text">Everything</span> Faster.
+                    <br>Find Trusted Artisans Near You.
+                </h1>
+
+                <p class="hero-subtext">
+                    Connect instantly with skilled professionals — painters, mechanics, and more. <br>Fast, reliable, and affordable.
+                </p>
+
+                <div class="hero-cta-group">
+                    <a href="signin.html" class="btn btn-primary btn-large">
+                        Find My Artisan Now
+                    </a>
+                    <a href="#about" class="btn btn-secondary btn-large scroll-link">
+                        Learn More
+                    </a>
+                </div>
+            </div>
+
+            <div class="hero-visual fade-in">
+                <div id="fixa-map" style="height: 550px; width: 100%; border-radius: 12px;"></div>
+            </div>
+        </div>
+    </section>
+
+    <section id="about">
+        <div class="container">
+            <h2 class="fade-in">The Fixa Difference</h2>
+            <p class="about-text fade-in">
+                Fixa connects customers to verified artisans — painters, mechanics, electricians, and more — all within your area. 
+                Whether it’s a quick fix or a big project, Fixa helps you find the right professional **fast**.
+            </p>
+
+            <div class="usp-grid">
+                <div class="usp-item fade-in">
+                    <div class="usp-icon"><i class="fas fa-bolt"></i></div>
+                    <h3>Fast Service</h3>
+                    <p>Connect with a pro in under 5 minutes.</p>
+                </div>
+                <div class="usp-item fade-in">
+                    <div class="usp-icon"><i class="fas fa-shield-alt"></i></div>
+                    <h3>Verified Professionals</h3>
+                    <p>All pros are background-checked and community-rated.</p>
+                </div>
+                <div class="usp-item fade-in">
+                    <div class="usp-icon"><i class="fas fa-credit-card"></i></div>
+                    <h3>Safe Payments</h3>
+                    <p>Secure in-app payments and transparent pricing.</p>
+                </div>
+                <div class="usp-item fade-in">
+                    <div class="usp-icon"><i class="fas fa-comments"></i></div>
+                    <h3>Real-time Chat</h3>
+                    <p>Message artisans directly to clarify details instantly.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="how-it-works">
+        <div class="container">
+            <h2 class="fade-in">Simple 3-Step Process</h2>
+
+            <div class="step-container">
+                <div class="step-item fade-in">
+                    <div class="step-icon-circle"><i class="fas fa-map-marker-alt"></i></div>
+                    <h3>1. Search Local Pros</h3>
+                    <p>Browse categories or use the map view to find nearby experts.</p>
+                </div>
+                <div class="step-item fade-in">
+                    <div class="step-icon-circle"><i class="fas fa-comment-dots"></i></div>
+                    <h3>2. Chat & Agree on Price</h3>
+                    <p>Message artisans instantly in-app and confirm the cost.</p>
+                </div>
+                <div class="step-item fade-in">
+                    <div class="step-icon-circle"><i class="fas fa-calendar-check"></i></div>
+                    <h3>3. Book, Pay & Track</h3>
+                    <p>Secure your booking, pay safely, and track their arrival in real-time.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="categories">
+        <div class="container">
+            <h2 class="fade-in">Explore Our Top Categories</h2>
+
+            <div class="category-grid">
+                <a href="#" class="category-card fade-in">
+                    <div class="category-icon"><i class="fas fa-paint-roller"></i></div>
+                    <h3>Painter</h3>
+                    <div class="category-hover-text">Browse Painters</div>
+                </a>
+                <a href="#" class="category-card fade-in">
+                    <div class="category-icon"><i class="fas fa-car-side"></i></div>
+                    <h3>Mechanic</h3>
+                    <div class="category-hover-text">Browse Mechanics</div>
+                </a>
+                <a href="#" class="category-card fade-in">
+                    <div class="category-icon"><i class="fas fa-plug"></i></div>
+                    <h3>Electrician</h3>
+                    <div class="category-hover-text">Browse Electricians</div>
+                </a>
+                <a href="#" class="category-card fade-in">
+                    <div class="category-icon"><i class="fas fa-trowel"></i></div>
+                    <h3>POP Installer</h3>
+                    <div class="category-hover-text">Browse Installers</div>
+                </a>
+                <a href="#" class="category-card fade-in">
+                    <div class="category-icon"><i class="fas fa-ruler-combined"></i></div>
+                    <h3>Carpenter</h3>
+                    <div class="category-hover-text">Browse Carpenters</div>
+                </a>
+                <a href="#" class="category-card fade-in">
+                    <div class="category-icon"><i class="fas fa-tshirt"></i></div>
+                    <h3>Fashion Designer</h3>
+                    <div class="category-hover-text">Browse Designers</div>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <section id="testimonials">
+        <div class="container">
+            <h2 class="fade-in">What Our Users Say</h2>
+
+            <div class="testimonial-grid">
+                <div class="testimonial-card fade-in">
+                    <div class="quote-icon"><i class="fas fa-quote-left"></i></div>
+                    <p class="quote-text">"Fixa made it so easy to find a mechanic near me in minutes! The chat feature was perfect for discussing the price upfront."</p>
+                    <div class="author-info">
+                        <img src="kamso.png" alt="User Avatar" class="avatar-img">
+                        <div class="name-service">
+                            <strong>Favour K.</strong>
+                            <p>Booked a Mechanic</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="testimonial-card fade-in">
+                    <div class="quote-icon"><i class="fas fa-quote-left"></i></div>
+                    <p class="quote-text">"I booked a painter and got my room done the same day! Verified Pros meant I didn't have to worry about quality."</p>
+                    <div class="author-info">
+                        <img src="daniel.png" alt="User Avatar" class="avatar-img">
+                        <div class="name-service">
+                            <strong>Divine D.</strong>
+                            <p>Booked a PainGter</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="download-cta">
+        <div class="container">
+            <div class="download-text-content fade-in">
+                <h2 class="highlight-gold">Get the Fixa App</h2>
+                <p>Your trusted, instant connection to local professionals. Stop wasting time calling around—start fixing your problems now.</p>
+                
+                <div class="app-store-buttons">
+                    <a href="#" class="btn-primary" style="background-color:#fff; color:#000;">
+                        <i class="fab fa-google-play"></i> Google Play
+                    </a>
+                    <a href="#" class="btn-primary" style="background-color:#fff; color:#000;">
+                        <i class="fab fa-app-store-ios"></i> App Store
+                    </a>
+                </div>
+            </div>
+            
+            <div class="download-mockup fade-in">
+                <img src="https://via.placeholder.com/300x580/FFC300/001220?text=Phone+Mockup" alt="Mobile phone with Fixa app screen">
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-info">
+                    <a href="#hero" class="logo">FIXA</a>
+                    <p>Connect instantly with skilled professionals. Fast, reliable, and affordable service, every time.</p>
+                </div>
+
+                <div class="footer-links">
+                    <h4>Quick Links</h4>
+                    <ul>
+                        <li><a href="#hero" class="scroll-link">Home</a></li>
+                        <li><a href="signin.html">Sign In</a></li>
+                        <li><a href="terms.html">Terms of Service</a></li>
+                        <li><a href="privacy.html">Privacy Policy</a></li>
+                        <li><a href="#">Support</a></li>
+                        <li><a href="#">Become a Pro</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-links">
+                    <h4>Connect</h4>
+                    <div class="social-icons">
+                        <a href="#"><i class="fab fa-facebook-f"></i></a>
+                        <a href="#"><i class="fab fa-instagram"></i></a>
+                        <a href="#"><i class="fab fa-twitter"></i></a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="footer-bottom">
+                &copy; 2025 Fixa. All rights reserved.
+            </div>
+        </div>
+    </footer>
+
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            
+            // --- JS Idea 1: Smooth Scroll for Navigation Links ---
+            document.querySelectorAll('.scroll-link').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    document.querySelector(this.getAttribute('href')).scrollIntoView({
+                        behavior: 'smooth'
+                    });
+                });
+            });
+
+            // --- JS Idea 2: Sticky Navbar on Scroll ---
+            const navbar = document.getElementById('navbar');
+            const stickyOffset = navbar.offsetTop + 10;
+
+            function handleStickyNavbar() {
+                if (window.scrollY > stickyOffset) {
+                    navbar.classList.add('sticky');
+                } else {
+                    navbar.classList.remove('sticky');
+                }
+            }
+            window.addEventListener('scroll', handleStickyNavbar);
+
+
+            // --- JS Idea 3: Scroll Reveal Animations (Fade-in effects) ---
+            const faders = document.querySelectorAll('.fade-in');
+
+            const appearOptions = {
+                threshold: 0,
+                rootMargin: "0px 0px -100px 0px"
+            };
+
+            const appearOnScroll = new IntersectionObserver(function(entries, appearOnScroll) {
+                entries.forEach(entry => {
+                    if (!entry.isIntersecting) {
+                        return;
+                    } else {
+                        entry.target.style.opacity = '1';
+                        entry.target.style.transform = 'translateY(0)';
+                        appearOnScroll.unobserve(entry.target);
+                    }
+                });
+            }, appearOptions);
+
+            faders.forEach(fader => {
+                fader.style.opacity = '0';
+                fader.style.transition = 'opacity 0.8s ease-out, transform 0.8s ease-out';
+                // Apply a slight upward slide effect for all sections except the Hero text
+                if(fader.closest('#hero') === null) { 
+                    fader.style.transform = 'translateY(20px)';
+                }
+                appearOnScroll.observe(fader);
+            });
+
+            // --- JS Idea 4: Optional Hero Text Typing Effect ---
+            const textElement = document.getElementById('typing-text');
+            const words = ["Everything", "Plumbing", "Electrical", "Carpentry", "Painting", "Mechanics"]; 
+            let wordIndex = 0;
+            let charIndex = 0;
+            let isDeleting = false;
+            let typingSpeed = 100;
+
+            function typeWriter() {
+                const currentWord = words[wordIndex];
+                
+                if (isDeleting) {
+                    charIndex--;
+                    typingSpeed = 50;
+                } else {
+                    charIndex++;
+                    typingSpeed = 100;
+                }
+
+                textElement.textContent = currentWord.substring(0, charIndex);
+
+                if (!isDeleting && charIndex === currentWord.length) {
+                    typingSpeed = 2000; 
+                    isDeleting = true;
+                } else if (isDeleting && charIndex === 0) {
+                    isDeleting = false;
+                    wordIndex = (wordIndex + 1) % words.length;
+                    typingSpeed = 500;
+                }
+
+                setTimeout(typeWriter, typingSpeed);
+            }
+            typeWriter();
+            
+            // --- JS Idea 5: Interactive Leaflet Map Initialization ---
+            const mapElement = document.getElementById('fixa-map');
+            
+            if (mapElement) {
+                // Initial coordinates (Example: Lagos, Nigeria)
+                const initialCoords = [6.456, 3.394];
+                
+                const fixaMap = L.map('fixa-map', {
+                    zoomControl: false,
+                    scrollWheelZoom: false
+                }).setView(initialCoords, 13);
+
+                // OpenStreetMap Tile Layer
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
+                }).addTo(fixaMap);
+
+                // Custom gold icon for artisan pins
+                const artisanIcon = L.icon({
+                    iconUrl: 'https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-gold.png',
+                    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                    iconSize: [25, 41],
+                    iconAnchor: [12, 41],
+                    popupAnchor: [1, -34],
+                    shadowSize: [41, 41]
+                });
+
+                // Add 3 example markers
+                L.marker([6.450, 3.400], {icon: artisanIcon}).addTo(fixaMap)
+                    .bindPopup("<b>Painter nearby</b><br>Available now.").openPopup();
+                    
+                L.marker([6.465, 3.385], {icon: artisanIcon}).addTo(fixaMap)
+                    .bindPopup("<b>Mechanic</b><br>5-star rated.");
+                    
+                L.marker([6.458, 3.375], {icon: artisanIcon}).addTo(fixaMap);
+
+                // Fix map tile rendering issue after initial load/transition
+                setTimeout(() => {
+                    fixaMap.invalidateSize();
+                }, 800);
+            }
+        });
+    </script>
+
+</body>
+</html>

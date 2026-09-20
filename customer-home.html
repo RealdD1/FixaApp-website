@@ -1,0 +1,2357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Fixa | Home</title>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <script src="http://localhost:5000/socket.io/socket.io.js"></script>
+  <script src="fixa-notification-system.js"></script>
+  <script src="chat-guard.js"></script>
+  <script src="https://js.paystack.co/v2/inline.js"></script>
+  <style>
+    :root {
+      --bg-dark: #041b2b;
+      --bg-card: rgba(255,255,255,0.06);
+      --bg-glass: rgba(255,255,255,0.08);
+      --gold: #ffd700;
+      --gold-dark: #e6b800;
+      --text-main: #ffffff;
+      --text-muted: #b0b8c9;
+      --accent: #00d4ff;
+      --danger: #ff3b5c;
+    }
+    *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+    body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg-dark);color:var(--text-main);min-height:100vh;padding-bottom:90px}
+
+    #messagesPage.active ~ #fixaNotifContainer {
+      display: none;
+    }
+    /* PAGE */
+    .page{display:none;animation:fadeIn .3s ease}
+    .page.active{display:block}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+    /* GLASS */
+    .glass{background:var(--bg-glass);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(255,215,0,.15)}
+
+    /* HEADER */
+    .home-header{padding:20px 20px 14px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:200;background:var(--bg-dark)}
+    .logo-brand span{font-size:26px;font-weight:800;background:linear-gradient(90deg,var(--gold),#ffed4d);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+
+    /* SEARCH */
+    .welcome-section{padding:18px 20px 8px}
+    .search-container{padding:0 20px 20px}
+    .search-bar{background:var(--bg-card);border-radius:14px;padding:12px 16px;display:flex;align-items:center;gap:10px;border:1px solid rgba(255,255,255,.1)}
+    .search-bar input{background:transparent;border:none;color:#fff;outline:none;width:100%;font-size:14px}
+
+    /* SERVICES */
+    .section-title{padding:0 20px 12px;display:flex;justify-content:space-between;align-items:center}
+    .section-title h3{font-size:18px;font-weight:700}
+    .section-title a{color:var(--gold);font-weight:600;font-size:14px;text-decoration:none}
+    .services-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;padding:0 20px}
+    .service-item{display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;transition:all .3s}
+    .service-item:hover{transform:translateY(-5px)}
+    .icon-square{width:70px;height:70px;background:var(--bg-card);border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:28px;border:1px solid rgba(255,215,0,.1);transition:all .4s cubic-bezier(.34,1.56,.64,1)}
+    .service-item:hover .icon-square{border-color:var(--gold);transform:scale(1.1) rotate(6deg)}
+    .service-item span{font-size:11px;font-weight:600;color:var(--text-muted);text-align:center}
+
+    /* ARTISAN CARDS */
+    .artisan-list{padding:20px}
+    .artisan-card{background:var(--bg-card);border-radius:18px;padding:14px;display:flex;align-items:center;gap:14px;margin-bottom:10px;border:1px solid rgba(255,255,255,.05)}
+    .artisan-avatar{width:56px;height:56px;background:var(--gold);border-radius:14px;color:#000;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:22px;flex-shrink:0}
+    .book-btn{margin-left:auto;background:var(--gold);border:none;padding:9px 14px;border-radius:10px;font-weight:700;cursor:pointer;font-size:13px;color:#000}
+
+    /* MESSAGES PAGE — full-screen on mobile, side-by-side on desktop */
+    #messagesPage{height:calc(100vh - 90px);overflow:hidden;flex-direction:column}
+    #messagesPage.active{display:flex}
+
+    .msg-header{padding:14px 20px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:12px;flex-shrink:0}
+    .msg-header h2{font-size:18px;font-weight:700;flex:1}
+
+    /* Total unread badge in messages header */
+    #totalUnreadBadge {
+      background: #ef4444;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 800;
+      min-width: 20px;
+      height: 20px;
+      border-radius: 999px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 0 6px;
+    }
+
+    .chat-list-view,.chat-conv-view{flex:1;overflow:hidden;display:flex;flex-direction:column;transition:transform 0.25s ease}
+    .chat-list-scroll{flex:1;overflow-y:auto;padding:8px 0}
+    .chat-item{display:flex;align-items:center;gap:12px;padding:14px 20px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.04);transition:background .15s}
+    .chat-item:hover{background:rgba(255,255,255,.04)}
+    .chat-item.has-unread .chat-name span:first-child { color: var(--gold); }
+    .chat-avatar{width:46px;height:46px;border-radius:50%;background:#2a4a6b;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px}
+    .chat-info{flex:1;min-width:0}
+    .chat-name{font-size:14px;font-weight:700;display:flex;justify-content:space-between;align-items:center}
+    .chat-preview{font-size:12px;color:var(--text-muted);margin-top:3px;display:flex;justify-content:space-between;align-items:center;gap:6px}
+    .chat-preview-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+    .unread-badge{background:var(--gold);color:#000;font-size:10px;font-weight:800;padding:2px 7px;border-radius:999px;flex-shrink:0}
+
+    /* CONVERSATION */
+    .conv-header{padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:12px;flex-shrink:0;background:rgba(255,255,255,.03)}
+    .back-btn{background:none;border:none;color:var(--gold);cursor:pointer;display:flex;align-items:center;gap:4px;font-size:13px;font-weight:600;padding:6px 10px;border-radius:8px;transition:background .2s}
+    .back-btn:hover{background:rgba(255,215,0,.1)}
+    #messages{flex:1;overflow-y:auto;padding:12px 10px;display:flex;flex-direction:column}
+    .typing-indicator{padding:4px 16px;font-size:11px;color:var(--gold);height:20px;flex-shrink:0;font-style:italic}
+
+    /* TIMED CHAT BANNER */
+    .timed-chat-banner{background:linear-gradient(90deg,rgba(255,215,0,.12),rgba(255,215,0,.05));border:1px solid rgba(255,215,0,.3);border-radius:12px;margin:8px 12px;padding:10px 14px;display:flex;align-items:center;gap:10px;flex-shrink:0}
+    .timer-display{font-size:18px;font-weight:800;color:var(--gold);font-family:monospace;min-width:60px}
+    .timer-label{font-size:11px;color:var(--text-muted);line-height:1.4}
+    .timer-expired{color:var(--danger)!important}
+
+    /* CHAT INPUT */
+    .chat-footer{padding:10px 12px;border-top:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:8px;flex-shrink:0;background:rgba(0,0,0,.2)}
+    .chat-footer input[type=text]{flex:1;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);color:#fff;border-radius:999px;padding:10px 16px;font-size:14px;outline:none}
+    .chat-footer input[type=text]:focus{border-color:rgba(255,215,0,.4)}
+    .chat-icon-btn{background:none;border:none;color:var(--text-muted);cursor:pointer;padding:8px;border-radius:50%;transition:all .2s;font-size:20px;display:flex;align-items:center;justify-content:center}
+    .chat-icon-btn:hover{color:var(--gold);background:rgba(255,215,0,.1)}
+    .send-btn{background:var(--gold);border:none;color:#000;width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:transform .2s}
+    .send-btn:hover{transform:scale(1.08)}
+
+    /* MESSAGE BUBBLES */
+    .msg-row{display:flex;margin:3px 0}
+    .msg-row.sent{justify-content:flex-end}
+    .msg-row.recv{justify-content:flex-start}
+    .bubble{max-width:75%;padding:9px 14px;border-radius:16px;font-size:13.5px;line-height:1.45;word-break:break-word;position:relative}
+    .msg-row.sent .bubble{background:linear-gradient(135deg,#f6d365,#fda085);color:#0a0a0a;border-bottom-right-radius:4px}
+    .msg-row.recv .bubble{background:rgba(255,255,255,.1);color:#fff;border-bottom-left-radius:4px}
+    .bubble img{max-width:220px;border-radius:10px;display:block;margin:4px 0}
+    .bubble audio{width:220px;display:block;margin:4px 0;height:34px}
+    .bubble-meta{font-size:10px;opacity:.65;text-align:right;margin-top:4px}
+    .msg-row.recv .bubble-meta{text-align:left}
+    .date-sep{text-align:center;margin:10px 0;font-size:11px;color:var(--text-muted)}
+    .date-sep span{background:rgba(255,255,255,.06);padding:3px 12px;border-radius:999px}
+
+    /* SEALED */
+    .sealed-banner{background:linear-gradient(135deg,#1a3a0a,#0f2a04);border:1px solid #4a8a1a;border-radius:14px;margin:10px 12px;padding:14px 16px;flex-shrink:0}
+    .sealed-banner h4{color:#86efac;font-size:13px;margin-bottom:6px}
+    .sealed-banner p{color:#bbf7d0;font-size:12px;line-height:1.5}
+    .rebook-btn{display:inline-block;margin-top:12px;background:var(--gold);color:#000;padding:8px 18px;border-radius:8px;font-weight:700;font-size:13px;border:none;cursor:pointer}
+
+    /* VOICE UI */
+    .voice-ui{position:fixed;bottom:110px;left:50%;transform:translateX(-50%);background:#051e30;border:1px solid var(--gold);border-radius:16px;padding:12px 20px;display:none;align-items:center;gap:12px;z-index:400;box-shadow:0 8px 32px rgba(0,0,0,.4)}
+    .voice-ui.active{display:flex}
+    .voice-timer{font-family:monospace;font-size:18px;font-weight:700;color:var(--gold)}
+    .voice-cancel{background:rgba(255,59,92,.15);border:1px solid var(--danger);color:var(--danger);padding:7px 14px;border-radius:8px;font-weight:700;cursor:pointer;font-size:12px}
+    .voice-stop{background:rgba(0,200,100,.15);border:1px solid #00c864;color:#00c864;padding:7px 14px;border-radius:8px;font-weight:700;cursor:pointer;font-size:12px}
+
+    /* ACCOUNT PAGE */
+    .account-page{padding:24px 20px}
+    .profile-card{background:linear-gradient(135deg,rgba(255,215,0,.15),rgba(255,215,0,.05));border:1px solid rgba(255,215,0,.25);border-radius:20px;padding:20px;display:flex;align-items:center;gap:16px;margin-bottom:20px}
+    .profile-avatar{width:60px;height:60px;background:var(--gold);border-radius:16px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:24px;color:#000;flex-shrink:0}
+    .account-card{width:100%;background:var(--bg-card);border:1px solid rgba(255,255,255,.05);padding:16px;border-radius:16px;display:flex;justify-content:space-between;align-items:center;color:#fff;margin-bottom:10px;text-align:left;cursor:pointer;transition:background .2s}
+    .account-card:hover{background:rgba(255,255,255,.09)}
+    .account-card h3{font-size:15px;margin-bottom:3px}
+    .account-card p{font-size:11px;color:var(--text-muted)}
+    .logout-btn{width:100%;padding:16px;margin-top:16px;background:rgba(255,59,92,.1);color:var(--danger);border:1px solid rgba(255,59,92,.2);border-radius:16px;font-weight:700;font-size:15px;cursor:pointer;transition:background .2s}
+    .logout-btn:hover{background:rgba(255,59,92,.18)}
+
+    /* NAV */
+    .bottom-nav{position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:space-around;padding:12px 10px 24px;border-top:1px solid rgba(255,255,255,.08);z-index:300;background:var(--bg-dark)}
+    .nav-item{color:var(--text-muted);text-align:center;cursor:pointer;flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;transition:color .2s;background:none;border:none;font-family:inherit;padding:0;position:relative}
+    .nav-item.active{color:var(--gold)}
+    .nav-item .material-icons{font-size:22px}
+    .nav-item .nav-label{font-size:10px;font-weight:700}
+    .nav-item .nav-unread {
+      position: absolute;
+      top: -4px;
+      right: 30%;
+      background: #ef4444;
+      color: #fff;
+      font-size: 9px;
+      font-weight: 800;
+      min-width: 16px;
+      height: 16px;
+      border-radius: 999px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 0 4px;
+    }
+
+    /* EMPTY STATE */
+    .empty-state{text-align:center;padding:40px 20px}
+    .empty-state .material-icons{font-size:56px;color:rgba(255,255,255,.1)}
+    .empty-state p{color:var(--text-muted);margin-top:12px;font-size:14px}
+
+    /* SCROLLBAR */
+    ::-webkit-scrollbar{width:4px}
+    ::-webkit-scrollbar-track{background:transparent}
+    ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:4px}
+/* HISTORY PAGE */
+#historyPage .tabs{display:flex;gap:8px;margin-bottom:20px;overflow-x:auto;padding-bottom:5px}
+#historyPage .tab{padding:10px 18px;border-radius:25px;background:#1a3a5a;cursor:pointer;white-space:nowrap;font-size:14px;transition:.3s;border:1px solid transparent;color:var(--text-muted)}
+#historyPage .tab.active{background:var(--gold);color:#000;font-weight:bold}
+
+#historyPage .card{background:#0f2a44;padding:16px;border-radius:15px;margin-bottom:15px;box-shadow:0 4px 15px rgba(0,0,0,.2);border-left:5px solid transparent}
+#historyPage .card.completed{border-left-color:#2ecc71}
+#historyPage .card.ongoing{border-left-color:#f39c12}
+#historyPage .card.cancelled{border-left-color:#e74c3c}
+#historyPage .card-header{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+#historyPage .card h4{margin:0;font-size:18px;color:var(--gold)}
+#historyPage .badge{padding:4px 10px;border-radius:8px;font-size:11px;text-transform:uppercase;font-weight:bold;white-space:nowrap;flex-shrink:0}
+#historyPage .badge.completed{background:rgba(46,204,113,.2);color:#2ecc71}
+#historyPage .badge.ongoing{background:rgba(243,156,18,.2);color:#f39c12}
+#historyPage .badge.cancelled{background:rgba(231,76,60,.2);color:#e74c3c}
+#historyPage .details{margin:12px 0;color:var(--text-muted);font-size:14px}
+#historyPage .price{font-weight:bold;color:#fff;font-size:16px;margin-top:5px}
+#historyPage .btns{display:flex;gap:10px;margin-top:15px}
+#historyPage .btn-outline{flex:1;padding:10px;border:1px solid var(--gold);background:transparent;color:var(--gold);border-radius:8px;cursor:pointer;font-weight:bold}
+#historyPage .btn-fill{flex:1;padding:10px;border:none;background:var(--gold);color:#000;border-radius:8px;cursor:pointer;font-weight:bold}
+
+.hist-modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;justify-content:center;align-items:center;z-index:9999;padding:20px}
+.hist-modal.open{display:flex}
+.hist-modal-box{background:#0f2a44;color:#fff;padding:20px;border-radius:12px;width:90%;max-width:400px;animation:pop .3s ease}
+@keyframes pop{from{transform:scale(.8);opacity:0}to{transform:scale(1);opacity:1}}</style>
+</head>
+<body>
+  
+
+<!-- HOME PAGE -->
+<section id="homePage" class="page active">
+  <div class="home-header glass">
+    <div class="logo-brand"><span>Fixa</span></div>
+  </div>
+
+  <div class="welcome-section">
+    <h2 style="font-size:20px">Welcome back, <span id="usernameDisplay" style="color:var(--gold)"></span> 👋</h2>
+    <p style="color:var(--text-muted);font-size:13px;margin-top:4px">What service do you need today?</p>
+  </div>
+
+  <div class="search-container">
+    <div class="search-bar">
+      <span class="material-icons" style="color:var(--gold);font-size:20px">search</span>
+      <input type="text" placeholder="Search for a service..."/>
+    </div>
+  </div>
+
+  <div class="section-title">
+    <h3>Popular Services</h3>
+    <a href="categories.html">View All →</a>
+  </div>
+  <div class="services-grid">
+    <div class="service-item"><div class="icon-square">⚡</div><span>Electrician</span></div>
+    <div class="service-item"><div class="icon-square">🔧</div><span>Plumber</span></div>
+    <div class="service-item"><div class="icon-square">❄️</div><span>AC Repair</span></div>
+    <div class="service-item"><div class="icon-square">🧼</div><span>Cleaning</span></div>
+  </div>
+
+  <div class="artisan-list">
+    <div class="section-title" style="padding:16px 0 12px"><h3>Featured Artisans</h3></div>
+    <div id="featuredArtisans">
+      <div class="artisan-card">
+        <div class="artisan-avatar">J</div>
+        <div><h4 style="font-size:15px">John Musa</h4><p style="font-size:12px;color:var(--text-muted)">Electrician • 4.9 ⭐</p></div>
+        <button class="book-btn">Book</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- MESSAGES PAGE -->
+<section id="messagesPage" class="page">
+  <div id="chatListView" class="chat-list-view">
+    <div class="msg-header glass">
+      <span class="material-icons" style="color:var(--gold)">forum</span>
+      <h2>Messages</h2>
+      <span id="totalUnreadBadge"></span>
+    </div>
+    <div class="chat-list-scroll" id="chatList">
+      <div class="empty-state">
+        <span class="material-icons">forum</span>
+        <p>No conversations yet</p>
+      </div>
+    </div>
+  </div>
+
+
+  <div id="chatConvView" class="chat-conv-view" style="display: none;">
+    <div class="conv-header glass">
+      <!-- Peer ban banner -->
+      <div id="peerBanBanner" style="display:none;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);border-radius:12px;margin:8px 12px;padding:12px;flex-shrink:0">
+        <div style="display:flex;align-items:flex-start;gap:10px">
+          <span style="font-size:18px">⚠️</span>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:700;color:#ef4444" id="peerBanTitle">Artisan messaging restricted</div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.6);margin-top:3px;line-height:1.45" id="peerBanReason">This artisan has been temporarily banned from messaging.</div>
+            <div id="peerBanCountdown" style="margin-top:8px;display:flex;gap:6px"></div>
+          </div>
+        </div>
+      </div>
+      <button class="back-btn" type="button" id="backBtn">
+        <span class="material-icons" style="font-size:18px">arrow_back_ios</span>
+        Back
+      </button>
+      <div id="convAvatar" class="chat-avatar" style="width:36px;height:36px;font-size:14px"></div>
+      <div style="flex:1">
+        <div id="convName" style="font-weight:700;font-size:15px">Chat</div>
+        <div id="convStatus" style="font-size:11px;color:var(--text-muted)">Active now</div>
+      </div>
+      <button type="button" id="payNowBtn" title="Pay for this job"
+        style="background:#22c55e;color:#fff;border:none;padding:7px 14px;border-radius:10px;font-weight:700;cursor:pointer;font-size:13px;display:none">
+        💳 Pay
+      </button>
+      <button type="button" id="disputeBtn" title="Report a problem"
+        style="background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid rgba(239,68,68,0.3);padding:7px 10px;border-radius:10px;font-weight:700;cursor:pointer;font-size:14px;margin-left:6px">
+        🚨
+      </button>
+    </div>
+
+    <div class="timed-chat-banner" id="timedBanner" style="display:none">
+      <span style="font-size:20px">⏱️</span>
+      <div>
+        <div class="timer-display" id="timerDisplay">30:00</div>
+        <div class="timer-label">Timed job chat — discuss details with your artisan</div>
+      </div>
+    </div>
+
+    <div class="sealed-banner" id="sealedBanner" style="display:none">
+      <h4>🔒 Chat Session Ended</h4>
+      <p>This chat has been sealed. Your conversation history is saved for 30 days.</p>
+      <button class="rebook-btn" type="button" id="rebookBtn">🔍 Book Again on Fixa</button>
+    </div>
+
+    <!-- Execution Status Timeline -->
+    <div id="executionTimeline" style="display:none;background:rgba(0,212,255,0.06);border:1px solid rgba(0,212,255,0.25);border-radius:12px;margin:8px 12px;padding:12px;flex-shrink:0">
+      <div style="font-size:12px;font-weight:700;color:#00d4ff;margin-bottom:10px">📍 Job Progress</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:4px">
+        <div class="exec-step" data-step="on_the_way" style="flex:1;text-align:center;font-size:11px;color:rgba(255,255,255,0.4)">
+          <div style="font-size:18px">🚗</div><div>On the way</div>
+        </div>
+        <div style="flex:0 0 14px;height:2px;background:rgba(255,255,255,0.1)"></div>
+        <div class="exec-step" data-step="started" style="flex:1;text-align:center;font-size:11px;color:rgba(255,255,255,0.4)">
+          <div style="font-size:18px">🔧</div><div>In progress</div>
+        </div>
+        <div style="flex:0 0 14px;height:2px;background:rgba(255,255,255,0.1)"></div>
+        <div class="exec-step" data-step="completed" style="flex:1;text-align:center;font-size:11px;color:rgba(255,255,255,0.4)">
+          <div style="font-size:18px">✨</div><div>Completed</div>
+        </div>
+      </div>
+      <div id="proofPhotoGallery" style="margin-top:10px;display:none;gap:6px;overflow-x:auto;padding:6px 0"></div>
+    </div>
+    
+
+    <div id="messages"></div>
+
+    <div class="typing-indicator" id="typingIndicator"></div>
+
+    <div class="chat-footer" id="chatFooter">
+      <button type="button" class="chat-icon-btn" id="attachBtn" title="Attach image"><span class="material-icons" style="font-size:20px">attach_file</span></button>
+      <button type="button" class="chat-icon-btn" id="voiceBtn" title="Voice note"><span class="material-icons" style="font-size:20px">mic</span></button>
+      <input type="text" id="msgInput" placeholder="Type a message..." autocomplete="off"/>
+      <input type="file" id="mediaInput" accept="image/*,audio/*" style="display:none"/>
+      <button type="button" class="send-btn" id="sendBtn"><span class="material-icons" style="font-size:18px">send</span></button>
+    </div>
+  </div>
+</section>
+
+
+    <!-- ═══════════════════════ HISTORY PAGE ═══════════════════════ -->
+    <section id="historyPage" class="page">
+  <div style="padding:20px;max-width:600px;margin:auto">
+    <h2 style="margin-bottom:20px;font-weight:600">My Bookings</h2>
+
+    <div class="tabs" id="customerTabs">
+      <div class="tab active" onclick="filterCustomer('all', event)">All</div>
+      <div class="tab" onclick="filterCustomer('ongoing', event)">Active</div>
+      <div class="tab" onclick="filterCustomer('completed', event)">Completed</div>
+      <div class="tab" onclick="filterCustomer('cancelled', event)">Cancelled</div>
+    </div>
+
+    <div id="customerList">
+      <div class="empty-state">Loading your history...</div>
+    </div>
+  </div>
+
+  <div id="histModal" class="hist-modal">
+    <div class="hist-modal-box">
+      <div id="histModalContent"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ACCOUNT PAGE -->
+<section id="accountPage" class="page">
+  <div class="account-page">
+    <div class="profile-card">
+      <div class="profile-avatar" id="profileInitial">U</div>
+      <div>
+        <div style="font-size:18px;font-weight:700" id="profileName">User</div>
+        <div style="font-size:12px;color:var(--text-muted)" id="profileEmail"></div>
+      </div>
+    </div>
+    <div>
+      <button class="account-card" type="button"><div><h3>🪪 Personal Information</h3><p>Name, contact, address</p></div><span class="material-icons">chevron_right</span></button>
+      <button class="account-card" type="button"><div><h3>💳 Payment Methods</h3><p>Linked cards, wallet balance</p></div><span class="material-icons">chevron_right</span></button>
+      <button class="account-card" type="button"><div><h3>🔐 Security & Privacy</h3><p>Manage password and data</p></div><span class="material-icons">chevron_right</span></button>
+      <button class="logout-btn" type="button" id="logoutBtn">Logout</button>
+    </div>
+  </div>
+</section>
+
+<!-- VOICE RECORDING UI -->
+<div class="voice-ui" id="voiceUI">
+  <div style="font-size:20px">🔴</div>
+  <div class="voice-timer" id="voiceTimer">00:00</div>
+  <button type="button" class="voice-cancel" id="voiceCancelBtn">Cancel</button>
+  <button type="button" class="voice-stop" id="voiceStopBtn">Send ✓</button>
+</div>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav glass">
+  <button type="button" class="nav-item active" data-page="home">
+    <span class="material-icons">home</span>
+    <span class="nav-label">Home</span>
+  </button>
+  <button type="button" class="nav-item" data-page="messages">
+    <span class="material-icons">forum</span>
+    <span class="nav-label">Messages</span>
+    <span class="nav-unread" id="navUnreadBadge"></span>
+  </button>
+  <button type="button" class="nav-item" data-page="history">
+  <span class="material-icons">receipt_long</span>
+  <span class="nav-label">Bookings</span>
+</button>
+  <button type="button" class="nav-item" data-page="account">
+    <span class="material-icons">person</span>
+    <span class="nav-label">Profile</span>
+  </button>
+</nav>
+
+<script>
+// ──────────────────────────────────────────
+// AUTH CHECK
+// ──────────────────────────────────────────
+const _raw = localStorage.getItem('user');
+const user = _raw ? JSON.parse(_raw) : null;
+const token = localStorage.getItem('token');
+
+if (!user || !token) {
+  window.location.href = 'SignIn.html';
+}
+user._id = user._id || user.id || user.userId || '';
+
+document.getElementById('usernameDisplay').textContent = user.username || 'User';
+document.getElementById('profileName').textContent = user.username || 'User';
+document.getElementById('profileEmail').textContent = user.email || '';
+document.getElementById('profileInitial').textContent = (user.username || 'U')[0].toUpperCase();
+
+// ──────────────────────────────────────────
+// CONFIG
+// ──────────────────────────────────────────
+const BASE_URL = 'http://localhost:5000';
+const MSG_API  = `${BASE_URL}/api/messages`;
+
+// ──────────────────────────────────────────
+// STATE
+// ──────────────────────────────────────────
+let socket = null;
+let activeBookingId = null;
+let activePaymentStatus = 'unknown';
+let activeBooking = null;
+let activeChatStatus = 'intro';
+let activePaymentDeadline = null;
+let activeChatId = null;
+let chatSealed = false;
+let timerInterval = null;
+let timerSeconds = 1800;
+let isTyping = false;
+let typingTimer = null;
+let mediaRecorder = null;
+let audioChunks = [];
+let recordingInterval = null;
+let recordStart = 0;
+let _isCurrentlyBanned = false;
+let banCountdownInterval = null;
+let peerBanCountdownInterval = null;
+
+// Chat list state for unread tracking
+const chatListState = new Map();
+// Add near your other state variables
+const renderedMsgIds = new Set();
+let lastRenderedDateStr = null;
+
+function appendMessage(m) {
+  if (!m) return;
+  const msgsEl = document.getElementById('messages');
+  const msgId = m._id || m.id;
+
+  // TRUE dedup: if we've already rendered this real message, don't touch it.
+  // (Optimistic temp IDs like "temp-..." are never in this set, so they pass through fine.)
+  if (msgId && renderedMsgIds.has(msgId)) return;
+
+  const isMe = computeIsMe(m);
+  const msgDate = new Date(m.createdAt || Date.now());
+  const dateStr = msgDate.toDateString();
+
+  if (dateStr !== lastRenderedDateStr) {
+    const sep = document.createElement('div');
+    sep.className = 'date-sep';
+    sep.dataset.date = dateStr;
+    sep.innerHTML = `<span>${dateStr === new Date().toDateString() ? 'Today' : msgDate.toLocaleDateString()}</span>`;
+    msgsEl.appendChild(sep);
+    lastRenderedDateStr = dateStr;
+  }
+
+  const row = document.createElement('div');
+  row.className = `msg-row ${isMe ? 'sent' : 'recv'}`;
+  row.dataset.msgId = msgId || `local-${Date.now()}`;
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+
+  const mediaSrc = m.voiceNote || m.image || m.mediaUrl;
+  if (mediaSrc) {
+    const isAudio = String(mediaSrc).toLowerCase().match(/\.(webm|mp3|wav|ogg)$/i);
+    const fullSrc = String(mediaSrc).startsWith('blob:') || String(mediaSrc).startsWith('http')
+      ? mediaSrc
+      : `${BASE_URL}${String(mediaSrc).startsWith('/') ? '' : '/'}${mediaSrc}`;
+    if (m.voiceNote || isAudio) {
+      const audio = document.createElement('audio');
+      audio.controls = true; audio.src = fullSrc; audio.preload = 'metadata';
+      bubble.appendChild(audio);
+    } else {
+      const img = document.createElement('img');
+      img.src = fullSrc; img.loading = 'lazy'; img.style.cursor = 'pointer';
+      img.addEventListener('click', () => window.open(fullSrc, '_blank'));
+      bubble.appendChild(img);
+    }
+  }
+
+  const text = m.text || m.content;
+  if (text && text !== 'Voice note' && text !== 'Image') {
+    const t = document.createElement('div');
+    t.textContent = text;
+    bubble.appendChild(t);
+  }
+
+  const meta = document.createElement('div');
+  meta.className = 'bubble-meta';
+  meta.dataset.seen = String(!!m.seenAt || !!m.seen);
+  meta.dataset.delivered = String(!!m.deliveredAt || !!m.delivered);
+  meta.textContent = formatTime(new Date(m.createdAt || Date.now()));
+if (isMe) meta.textContent += (m.seenAt || m.seen) ? ' ✓✓' : (m.deliveredAt || m.delivered) ? ' ✓' : ' ·';
+  bubble.appendChild(meta);
+
+  row.appendChild(bubble);
+  msgsEl.appendChild(row);
+  if (msgId) renderedMsgIds.add(msgId);
+
+  const nearBottom = (msgsEl.scrollHeight - msgsEl.clientHeight - msgsEl.scrollTop) < 120;
+  if (nearBottom || isMe) msgsEl.scrollTop = msgsEl.scrollHeight;
+}
+
+// ──────────────────────────────────────────
+// HELPERS
+// ──────────────────────────────────────────
+function addNotification(title, body, chatId) {
+  if (window.FixaSystem) {
+    window.FixaSystem.addNotification(title, body, 'message', chatId || null);
+  }
+}
+
+function updateTotalUnreadBadge() {
+  let total = 0;
+  for (const state of chatListState.values()) total += state.unread || 0;
+
+  const badge = document.getElementById('totalUnreadBadge');
+  const navBadge = document.getElementById('navUnreadBadge');
+
+  [badge, navBadge].forEach(el => {
+    if (!el) return;
+    if (total > 0) {
+      el.style.display = 'flex';
+      el.textContent = total > 99 ? '99+' : total;
+    } else {
+      el.style.display = 'none';
+    }
+  });
+}
+
+// ──────────────────────────────────────────
+// NAVIGATION
+// ──────────────────────────────────────────
+function switchPage(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+
+  const pageEl = document.getElementById(page + 'Page');
+  if (pageEl) pageEl.classList.add('active');
+
+  const navEl = document.querySelector(`.nav-item[data-page="${page}"]`);
+  if (navEl) navEl.classList.add('active');
+
+  if (page === 'messages') loadChatList();
+  if (page === 'history') loadHistory(); 
+}
+
+// ──────────────────────────────────────────
+// SOCKET
+// ──────────────────────────────────────────
+function initSocket() {
+  try {
+    socket = io(BASE_URL, { auth: { token }, transports: ['websocket', 'polling'] });
+
+    socket.on('connect', () => {
+      console.log('[Socket] Connected:', socket.id);
+      socket.emit('register', user._id);
+      if (activeChatId) socket.emit('joinChat', activeChatId);
+    });
+
+    socket.on('connect_error', e => console.warn('[Socket] Error:', e.message));
+
+    socket.on('accountSuspended', (data) => {
+      _isCurrentlyBanned = true;
+      showBanOverlay(data);
+    });
+    socket.on('accountActivated', () => {
+      _isCurrentlyBanned = false;
+      hideBanOverlay();
+      addNotification('Welcome back!', 'Your account has been reactivated');
+    });
+
+ socket.on('newMessage', (payload) => {
+  const { chatId, message, unreadCount } = payload || {};
+  if (!chatId || !message) return;
+  if (String(activeChatId) === String(chatId)) {
+    appendMessage(message); // now safe — dedup by ID handles the echo
+  } else {
+    updateChatPreview(chatId, message, unreadCount);
+    addNotification(`New message from ${message.senderName || 'Artisan'}`, message.text || 'Sent a media file', chatId);
+  }
+});
+    socket.on('userOnline', ({ userId }) => {
+      if (window._activeChatPeerId && String(userId) === String(window._activeChatPeerId)) {
+        updatePeerStatus(true);
+      }
+    });
+
+    socket.on('peerBanned', (data) => {
+      if (String(data.peerUserId) === String(window._activeChatPeerId)) {
+        showPeerBanBanner(data);
+        addNotification('Artisan Restricted', 'The artisan you are chatting with has been restricted');
+      }
+    });
+
+    socket.on('peerUnbanned', (data) => {
+      if (String(data.peerUserId) === String(window._activeChatPeerId)) {
+        hidePeerBanBanner();
+        addNotification('Artisan can message again', '');
+      }
+    });
+
+    socket.on('userOffline', ({ userId }) => {
+      if (window._activeChatPeerId && String(userId) === String(window._activeChatPeerId)) {
+        updatePeerStatus(false, new Date());
+      }
+    });
+
+    socket.on('typing', ({ chatId }) => {
+      if (String(activeChatId) === String(chatId))
+        document.getElementById('typingIndicator').textContent = 'Artisan is typing...';
+    });
+    socket.on('stopTyping', ({ chatId }) => {
+      if (String(activeChatId) === String(chatId))
+        document.getElementById('typingIndicator').textContent = '';
+    });
+
+  socket.on('jobAccepted', ({ bookingId, chatId, artisanName, paymentDeadline, timerDuration }) => {
+  // Update active booking state
+  if (activeBooking && String(activeBooking._id) === String(bookingId)) {
+    activeBooking.status = 'accepted';
+    activeBooking.paymentDeadline = paymentDeadline;
+    activePaymentDeadline = paymentDeadline;
+    activePaymentStatus = 'unpaid';
+  }
+
+  const name = artisanName || 'Your artisan';
+  const mins = Math.floor((timerDuration || 1800) / 60);
+  addNotification('Job Accepted! 🎉',
+    `${name} accepted your job. Pay within ${mins} minutes to secure it.`, chatId);
+
+  // If we're already in this chat — start the timer immediately
+  if (String(activeChatId) === String(chatId)) {
+    if (paymentDeadline) startPaymentDeadline(paymentDeadline);
+    applyChatStateToUI();
+  } else {
+    // Store deadline so it shows when they open the chat
+    if (activeBooking) activeBooking.paymentDeadline = paymentDeadline;
+  }
+});
+
+    socket.on('execution:statusUpdate', ({ status, artisanName }) => {
+      updateExecutionTimeline(status);
+      const labels = {
+        on_the_way: 'is on the way 🚗',
+        started: 'has started the job 🔧',
+        completed: 'has completed the job ✨'
+      };
+      addNotification('Job Update', `${artisanName || 'Your artisan'} ${labels[status] || status}`);
+    });
+socket.on('messagesRead', ({ chatId }) => {
+  if (String(activeChatId) !== String(chatId)) return;
+  document.querySelectorAll('.msg-row.sent .bubble-meta').forEach(el => {
+    if (el.dataset.seen === 'true') return; // already marked, skip
+    el.dataset.seen = 'true';
+    el.textContent = el.textContent.replace(/\s*[·✓]*$/, '') + ' ✓✓';
+  });
+});
+    socket.on('execution:photoAdded', ({ photoUrl, type }) => {
+      addProofPhotoToGallery(photoUrl, type);
+      addNotification('New proof photo', `Your artisan uploaded a ${type} photo`);
+    });
+
+    socket.on('artisan:locationUpdate', ({ lat, lng }) => {
+      console.log('Artisan location:', lat, lng);
+    });
+
+    let _activeTopUp = null;
+
+socket.on('topUpRequested', ({ bookingId, topUpId, previousPrice, newPrice, amount, reason, artisanName }) => {
+  _activeTopUp = { bookingId, topUpId };
+  document.getElementById('topUpArtisanName').textContent = artisanName || 'Your artisan';
+  document.getElementById('topUpPrevPriceDisplay').textContent = `₦${Number(previousPrice).toLocaleString()}`;
+  document.getElementById('topUpNewPriceDisplay').textContent = `₦${Number(newPrice).toLocaleString()}`;
+  document.getElementById('topUpAmountDisplay').textContent = `₦${Number(amount).toLocaleString()}`;
+  document.getElementById('topUpReasonDisplay').textContent = reason;
+  document.getElementById('topUpApprovalModal').style.display = 'flex';
+  addNotification('💰 Price Update Requested', `${artisanName}: new price ₦${Number(newPrice).toLocaleString()}`, 'payment');
+});
+
+socket.on('topUpPaid', ({ amount }) => {
+  addNotification('Top-Up Paid ✅', `Additional ₦${amount.toLocaleString()} added to escrow`, 'success');
+});
+
+document.getElementById('topUpApproveBtn').addEventListener('click', async () => {
+  if (!_activeTopUp) return;
+  try {
+    const res = await fetch(`${BASE_URL}/api/bookings/${_activeTopUp.bookingId}/top-up/${_activeTopUp.topUpId}/approve`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message);
+
+    // NEW: remember this top-up so we can verify it on return
+    localStorage.setItem('pendingTopUp', JSON.stringify({
+      bookingId: _activeTopUp.bookingId,
+      topUpId: _activeTopUp.topUpId,
+      reference: data.reference
+    }));
+
+    document.getElementById('topUpApprovalModal').style.display = 'none';
+    window.location.href = data.authorizationUrl;
+  } catch (err) {
+    if (window.FixaSystem) FixaSystem.showToast('Failed', err.message, 'warning');
+  }
+});
+
+document.getElementById('topUpRejectBtn').addEventListener('click', async () => {
+  if (!_activeTopUp) return;
+  try {
+    await fetch(`${BASE_URL}/api/bookings/${_activeTopUp.bookingId}/top-up/${_activeTopUp.topUpId}/reject`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    document.getElementById('topUpApprovalModal').style.display = 'none';
+    _activeTopUp = null;
+  } catch {}
+});
+socket.on('priceProposalRequested', ({ bookingId, previousPrice, newPrice, reason, artisanName }) => {
+  if (String(activeBookingId) !== String(bookingId)) return;
+  document.getElementById('proposalArtisanName').textContent = artisanName || 'Your artisan';
+  document.getElementById('proposalPrevPrice').textContent = `₦${previousPrice.toLocaleString()}`;
+  document.getElementById('proposalNewPrice').textContent = `₦${newPrice.toLocaleString()}`;
+  document.getElementById('proposalReason').textContent = reason;
+  document.getElementById('priceProposalBanner').style.display = 'flex';
+  addNotification('💬 New Price Proposed', `${artisanName}: ₦${newPrice.toLocaleString()}`, bookingId);
+});
+
+document.getElementById('proposalApproveBtn')?.addEventListener('click', async () => {
+  try {
+    const res = await fetch(`${BASE_URL}/api/bookings/${activeBookingId}/price-proposal/approve`, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message);
+    activeBooking.estimatedPrice = data.estimatedPrice;
+    document.getElementById('priceProposalBanner').style.display = 'none';
+    applyChatStateToUI();
+    if (window.FixaSystem) FixaSystem.showToast('Price updated', `New price: ₦${data.estimatedPrice.toLocaleString()}`, 'success');
+  } catch (err) {
+    if (window.FixaSystem) FixaSystem.showToast('Failed', err.message, 'warning');
+  }
+});
+
+document.getElementById('proposalRejectBtn')?.addEventListener('click', async () => {
+  try {
+    await fetch(`${BASE_URL}/api/bookings/${activeBookingId}/price-proposal/reject`, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    document.getElementById('priceProposalBanner').style.display = 'none';
+  } catch {}
+});
+socket.on('bookingStatusUpdated', ({ status, artisanName, bookingId, artisanId }) => {
+  const msgs = { /* unchanged */ };
+  addNotification('Booking Update', msgs[status] || `Booking status: ${status}`);
+  if (status === 'completed' && bookingId && artisanId) {
+    openRatingModal({ bookingId, artisanId, artisanName });
+  }
+});
+
+    socket.on('bookingCancelled', async ({ bookingId, reason }) => {
+      if (String(activeBookingId) === String(bookingId)) {
+        addNotification('Booking Cancelled', reason || 'Your booking was cancelled', null);
+        activeBooking = null;
+        activeBookingId = null;
+        activePaymentStatus = 'unknown';
+        activePaymentDeadline = null;
+        activeChatStatus = 'intro';
+        if (window.ChatGuard) await window.ChatGuard.onChatOpen(activeChatId);
+        applyChatStateToUI();
+      }
+    });
+
+    socket.on('paymentDeadlineSoon', ({ bookingId, minutesLeft }) => {
+      if (String(activeBookingId) === String(bookingId)) {
+        addNotification('⏰ Time Running Out', `${minutesLeft} minutes left to pay`, null);
+      }
+    });
+
+    socket.on('paymentEscrowed', async ({ bookingId }) => {
+      addNotification('Payment Confirmed 🎉', 'Your payment is safely held in escrow. Voice & location are now unlocked.', null);
+      if (activeChatId && String(activeBookingId) === String(bookingId)) {
+        activePaymentStatus = 'paid';
+        if (window.ChatGuard) await window.ChatGuard.onChatOpen(activeChatId);
+        await loadChatBookingAndPaymentStatus(activeChatId);
+      }
+    });
+
+    socket.on('chatUpgraded', async ({ chatId, status }) => {
+      if (String(activeChatId) !== String(chatId)) return;
+      if (status === 'booked') {
+        addNotification('Booking Confirmed 🎉', 'Chat is now upgraded. You can send photos and pay for the job.', null);
+      } else if (status === 'secured') {
+        addNotification('Escrow Active 🔒', 'Your payment is held safely. Voice & location are unlocked.', null);
+      }
+      await loadChatBookingAndPaymentStatus(activeChatId);
+      if (window.ChatGuard) await window.ChatGuard.onChatOpen(activeChatId);
+    });
+
+    socket.on('paymentReleased', ({ bookingId, payout }) => {
+      addNotification('Funds Released 💸', `₦${payout?.toLocaleString() || ''} released to artisan.`, null);
+    });
+
+    // ── DISPUTE EVENTS ──
+    socket.on('disputeOpened', ({ disputeId, bookingId }) => {
+      if (window.FixaSystem) {
+        window.FixaSystem.addNotification(
+          '⚠️ Dispute Filed',
+          'A dispute has been opened on your booking. Funds are frozen until Fixa reviews.',
+          'dispute'
+        );
+      }
+    });
+
+    socket.on('disputeResolved', ({ disputeId }) => {
+      if (window.FixaSystem) {
+        window.FixaSystem.addNotification(
+          '✅ Dispute Resolved',
+          'The dispute on your booking has been reviewed and resolved.',
+          'dispute'
+        );
+      }
+    });
+
+    socket.on('disputeAcknowledged', ({ disputeId, bookingId }) => {
+      if (window.FixaSystem) {
+        window.FixaSystem.addNotification(
+          '📋 Dispute Received',
+          'Your dispute has been received. The Fixa team will review within 24 hours.',
+          'dispute'
+        );
+      }
+    });
+
+    socket.on('notification', ({ title, body, chatId }) => {
+      addNotification(title, body, chatId);
+    });
+
+  } catch (e) {
+    console.warn('[Socket] Init failed:', e);
+  }
+}
+
+function safeEmit(event, data) {
+  if (socket && socket.connected) { socket.emit(event, data); return true; }
+  return false;
+}
+
+// ──────────────────────────────────────────
+// CHAT LIST
+// ──────────────────────────────────────────
+async function loadChatList() {
+  const container = document.getElementById('chatList');
+  container.innerHTML = '<div class="empty-state"><p>Loading conversations...</p></div>';
+  try {
+    const res = await fetch(`${MSG_API}/my-chats`, { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) throw new Error('Failed');
+    const chats = await res.json();
+    renderChatList(Array.isArray(chats) ? chats : []);
+  } catch {
+    container.innerHTML = '<div class="empty-state"><p style="color:#ef4444">Failed to load chats</p></div>';
+  }
+}
+
+function renderChatList(chats) {
+  const container = document.getElementById('chatList');
+  chatListState.clear();
+
+  if (!chats.length) {
+    container.innerHTML = '<div class="empty-state"><span class="material-icons">forum</span><p>No conversations yet</p></div>';
+    updateTotalUnreadBadge();
+    return;
+  }
+  container.innerHTML = '';
+  chats.forEach(chat => {
+    const other = (chat.participants || []).find(p => normalizeId(p) !== user._id) || {};
+    const name = other.username || other.name || 'Artisan';
+    const lastMsg = chat.latestMessage || (chat.messages?.slice(-1)[0]) || {};
+    const lastText = lastMsg.text || lastMsg.content || 'Say hi 👋';
+    const lastTime = lastMsg.createdAt ? formatTime(new Date(lastMsg.createdAt)) : '';
+    const unread = chat.unreadCount || 0;
+    const isSealed = chat.sealed || chat.status === 'completed';
+    const hasTimer = chat.timedChat && chat.timedChatExpiry && new Date(chat.timedChatExpiry) > new Date();
+    const timerLeft = hasTimer ? Math.floor((new Date(chat.timedChatExpiry) - new Date()) / 1000) : 0;
+    const chatId = chat._id || chat.id;
+
+    chatListState.set(String(chatId), { name, lastText, lastTime, unread });
+
+    const el = document.createElement('div');
+    el.className = 'chat-item' + (unread > 0 ? ' has-unread' : '');
+    el.dataset.chatId = chatId;
+    el.innerHTML = `
+      <div class="chat-avatar">${escHtml((name[0] || '?').toUpperCase())}</div>
+      <div class="chat-info">
+        <div class="chat-name">
+          <span>${escHtml(name)}${isSealed ? ' 🔒' : ''}${hasTimer ? ' ⏱️' : ''}</span>
+          <span style="font-size:10px;color:var(--text-muted);font-weight:400">${escHtml(lastTime)}</span>
+        </div>
+        <div class="chat-preview">
+          <span class="chat-preview-text">${escHtml(lastText)}</span>
+          ${unread ? `<span class="unread-badge">${unread}</span>` : ''}
+        </div>
+      </div>
+    `;
+    el.addEventListener('click', () => {
+      // Clear unread for this chat
+      const state = chatListState.get(String(chatId));
+      if (state) state.unread = 0;
+      el.classList.remove('has-unread');
+      el.querySelector('.unread-badge')?.remove();
+      updateTotalUnreadBadge();
+      openChat(chatId, name, isSealed, timerLeft || 0);
+    });
+    container.appendChild(el);
+  });
+  updateTotalUnreadBadge();
+}
+
+function updateExecutionTimeline(status) {
+  const timeline = document.getElementById('executionTimeline');
+  if (!timeline) return;
+  timeline.style.display = 'block';
+
+  const order = ['on_the_way', 'started', 'completed'];
+  const reachedIdx = order.indexOf(status);
+
+  document.querySelectorAll('.exec-step').forEach(stepEl => {
+    const stepIdx = order.indexOf(stepEl.dataset.step);
+    if (stepIdx <= reachedIdx) {
+      stepEl.style.color = '#00d4ff';
+      stepEl.style.fontWeight = '700';
+    } else {
+      stepEl.style.color = 'rgba(255,255,255,0.4)';
+      stepEl.style.fontWeight = '400';
+    }
+  });
+}
+
+function addProofPhotoToGallery(photoUrl, type) {
+  const gallery = document.getElementById('proofPhotoGallery');
+  if (!gallery) return;
+  gallery.style.display = 'flex';
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'flex-shrink:0;position:relative';
+  wrap.innerHTML = `
+    <img src="${photoUrl}" style="width:80px;height:80px;object-fit:cover;border-radius:8px;cursor:pointer" onclick="window.open('${photoUrl}','_blank')">
+    <div style="position:absolute;bottom:2px;left:2px;background:rgba(0,0,0,0.7);color:#fff;font-size:9px;padding:1px 5px;border-radius:4px">${type}</div>
+  `;
+  gallery.appendChild(wrap);
+}
+
+function updateChatPreview(chatId, message, unreadCount) {
+  let item = document.querySelector(`[data-chat-id="${chatId}"]`);
+  const state = chatListState.get(String(chatId)) || { name: 'Artisan', unread: 0 };
+
+  state.lastText = message.text || 'Media';
+  state.lastTime = formatTime(new Date(message.createdAt || Date.now()));
+  state.unread = unreadCount != null ? unreadCount : (state.unread + 1);
+  chatListState.set(String(chatId), state);
+
+  if (!item) {
+    loadChatList();
+    return;
+  }
+
+  const preview = item.querySelector('.chat-preview-text');
+  if (preview) preview.textContent = state.lastText;
+
+  let badge = item.querySelector('.unread-badge');
+  if (state.unread > 0) {
+    if (!badge) {
+      badge = document.createElement('span');
+      badge.className = 'unread-badge';
+      item.querySelector('.chat-preview').appendChild(badge);
+    }
+    badge.textContent = state.unread;
+    item.classList.add('has-unread');
+  } else if (badge) {
+    badge.remove();
+    item.classList.remove('has-unread');
+  }
+
+  document.getElementById('chatList').prepend(item);
+  updateTotalUnreadBadge();
+}
+
+// ──────────────────────────────────────────
+// OPEN CHAT
+// ──────────────────────────────────────────
+async function openChat(chatId, peerName, isSealed = false, timerSecs = 0) {
+  activeChatId = chatId;
+  chatSealed = isSealed;
+  activeBookingId = null;
+  activePaymentStatus = 'unknown';
+
+  document.getElementById('chatListView').style.display = 'none';
+  document.getElementById('chatConvView').style.display = 'flex';
+  document.getElementById('chatConvView').style.flexDirection = 'column';
+
+  document.getElementById('convName').textContent = peerName || 'Chat';
+  document.getElementById('convAvatar').textContent = (peerName || 'A')[0].toUpperCase();
+
+  safeEmit('joinChat', chatId);
+  clearTimedChat();
+
+  document.getElementById('sealedBanner').style.display = isSealed ? 'block' : 'none';
+  document.getElementById('chatFooter').style.display = isSealed || _isCurrentlyBanned ? 'none' : 'flex';
+
+  await loadChatBookingAndPaymentStatus(chatId);
+
+  if (window.ChatGuard) {
+    if (!window.ChatGuard._inited) {
+      await window.ChatGuard.init(user._id, token);
+      window.ChatGuard._inited = true;
+    }
+    await window.ChatGuard.onChatOpen(chatId);
+  }
+
+  const msgsEl = document.getElementById('messages');
+  msgsEl.innerHTML = '<div class="empty-state"><p>Loading messages...</p></div>';
+  try {
+    const res = await fetch(`${MSG_API}/${encodeURIComponent(chatId)}`, { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) throw new Error('Failed');
+    const msgs = await res.json();
+    msgsEl.innerHTML = '';
+    (Array.isArray(msgs) ? msgs : []).forEach(appendMessage);
+    msgsEl.scrollTop = msgsEl.scrollHeight;
+  } catch {
+    msgsEl.innerHTML = '<div class="empty-state"><p style="color:#ef4444">Could not load messages</p></div>';
+  }
+  // Mark messages as read
+fetch(`${MSG_API}/${encodeURIComponent(chatId)}/read`, {
+  method: 'POST',
+  headers: { Authorization: `Bearer ${token}` }
+}).catch(() => {});
+}
+
+function closeChat() {
+  if (activeChatId) safeEmit('leaveChat', activeChatId);
+  activeChatId = null;
+  clearTimedChat();
+  hidePeerBanBanner();
+  document.getElementById('chatConvView').style.display = 'none';
+  document.getElementById('chatListView').style.display = 'flex';
+}
+
+// ──────────────────────────────────────────
+// PAYMENT / PHASE
+// ──────────────────────────────────────────
+function getEffectiveChatPhase() {
+  if (!activeBookingId) return 'intro';
+  if (activePaymentStatus === 'paid') return 'secured';
+  if (
+    activePaymentStatus === 'unpaid' &&
+    activePaymentDeadline &&
+    new Date(activePaymentDeadline) > new Date()
+  ) {
+    return 'booked';
+  }
+  return 'intro';
+}
+
+function canOpenDispute() {
+  if (!activeBooking) return false;
+  const allowed = ['escrowed', 'verifying', 'completed', 'in_progress'];
+  if (!allowed.includes(activeBooking.status) && activeBooking.paymentStatus !== 'escrowed') {
+    return false;
+  }
+  if (activeBooking.status === 'completed') {
+    const completedAt = activeBooking.completedAt || activeBooking.updatedAt;
+    if (!completedAt) return true;
+    const ageMs = Date.now() - new Date(completedAt).getTime();
+    if (ageMs > 7 * 24 * 60 * 60 * 1000) return false;
+  }
+  return true;
+}
+
+function applyChatStateToUI() {
+  const phase = getEffectiveChatPhase();
+
+  const payBtn = document.getElementById('payNowBtn');
+  const disputeBtn = document.getElementById('disputeBtn');
+  const attachBtn = document.getElementById('attachBtn');
+  const voiceBtn = document.getElementById('voiceBtn');
+
+  clearTimedChat();
+
+  if (phase === 'intro') {
+    if (payBtn) payBtn.style.display = 'none';
+    if (disputeBtn) disputeBtn.style.display = 'none';
+    [attachBtn, voiceBtn].forEach(btn => {
+      if (!btn) return;
+      btn.disabled = true;
+      btn.style.opacity = '0.35';
+      btn.style.cursor = 'not-allowed';
+      btn.title = 'Book to unlock';
+    });
+    return;
+  }
+
+  if (attachBtn) {
+    attachBtn.disabled = false;
+    attachBtn.style.opacity = '1';
+    attachBtn.style.cursor = '';
+    attachBtn.title = '';
+  }
+
+  if (voiceBtn) {
+    if (phase === 'secured') {
+      voiceBtn.disabled = false;
+      voiceBtn.style.opacity = '1';
+      voiceBtn.style.cursor = '';
+      voiceBtn.title = '';
+    } else {
+      voiceBtn.disabled = true;
+      voiceBtn.style.opacity = '0.35';
+      voiceBtn.style.cursor = 'not-allowed';
+      voiceBtn.title = 'Pay escrow to unlock voice notes';
+    }
+  }
+
+  if (disputeBtn) {
+    disputeBtn.style.display = canOpenDispute() ? 'inline-block' : 'none';
+  }
+
+  if (payBtn) {
+    if (phase === 'booked') {
+      payBtn.style.display = 'inline-block';
+      payBtn.textContent = '💳 Pay';
+      payBtn.disabled = false;
+      payBtn.style.background = '#22c55e';
+      payBtn.style.cursor = 'pointer';
+    } else if (phase === 'secured') {
+      payBtn.style.display = 'inline-block';
+      payBtn.textContent = '✅ Paid';
+      payBtn.disabled = true;
+      payBtn.style.background = '#0a3a1c';
+      payBtn.style.cursor = 'default';
+    } else {
+      payBtn.style.display = 'none';
+    }
+  }
+
+  if (phase === 'booked' && activePaymentDeadline) {
+    startPaymentDeadline(activePaymentDeadline);
+  }
+}
+
+async function loadChatBookingAndPaymentStatus(chatId) {
+  try {
+    const chatRes = await fetch(`${BASE_URL}/api/chats/${chatId}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (chatRes.ok) {
+      const chat = await chatRes.json();
+      activeBooking = chat?.booking || null;
+      if (activeBooking?.priceProposal?.status === 'pending') {
+  document.getElementById('proposalPrevPrice').textContent = `₦${activeBooking.priceProposal.previousPrice.toLocaleString()}`;
+  document.getElementById('proposalNewPrice').textContent = `₦${activeBooking.priceProposal.newPrice.toLocaleString()}`;
+  document.getElementById('proposalReason').textContent = activeBooking.priceProposal.reason;
+  document.getElementById('priceProposalBanner').style.display = 'flex';
+} else {
+  document.getElementById('priceProposalBanner').style.display = 'none';
+}
+      activeBookingId = activeBooking?._id || (typeof activeBooking === 'string' ? activeBooking : null);
+      activeChatStatus = chat?.status || 'intro';
+      activePaymentDeadline = activeBooking?.paymentDeadline || null;
+
+      if (activeBooking?.executionStatus && activeBooking.executionStatus !== 'not_started') {
+        updateExecutionTimeline(activeBooking.executionStatus);
+      }
+      if (activeBooking?.proofPhotos?.length) {
+        const gallery = document.getElementById('proofPhotoGallery');
+        if (gallery) gallery.innerHTML = '';
+        activeBooking.proofPhotos.forEach(p => addProofPhotoToGallery(p.url, p.type));
+      }
+
+      const peer = (chat.participants || []).find(p => normalizeId(p) !== String(user._id));
+      window._activeChatPeerId = peer?._id || null;
+      updatePeerStatus(peer?.isOnline || false, peer?.lastSeen);
+
+      if (peer?.isSuspended || peer?.chatBanned) {
+        showPeerBanBanner({
+          isSuspended: peer.isSuspended,
+          chatBanned: peer.chatBanned,
+          banExpiresAt: peer.banExpiresAt,
+          reason: peer.banReason
+        });
+      } else {
+        hidePeerBanBanner();
+      }
+    }
+
+    const statusRes = await fetch(`${BASE_URL}/api/payments/status`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({bookingId: activeBookingId})
+    });
+    if (statusRes.ok) {
+      const s = await statusRes.json();
+      activePaymentStatus = s.paid ? 'paid' : 'unpaid';
+    }else{activePaymentStatus = 'unknown'; }
+  } catch (err) {
+    console.warn('[loadChatBookingAndPaymentStatus]', err);
+  }
+// Start payment timer if booking accepted but unpaid
+if (
+  activeBooking?.status === 'accepted' &&
+  activePaymentDeadline &&
+  activePaymentStatus === 'unpaid' &&
+  new Date(activePaymentDeadline) > new Date()
+) {
+  startPaymentDeadline(activePaymentDeadline);
+}
+applyChatStateToUI();
+}
+
+function updatePeerStatus(isOnline, lastSeen) {
+  const el = document.getElementById('convStatus');
+  if (!el) return;
+  if (isOnline) {
+    el.innerHTML = '🟢 Online';
+    el.style.color = '#22c55e';
+  } else if (lastSeen) {
+    el.innerHTML = `Last seen ${formatLastSeen(lastSeen)}`;
+    el.style.color = 'var(--text-muted)';
+  } else {
+    el.innerHTML = '⚫ Offline';
+    el.style.color = 'var(--text-muted)';
+  }
+}
+
+function formatLastSeen(d) {
+  const diff = Date.now() - new Date(d).getTime();
+  if (diff < 60000) return 'just now';
+  if (diff < 3600000) return `${Math.floor(diff/60000)} min ago`;
+  if (diff < 86400000) return `${Math.floor(diff/3600000)} h ago`;
+  return new Date(d).toLocaleDateString();
+}
+
+async function initiatePayment() {
+  if (!activeChatId) {
+    if (window.FixaSystem) FixaSystem.showToast('Open a chat first', '', 'warning');
+    return;
+  }
+  if (!activeBookingId) {
+    if (window.FixaSystem) FixaSystem.showToast('No booking found for this chat', '', 'warning');
+    return;
+  }
+  if (activePaymentStatus === 'paid') {
+    if (window.FixaSystem) FixaSystem.showToast('Already paid', '', 'success');
+    return;
+  }
+
+  try {
+    if (window.FixaSystem) FixaSystem.showToast('Starting payment...', '', 'system');
+
+    const initRes = await fetch(`${BASE_URL}/api/payments`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bookingId: activeBookingId })
+    });
+    if (!initRes.ok) {
+      const err = await initRes.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to initialize payment');
+    }
+    const { authorizationUrl } = await initRes.json();
+    window.location.href = authorizationUrl;
+  } catch (err) {
+    console.error('[initiatePayment]', err);
+    if (window.FixaSystem) FixaSystem.showToast('Payment failed', err.message, 'warning');
+  }
+}
+async function handlePaymentReturn() {
+  const params = new URLSearchParams(window.location.search);
+  const reference = params.get('reference') || params.get('trxref');
+  if (!reference) return;
+
+  let pendingTopUp = null;
+  try { pendingTopUp = JSON.parse(localStorage.getItem('pendingTopUp') || 'null'); } catch {}
+
+  if (pendingTopUp && pendingTopUp.reference === reference) {
+    try {
+      const vRes = await fetch(`${BASE_URL}/api/payments/verify-topup`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bookingId: pendingTopUp.bookingId,
+          topUpId: pendingTopUp.topUpId,
+          reference
+        })
+      });
+      const v = await vRes.json();
+      if (v.status === 'paid') {
+        if (window.FixaSystem) FixaSystem.showToast('Top-up paid! 🎉', `₦${v.amount?.toLocaleString() || ''} added to escrow`, 'success');
+      } else {
+        if (window.FixaSystem) FixaSystem.showToast('Payment pending', 'We are still verifying — refresh in a moment', 'warning');
+      }
+    } catch (err) {
+      console.error('[handlePaymentReturn:topup]', err);
+    } finally {
+      localStorage.removeItem('pendingTopUp');
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+    return;
+  }
+
+  // ── Regular booking payment (including a proposed-price payment — same endpoint, server already charges the correct amount) ──
+  try {
+    const vRes = await fetch(`${BASE_URL}/api/payments/verify`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reference })
+    });
+    const v = await vRes.json();
+
+    if (v.status === 'paid') {
+      if (window.FixaSystem) {
+        FixaSystem.showToast('Payment confirmed! 🎉', `₦${v.amount?.toLocaleString() || ''} held in escrow`, 'success');
+      }
+      if (activeChatId) {
+        if (window.ChatGuard) await window.ChatGuard.onChatOpen(activeChatId);
+        await loadChatBookingAndPaymentStatus(activeChatId);
+      }
+    } else {
+      if (window.FixaSystem) FixaSystem.showToast('Payment pending', 'We are still verifying — refresh in a moment', 'warning');
+    }
+  } catch (err) {
+    console.error('[handlePaymentReturn]', err);
+  } finally {
+    window.history.replaceState({}, '', window.location.pathname);
+  }
+}
+async function rebook(artisanId, formData) {
+  try {
+    const res = await fetch(`${BASE_URL}/api/bookings`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(formData)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message);
+
+    // ✅ FULLY RESET frontend booking state
+    activeBooking = {
+      _id: data.booking._id,
+      bookingId: data.booking.bookingId,
+      status: 'pending',
+      paymentStatus: 'unpaid',     // ← critical, was carrying over
+      paymentDeadline: null,
+      disputeStatus: null,
+      executionStatus: 'not_started',
+      estimatedPrice: data.booking.estimatedPrice
+    };
+    activeChatId = data.chatId;
+
+    // Re-render the chat UI based on fresh state
+    applyChatStateToUI();          // your existing function
+
+    // Hide the rating modal if it was open from last booking
+    document.getElementById('fixaRatingModal')?.classList.remove('open');
+    // Clear any "Paid ✓" badges from last booking
+    document.getElementById('payBtn')?.classList.remove('paid');
+
+    if (window.FixaSystem) {
+      FixaSystem.showToast('Booking sent', 'Waiting for artisan to accept', 'job');
+    }
+  } catch (err) {
+    console.error('[rebook]', err);
+  }
+}
+// ──────────────────────────────────────────
+// TIMED CHAT
+// ──────────────────────────────────────────
+function startPaymentDeadline(deadlineISO) {
+  if (!deadlineISO) return;
+  const deadline = new Date(deadlineISO);
+
+  document.getElementById('timedBanner').style.display = 'flex';
+  const display = document.getElementById('timerDisplay');
+  const label = document.querySelector('.timer-label');
+  if (label) label.textContent = 'Pay within this window or the booking will expire';
+
+  function tick() {
+    const remaining = Math.max(0, deadline - new Date());
+    const mins = Math.floor(remaining / 60000);
+    const secs = Math.floor((remaining % 60000) / 1000);
+    display.textContent = `${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+    if (remaining <= 300000) display.style.color = '#ff3b5c';
+
+    if (remaining <= 0) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+      display.classList.add('timer-expired');
+    }
+  }
+  tick();
+  timerInterval = setInterval(tick, 1000);
+}
+
+function clearTimedChat() {
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+  document.getElementById('timedBanner').style.display = 'none';
+  const display = document.getElementById('timerDisplay');
+  display.style.color = 'var(--gold)';
+  display.classList.remove('timer-expired');
+}
+
+// ──────────────────────────────────────────
+// RENDER MESSAGE
+// ──────────────────────────────────────────
+function appendMessage(m) {
+  if (!m) return;
+  const msgsEl = document.getElementById('messages');
+  const msgId = m._id || m.id;
+  if (msgId && msgsEl.querySelector(`[data-msg-id="${msgId}"]`)) {
+    msgsEl.querySelector(`[data-msg-id="${msgId}"]`).remove();
+  }
+
+  const isMe = computeIsMe(m);
+  const msgDate = new Date(m.createdAt || Date.now());
+  const dateStr = msgDate.toDateString();
+  const lastSep = msgsEl.querySelector('.date-sep:last-of-type');
+  const lastSepDate = lastSep?.dataset.date;
+
+  if (!lastSep || lastSepDate !== dateStr) {
+    const sepFollowedByMsg = lastSep && lastSep.nextElementSibling?.classList?.contains('msg-row');
+    if (!lastSep || sepFollowedByMsg) {
+      const sep = document.createElement('div');
+      sep.className = 'date-sep';
+      sep.dataset.date = dateStr;
+      sep.innerHTML = `<span>${dateStr === new Date().toDateString() ? 'Today' : msgDate.toLocaleDateString()}</span>`;
+      msgsEl.appendChild(sep);
+    }
+  }
+
+  const row = document.createElement('div');
+  row.className = `msg-row ${isMe ? 'sent' : 'recv'}`;
+  row.dataset.msgId = msgId || `local-${Date.now()}`;
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+
+  const mediaSrc = m.voiceNote || m.image || m.mediaUrl;
+  if (mediaSrc) {
+    const isAudio = String(mediaSrc).toLowerCase().match(/\.(webm|mp3|wav|ogg)$/i);
+    const fullSrc = String(mediaSrc).startsWith('blob:') || String(mediaSrc).startsWith('http')
+      ? mediaSrc
+      : `${BASE_URL}${String(mediaSrc).startsWith('/') ? '' : '/'}${mediaSrc}`;
+    if (m.voiceNote || isAudio) {
+      const audio = document.createElement('audio');
+      audio.controls = true; audio.src = fullSrc; audio.preload = 'metadata';
+      bubble.appendChild(audio);
+    } else {
+      const img = document.createElement('img');
+      img.src = fullSrc; img.loading = 'lazy'; img.style.cursor = 'pointer';
+      img.addEventListener('click', () => window.open(fullSrc, '_blank'));
+      bubble.appendChild(img);
+    }
+  }
+
+  const text = m.text || m.content;
+  if (text && text !== 'Voice note' && text !== 'Image') {
+    const t = document.createElement('div');
+    t.textContent = text;
+    bubble.appendChild(t);
+  }
+
+  const meta = document.createElement('div');
+  meta.className = 'bubble-meta';
+  meta.textContent = formatTime(new Date(m.createdAt || Date.now()));
+  if (isMe) meta.textContent += m.seen ? ' ✓✓' : m.delivered ? ' ✓' : ' ·';
+  bubble.appendChild(meta);
+
+  row.appendChild(bubble);
+  msgsEl.appendChild(row);
+  const nearBottom = (msgsEl.scrollHeight - msgsEl.clientHeight - msgsEl.scrollTop) < 120;
+  if (nearBottom || isMe) msgsEl.scrollTop = msgsEl.scrollHeight;
+}
+
+// ──────────────────────────────────────────
+// SEND TEXT
+// ──────────────────────────────────────────
+async function sendTextMessage() {
+  if (_isCurrentlyBanned) {
+    if (window.FixaSystem) FixaSystem.showToast('Cannot send', 'Your messaging is currently restricted', 'warning');
+    return;
+  }
+  if (chatSealed) return;
+  const input = document.getElementById('msgInput');
+  const text = input.value.trim();
+  if (!text || !activeChatId) return;
+
+  if (window.ChatGuard) {
+    const check = await window.ChatGuard.checkText(text);
+    if (check.blocked) {
+      window.ChatGuard.showBlockedToast(check.reason);
+      return;
+    }
+  }
+
+  input.value = '';
+  const localId = `temp-${Date.now()}`;
+  appendMessage({ _id: localId, text, sender: user._id, createdAt: new Date().toISOString(), isLocal: true });
+
+  try {
+    const res = await fetch(`${MSG_API}/${encodeURIComponent(activeChatId)}/messages`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text })
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      if (err.code === 'CHAT_BANNED' || err.code === 'ACCOUNT_SUSPENDED') {
+        _isCurrentlyBanned = true;
+        showBanOverlay({
+          banType: err.code === 'ACCOUNT_SUSPENDED' ? 'full' : 'chat',
+          chatBanned: err.code === 'CHAT_BANNED',
+          isSuspended: err.code === 'ACCOUNT_SUSPENDED',
+          banExpiresAt: err.banExpiresAt,
+          reason: err.reason
+        });
+        document.querySelector(`[data-msg-id="${localId}"]`)?.remove();
+        return;
+      }
+      throw new Error(err.message || 'Failed');
+    }
+
+    const data = await res.json();
+    const real = data.message || data;
+    document.querySelector(`[data-msg-id="${localId}"]`)?.remove();
+    appendMessage(real);
+  } catch (err) {
+    if (err.message?.includes('CHAT_BANNED') || err.message?.includes('SUSPENDED')) {
+      await checkBanStatusOnLoad();
+    }
+    document.querySelector(`[data-msg-id="${localId}"]`)?.remove();
+  }
+}
+
+// ──────────────────────────────────────────
+// SEND MEDIA
+// ──────────────────────────────────────────
+async function sendMedia(file, isVoice = false) {
+  if (_isCurrentlyBanned) {
+    if (window.FixaSystem) FixaSystem.showToast('Cannot send', 'Your messaging is currently restricted', 'warning');
+    return;
+  }
+  if (!file || !activeChatId || chatSealed) return;
+
+  if (!isVoice && window.ChatGuard) {
+    const check = await window.ChatGuard.checkImage(file);
+    if (check.blocked) {
+      window.ChatGuard.showBlockedToast(check.reason);
+      return;
+    }
+  }
+
+  const blobUrl = URL.createObjectURL(file);
+  const localId = `temp-media-${Date.now()}`;
+  appendMessage({
+    _id: localId, [isVoice ? 'voiceNote' : 'image']: blobUrl,
+    sender: user._id, createdAt: new Date().toISOString(), isLocal: true
+  });
+
+  const fd = new FormData();
+  fd.append('file', file);
+  if (isVoice) fd.append('type', 'voice');
+
+  try {
+    const res = await fetch(`${MSG_API}/${encodeURIComponent(activeChatId)}/media`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: fd
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      if (err.code === 'CHAT_BANNED' || err.code === 'ACCOUNT_SUSPENDED') {
+        _isCurrentlyBanned = true;
+        showBanOverlay({
+          banType: err.code === 'ACCOUNT_SUSPENDED' ? 'full' : 'chat',
+          chatBanned: err.code === 'CHAT_BANNED',
+          isSuspended: err.code === 'ACCOUNT_SUSPENDED',
+          banExpiresAt: err.banExpiresAt,
+          reason: err.reason
+        });
+        document.querySelector(`[data-msg-id="${localId}"]`)?.remove();
+        URL.revokeObjectURL(blobUrl);
+        return;
+      }
+      throw new Error(`Upload ${res.status}`);
+    }
+
+    const real = await res.json();
+    URL.revokeObjectURL(blobUrl);
+    document.querySelector(`[data-msg-id="${localId}"]`)?.remove();
+    appendMessage(real.message || real);
+  } catch (err) {
+    console.error('sendMedia error:', err);
+    document.querySelector(`[data-msg-id="${localId}"]`)?.remove();
+    URL.revokeObjectURL(blobUrl);
+  }
+}
+
+function handleTyping() {
+  if (!activeChatId) return;
+  if (!isTyping) { isTyping = true; safeEmit('typing', { chatId: activeChatId }); }
+  clearTimeout(typingTimer);
+  typingTimer = setTimeout(() => {
+    isTyping = false; safeEmit('stopTyping', { chatId: activeChatId });
+  }, 2500);
+}
+
+// ──────────────────────────────────────────
+// VOICE
+// ──────────────────────────────────────────
+async function startVoiceRecording() {
+  if (_isCurrentlyBanned) return;
+  if (!activeChatId) return;
+  if (window.ChatGuard && !window.ChatGuard.isFeatureUnlocked('voice')) {
+    window.ChatGuard.showBlockedToast('Voice notes unlock after escrow payment');
+    return;
+  }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const mime = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/ogg';
+    mediaRecorder = new MediaRecorder(stream, { mimeType: mime });
+    audioChunks = [];
+    mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
+    mediaRecorder.onstop = async () => {
+      clearInterval(recordingInterval);
+      document.getElementById('voiceTimer').textContent = '00:00';
+      stream.getTracks().forEach(t => t.stop());
+      const blob = new Blob(audioChunks, { type: mime });
+      if (blob.size < 500) return;
+      const ext = mime.includes('webm') ? 'webm' : 'ogg';
+      await sendMedia(new File([blob], `voice-${Date.now()}.${ext}`, { type: mime }), true);
+    };
+    mediaRecorder.start(250);
+    recordStart = Date.now();
+    document.getElementById('voiceUI').classList.add('active');
+    recordingInterval = setInterval(() => {
+      const s = Math.floor((Date.now() - recordStart) / 1000);
+      document.getElementById('voiceTimer').textContent =
+        `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+      if (Date.now() - recordStart > 120000) stopVoiceRecording();
+    }, 250);
+  } catch (e) { console.error('Mic error:', e); }
+}
+
+function stopVoiceRecording() {
+  if (mediaRecorder?.state === 'recording') mediaRecorder.stop();
+  document.getElementById('voiceUI').classList.remove('active');
+}
+
+function cancelVoiceRecording() {
+  audioChunks = [];
+  if (mediaRecorder) {
+    mediaRecorder.ondataavailable = null;
+    mediaRecorder.onstop = null;
+    if (mediaRecorder.state === 'recording') mediaRecorder.stop();
+  }
+  document.getElementById('voiceUI').classList.remove('active');
+}
+
+// ──────────────────────────────────────────
+// PEER BAN BANNER (artisan banned)
+// ──────────────────────────────────────────
+function showPeerBanBanner(data) {
+  const banner = document.getElementById('peerBanBanner');
+  if (!banner) return;
+
+  const isFullSuspension = data.isSuspended;
+  document.getElementById('peerBanTitle').textContent = isFullSuspension
+    ? '🚫 Artisan account suspended'
+    : '⚠️ Artisan messaging restricted';
+  document.getElementById('peerBanReason').textContent = data.reason ||
+    (isFullSuspension
+      ? 'This artisan has been suspended. Your booking and any escrow funds are protected — Fixa support will reach out.'
+      : 'This artisan has been temporarily restricted from messaging. You can still wait for them or contact support.');
+
+  banner.style.display = 'block';
+
+  if (data.banExpiresAt) {
+    startPeerBanCountdown(new Date(data.banExpiresAt));
+  } else {
+    document.getElementById('peerBanCountdown').innerHTML =
+      '<span style="font-size:11px;color:#ef4444;font-weight:600">Indefinite ban</span>';
+  }
+}
+
+function hidePeerBanBanner() {
+  const banner = document.getElementById('peerBanBanner');
+  if (banner) banner.style.display = 'none';
+  if (peerBanCountdownInterval) {
+    clearInterval(peerBanCountdownInterval);
+    peerBanCountdownInterval = null;
+  }
+}
+
+function startPeerBanCountdown(unbanDate) {
+  const container = document.getElementById('peerBanCountdown');
+  if (!container) return;
+  if (peerBanCountdownInterval) clearInterval(peerBanCountdownInterval);
+
+  function tick() {
+    const diff = unbanDate - new Date();
+    if (diff <= 0) {
+      clearInterval(peerBanCountdownInterval);
+      peerBanCountdownInterval = null;
+      container.innerHTML = '<span style="font-size:11px;color:#22c55e;font-weight:600">Ban expired ✓</span>';
+      setTimeout(() => hidePeerBanBanner(), 5000);
+      return;
+    }
+    const h = Math.floor(diff / 3600000);
+    const m = Math.floor((diff % 3600000) / 60000);
+    const s = Math.floor((diff % 60000) / 1000);
+    container.innerHTML = `
+      <span style="font-size:10px;color:rgba(255,255,255,0.5);font-weight:600;text-transform:uppercase;letter-spacing:0.5px">Unbans in:</span>
+      <span style="font-size:12px;color:#ef4444;font-weight:700;font-family:monospace">${String(h).padStart(2,'0')}h ${String(m).padStart(2,'0')}m ${String(s).padStart(2,'0')}s</span>
+    `;
+  }
+  tick();
+  peerBanCountdownInterval = setInterval(tick, 1000);
+}
+
+// ──────────────────────────────────────────
+// BAN OVERLAY (self banned)
+// ──────────────────────────────────────────
+function showBanOverlay(data) {
+  const overlay = document.getElementById('banOverlay');
+  if (!overlay) {
+    console.error('[Ban] #banOverlay missing');
+    return;
+  }
+
+  const isChatOnly = data?.banType === 'chat' || (data?.chatBanned && !data?.isSuspended);
+  document.getElementById('banTitle').textContent = isChatOnly
+    ? '⚠️ Messaging Temporarily Restricted'
+    : '🚫 Account Suspended';
+  document.getElementById('banReason').textContent = data?.reason ||
+    (isChatOnly
+      ? 'You have been temporarily restricted from messaging due to policy violations.'
+      : 'Your account has been suspended by Fixa administration.');
+
+  overlay.style.display = 'flex';
+
+  const chatFooter = document.getElementById('chatFooter');
+  if (chatFooter) chatFooter.style.display = 'none';
+
+  const card = document.getElementById('banCountdownCard');
+  if (data?.banExpiresAt && card) {
+    card.style.display = 'block';
+    startBanCountdown(new Date(data.banExpiresAt));
+  } else if (card) {
+    card.style.display = 'none';
+  }
+
+  const logoutBtn = document.getElementById('banLogoutBtn');
+  if (logoutBtn) {
+    if (isChatOnly) {
+      logoutBtn.textContent = 'Continue browsing Fixa';
+      logoutBtn.style.background = 'rgba(255,215,0,0.15)';
+      logoutBtn.style.color = '#ffd700';
+      logoutBtn.style.borderColor = 'rgba(255,215,0,0.3)';
+      logoutBtn.onclick = () => { overlay.style.display = 'none'; };
+    } else {
+      logoutBtn.textContent = 'Log out';
+      logoutBtn.style.background = 'rgba(255,59,92,0.15)';
+      logoutBtn.style.color = '#ff3b5c';
+      logoutBtn.style.borderColor = 'rgba(255,59,92,0.3)';
+      logoutBtn.onclick = () => {
+        localStorage.clear();
+        window.location.href = 'SignIn.html';
+      };
+    }
+  }
+}
+
+function hideBanOverlay() {
+  const overlay = document.getElementById('banOverlay');
+  if (overlay) overlay.style.display = 'none';
+  if (banCountdownInterval) {
+    clearInterval(banCountdownInterval);
+    banCountdownInterval = null;
+  }
+  const chatFooter = document.getElementById('chatFooter');
+  if (chatFooter && activeChatId && !chatSealed) chatFooter.style.display = 'flex';
+}
+
+function startBanCountdown(unbanDate) {
+  if (banCountdownInterval) clearInterval(banCountdownInterval);
+
+  function tick() {
+    const diff = unbanDate - new Date();
+    if (diff <= 0) {
+      clearInterval(banCountdownInterval);
+      banCountdownInterval = null;
+      ['banDays','banHours','banMins','banSecs'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = '00';
+      });
+      checkUnbanStatus();
+      return;
+    }
+    const d = Math.floor(diff / 86400000);
+    const h = Math.floor((diff % 86400000) / 3600000);
+    const m = Math.floor((diff % 3600000) / 60000);
+    const s = Math.floor((diff % 60000) / 1000);
+    const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    set('banDays', String(d).padStart(2,'0'));
+    set('banHours', String(h).padStart(2,'0'));
+    set('banMins', String(m).padStart(2,'0'));
+    set('banSecs', String(s).padStart(2,'0'));
+  }
+  tick();
+  banCountdownInterval = setInterval(tick, 1000);
+}
+
+async function checkUnbanStatus() {
+  try {
+    const res = await fetch(`${BASE_URL}/api/users/me/status`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!data.isSuspended && !data.chatBanned) {
+      _isCurrentlyBanned = false;
+      hideBanOverlay();
+      addNotification('Welcome back!', 'You have been unbanned');
+    }
+  } catch {}
+}
+
+async function checkBanStatusOnLoad() {
+  try {
+    const res = await fetch(`${BASE_URL}/api/users/me/status`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    _isCurrentlyBanned = !!(data.isSuspended || data.chatBanned);
+    if (_isCurrentlyBanned) {
+      showBanOverlay({
+        reason: data.reason,
+        banExpiresAt: data.banExpiresAt,
+        banType: data.isSuspended ? 'full' : 'chat',
+        chatBanned: data.chatBanned,
+        isSuspended: data.isSuspended
+      });
+    } else {
+      hideBanOverlay();
+    }
+  } catch (e) { console.warn('Ban check unavailable:', e.message); }
+}
+
+// ──────────────────────────────────────────
+// UTILS
+// ──────────────────────────────────────────
+function normalizeId(v) {
+  if (!v) return '';
+  if (typeof v === 'object') return String(v._id || v.id || '');
+  return String(v);
+}
+
+function computeIsMe(m) {
+  if (m.outgoing || m.isMine || m.isLocal) return true;
+  const senderId = normalizeId(m.senderId ?? m.sender ?? m.from ?? '');
+  return senderId && senderId === String(user._id);
+}
+
+function escHtml(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function formatTime(d) {
+  try {
+    const dt = d instanceof Date ? d : new Date(d);
+    const now = new Date();
+    if (dt.toDateString() === now.toDateString())
+      return dt.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+    return dt.toLocaleDateString([], { month:'short', day:'numeric' });
+  } catch { return ''; }
+}
+
+// ──────────────────────────────────────────
+// BOOKING HISTORY
+// ──────────────────────────────────────────
+let _histJobs = [];
+let _histFilter = 'all';
+
+// pending/accepted/verifying/etc. all count as "ongoing" for the tab filter
+function histStatusGroup(status){
+  const s = String(status || '').toLowerCase();
+  if (s === 'completed') return 'completed';
+  if (s === 'rejected' || s === 'cancelled') return 'cancelled';
+  return 'ongoing';
+}
+
+async function loadHistory(){
+  const list = document.getElementById('customerList');
+  list.innerHTML = '<div class="empty-state">Loading your history...</div>';
+  try{
+    const res = await fetch(`${BASE_URL}/api/bookings`, {
+      headers:{ Authorization:`Bearer ${token}` }
+    });
+    if (res.status === 401){ window.location.href = 'SignIn.html'; return; }
+    const data = await res.json();
+    if (!Array.isArray(data)){
+      list.innerHTML = '<div class="empty-state">No bookings found yet.</div>';
+      return;
+    }
+    _histJobs = data.map(j => ({
+      id: j._id,
+      chatId: j.chatId || null,
+        artisanId: j.artisanId?._id || j.artisanId || null,   // ← add this line
+      artisanName: j.artisanId?.name || j.artisanId?.user?.username || 'Assigning artisan…',
+      artisanPic: j.artisanId?.profilePic
+        ? (String(j.artisanId.profilePic).startsWith('http') ? j.artisanId.profilePic : `${BASE_URL}/${j.artisanId.profilePic}`)
+        : `${BASE_URL}/uploads/default-avatar.png`,
+      service: j.category?.name || j.category || 'General service',
+      rawStatus: j.status || 'pending',
+      group: histStatusGroup(j.status),
+      price: j.estimatedPrice ? `₦${Number(j.estimatedPrice).toLocaleString()}` : 'Price TBD',
+      date: j.createdAt ? new Date(j.createdAt).toLocaleDateString() : '—'
+    }));
+    renderCustomer(_histFilter);
+  }catch(err){
+    console.error('[loadHistory]', err);
+    list.innerHTML = '<div class="empty-state">⚠️ Failed to load history.</div>';
+  }
+}
+
+function renderCustomer(filter){
+  _histFilter = filter;
+  const list = document.getElementById('customerList');
+  const jobs = _histJobs.filter(j => filter === 'all' || j.group === filter);
+
+  if (!jobs.length){
+    list.innerHTML = '<div class="empty-state">No bookings found.</div>';
+    return;
+  }
+
+  list.innerHTML = jobs.map(job => {
+    const action = job.rawStatus.toLowerCase() === 'verifying'
+      ? `<button class="btn-fill" onclick="confirmCompletion('${job.id}')">Confirm Completion</button>`
+      : `<button class="btn-fill" onclick="viewDetails('${job.id}')">View Details</button>`;
+    const msgBtn = job.chatId
+      ? `<button class="btn-outline" data-chat="${job.chatId}" data-name="${escHtml(job.artisanName)}" onclick="openHistoryChat(this)">Message</button>`
+      : `<button class="btn-outline" onclick="viewDetails('${job.id}')">Details</button>`;
+    return `
+      <div class="card ${job.group}">
+        <div style="display:flex;gap:12px">
+          <img src="${job.artisanPic}" onerror="this.src='${BASE_URL}/uploads/default-avatar.png'" style="width:50px;height:50px;border-radius:50%;object-fit:cover"/>
+          <div style="flex:1;min-width:0">
+            <div class="card-header">
+              <h4>${escHtml(job.service)}</h4>
+              <span class="badge ${job.group}">${escHtml(job.rawStatus)}</span>
+            </div>
+            <div class="details">
+              <div>Artisan: ${escHtml(job.artisanName)}</div>
+              <div style="font-size:12px;margin-top:4px">Date: ${escHtml(job.date)}</div>
+              <div class="price">${job.price}</div>
+            </div>
+            <div class="btns">
+              ${msgBtn}
+              ${action}
+            </div>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function filterCustomer(type, e){
+  document.querySelectorAll('#customerTabs .tab').forEach(t => t.classList.remove('active'));
+  if (e?.target) e.target.classList.add('active');
+  renderCustomer(type);
+}
+
+function openHistoryChat(btn){
+  const chatId = btn.getAttribute('data-chat');
+  const name = btn.getAttribute('data-name');
+  switchPage('messages');
+  setTimeout(() => openChat(chatId, name, false, 0), 300);
+}
+
+async function confirmCompletion(bookingId){
+  if (!confirm('Confirm that this job is completed?')) return;
+  try{
+    const res = await fetch(`${BASE_URL}/api/bookings/${bookingId}/confirm`, {
+      method:'PUT',
+      headers:{ Authorization:`Bearer ${token}` }
+    });
+    if (!res.ok) throw new Error('Failed');
+    if (window.FixaSystem) FixaSystem.showToast('Job confirmed ✅', '', 'success'); else alert('Job confirmed ✅');
+
+    const job = _histJobs.find(j => j.id === bookingId);
+    if (job) {
+      openRatingModal({ bookingId: job.id, artisanId: job.artisanId, artisanName: job.artisanName });
+    }
+    loadHistory();
+  }catch(err){
+    if (window.FixaSystem) FixaSystem.showToast('Error confirming job', '', 'warning'); else alert('Error confirming job ❌');
+  }
+}
+async function viewDetails(id){
+  try{
+    const res = await fetch(`${BASE_URL}/api/bookings/${id}`, {
+      headers:{ Authorization:`Bearer ${token}` }
+    });
+    const job = await res.json();
+    const pic = job.artisanId?.profilePic;
+    const imageUrl = !pic
+      ? `${BASE_URL}/uploads/default-avatar.png`
+      : (String(pic).startsWith('http') ? pic : `${BASE_URL}/${pic}`);
+    const name = job.artisanId?.name || job.artisanId?.user?.username || 'Assigning artisan…';
+    const group = histStatusGroup(job.status);
+    const rateBtn = job.group === 'completed'
+  ? `<button class="btn-outline" onclick='openRatingModal({bookingId:"${job.id}", artisanId:"${job.artisanId}", artisanName:"${escHtml(job.artisanName)}"})'>⭐ Rate</button>`
+  : '';
+
+    document.getElementById('histModalContent').innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #1a3a5a;padding-bottom:1rem;margin-bottom:15px">
+        <h3 style="margin:0;color:var(--gold)">Job Details</h3>
+        <span onclick="closeHistModal()" style="cursor:pointer;font-size:24px;color:var(--text-muted)">&times;</span>
+      </div>
+      <div style="text-align:center;margin-bottom:15px">
+        <img src="${imageUrl}" onerror="this.src='${BASE_URL}/uploads/default-avatar.png'" style="width:60px;height:60px;border-radius:50%;border:2px solid var(--gold);object-fit:cover">
+        <p style="margin:5px 0;font-weight:bold">${escHtml(name)}</p>
+      </div>
+      <p><b>Service:</b> ${escHtml(job.category?.name || job.category || 'General service')}</p>
+      <p><b>Description:</b> ${escHtml(job.description || '—')}</p>
+      <p><b>Status:</b> <span class="badge ${group}">${escHtml(job.status || '')}</span></p>
+      <p><b>Price:</b> ${job.estimatedPrice ? '₦' + Number(job.estimatedPrice).toLocaleString() : 'TBD'}</p>
+      <p><b>Address:</b> ${escHtml(job.address || '—')}</p>
+      <p><b>Date:</b> ${job.createdAt ? new Date(job.createdAt).toLocaleString() : '—'}</p>
+    `;
+    document.getElementById('histModal').classList.add('open');
+  }catch(err){
+    if (window.FixaSystem) FixaSystem.showToast('Failed to load details', '', 'warning'); else alert('Failed to load details');
+  }
+}
+
+function closeHistModal(){ document.getElementById('histModal').classList.remove('open'); }
+
+// ──────────────────────────────────────────
+// INIT
+// ──────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  initSocket();
+
+  if (window.FixaSystem) {
+    window.FixaSystem.init(socket, user, token, BASE_URL, 'customer');
+  }
+
+  document.getElementById('banLogoutBtn')?.addEventListener('click', () => {
+    localStorage.clear();
+    window.location.href = 'SignIn.html';
+  });
+
+  checkBanStatusOnLoad();
+
+  // Bottom nav
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', () => switchPage(item.dataset.page));
+  });
+  document.getElementById('histModal')?.addEventListener('click', e => {
+    if (e.target.id === 'histModal') closeHistModal();
+  });
+
+  // Chat controls
+  document.getElementById('backBtn').addEventListener('click', closeChat);
+  document.getElementById('sendBtn').addEventListener('click', sendTextMessage);
+  document.getElementById('msgInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendTextMessage(); }
+  });
+  document.getElementById('msgInput').addEventListener('input', handleTyping);
+
+  document.getElementById('attachBtn').addEventListener('click', e => {
+    e.preventDefault(); document.getElementById('mediaInput').click();
+  });
+  document.getElementById('mediaInput').addEventListener('change', function(e) {
+    e.preventDefault();
+    const file = this.files[0];
+    if (file) sendMedia(file, false);
+    this.value = '';
+  });
+
+  document.getElementById('voiceBtn').addEventListener('click', e => {
+    e.preventDefault();
+    if (mediaRecorder?.state === 'recording') stopVoiceRecording();
+    else startVoiceRecording();
+  });
+  document.getElementById('voiceStopBtn').addEventListener('click', stopVoiceRecording);
+  document.getElementById('voiceCancelBtn').addEventListener('click', cancelVoiceRecording);
+
+  document.getElementById('rebookBtn').addEventListener('click', () => {
+    window.location.href = 'index.html';
+  });
+
+  document.getElementById('logoutBtn').addEventListener('click', () => {
+    localStorage.clear();
+    window.location.href = 'SignIn.html';
+  });
+
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission().catch(() => {});
+  }
+
+  document.getElementById('payNowBtn')?.addEventListener('click', e => {
+    e.preventDefault();
+    initiatePayment();
+  });
+
+  document.getElementById('disputeBtn')?.addEventListener('click', e => {
+    e.preventDefault();
+    if (!activeBookingId) {
+      if (window.FixaSystem) FixaSystem.showToast('Open a booking chat first', '', 'warning');
+      return;
+    }
+    if (window.FixaSystem) FixaSystem.openDispute(activeBookingId);
+  });
+
+  handlePaymentReturn();
+
+
+document.querySelectorAll('#starRow .star').forEach(star => {
+  star.addEventListener('click', () => {
+    _selectedRating = Number(star.dataset.val);
+    document.querySelectorAll('#starRow .star').forEach(s => {
+      s.style.color = Number(s.dataset.val) <= _selectedRating ? '#ffd700' : '#4a5568';
+    });
+  });
+});
+
+document.getElementById('ratingSkipBtn')?.addEventListener('click', () => {
+  document.getElementById('fixaRatingModal').style.display = 'none';
+  _ratingContext = null;
+});
+
+document.getElementById('ratingSubmitBtn')?.addEventListener('click', async () => {
+  if (!_ratingContext) return;
+  if (!_selectedRating) {
+    if (window.FixaSystem) FixaSystem.showToast('Pick a star rating first', '', 'warning');
+    return;
+  }
+  try {
+    const res = await fetch(`${BASE_URL}/api/reviews`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        artisanId: _ratingContext.artisanId,
+        bookingId: _ratingContext.bookingId,
+        rating: _selectedRating,
+        comment: document.getElementById('ratingComment').value.trim()
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to submit review');
+    document.getElementById('fixaRatingModal').style.display = 'none';
+    _ratingContext = null;
+    if (window.FixaSystem) FixaSystem.showToast('Thanks for your feedback! ⭐', '', 'success');
+  } catch (err) {
+    if (window.FixaSystem) FixaSystem.showToast('Failed', err.message, 'warning');
+  }
+});
+  // Pending chat from URL
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('openMessages') === 'true') {
+    switchPage('messages');
+    const chatData = localStorage.getItem('openChatWith');
+    if (chatData) {
+      try {
+        const d = JSON.parse(chatData);
+        setTimeout(() => openChat(d.chatId, d.name, false, d.timerSecs || 0), 600);
+        localStorage.removeItem('openChatWith');
+      } catch {}
+    }
+  }
+});
+
+document.addEventListener('submit', e => { e.preventDefault(); e.stopPropagation(); }, true);
+</script>
+
+<!-- Ban Overlay -->
+<div id="banOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:9999;align-items:center;justify-content:center;padding:20px">
+  <div style="max-width:400px;width:100%;background:#0a1f33;border:1px solid rgba(255,59,92,0.3);border-radius:20px;padding:30px;text-align:center">
+    <div style="font-size:48px;margin-bottom:14px">🚫</div>
+    <h2 id="banTitle" style="color:#ff3b5c;font-size:20px;margin-bottom:10px">Messaging Suspended</h2>
+    <p id="banReason" style="color:rgba(255,255,255,0.7);font-size:13px;line-height:1.5;margin-bottom:20px">Your chat access has been temporarily restricted.</p>
+
+    <div id="banCountdownCard" style="background:rgba(255,59,92,0.08);border:1px solid rgba(255,59,92,0.2);border-radius:12px;padding:16px;margin-bottom:20px">
+      <div style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:10px;text-transform:uppercase;letter-spacing:1px">Time remaining</div>
+      <div style="display:flex;justify-content:center;gap:8px">
+        <div style="background:rgba(0,0,0,0.3);border-radius:8px;padding:8px 10px;min-width:50px">
+          <div id="banDays" style="font-size:22px;font-weight:800;color:#fff;font-family:monospace">00</div>
+          <div style="font-size:9px;color:rgba(255,255,255,0.4);text-transform:uppercase">Days</div>
+        </div>
+        <div style="background:rgba(0,0,0,0.3);border-radius:8px;padding:8px 10px;min-width:50px">
+          <div id="banHours" style="font-size:22px;font-weight:800;color:#fff;font-family:monospace">00</div>
+          <div style="font-size:9px;color:rgba(255,255,255,0.4);text-transform:uppercase">Hrs</div>
+        </div>
+        <div style="background:rgba(0,0,0,0.3);border-radius:8px;padding:8px 10px;min-width:50px">
+          <div id="banMins" style="font-size:22px;font-weight:800;color:#fff;font-family:monospace">00</div>
+          <div style="font-size:9px;color:rgba(255,255,255,0.4);text-transform:uppercase">Min</div>
+        </div>
+        <div style="background:rgba(0,0,0,0.3);border-radius:8px;padding:8px 10px;min-width:50px">
+          <div id="banSecs" style="font-size:22px;font-weight:800;color:#ffc107;font-family:monospace">00</div>
+          <div style="font-size:9px;color:rgba(255,255,255,0.4);text-transform:uppercase">Sec</div>
+        </div>
+      </div>
+    </div>
+     
+</div>
+
+    <button type="button" id="banLogoutBtn" style="background:rgba(255,59,92,0.15);color:#ff3b5c;border:1px solid rgba(255,59,92,0.3);padding:10px 20px;border-radius:10px;font-weight:700;cursor:pointer;width:100%">Log out</button>
+  </div>
+</div>
+<div id="topUpApprovalModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9600;align-items:center;justify-content:center;padding:20px">
+  <div style="background:#041b2b;border:1px solid rgba(255,215,0,0.3);border-radius:18px;max-width:400px;width:100%;padding:24px;color:#fff">
+    <div style="text-align:center;font-size:42px;margin-bottom:10px">💰</div>
+    <h3 style="font-size:18px;font-weight:800;color:#ffd700;text-align:center;margin-bottom:6px">Price Update Requested</h3>
+    <p style="font-size:12.5px;color:rgba(255,255,255,0.6);text-align:center;margin-bottom:18px">
+      <span id="topUpArtisanName">Your artisan</span> wants to change the price for this job.
+    </p>
+
+    <div style="background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.2);border-radius:12px;padding:16px;margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+        <span style="font-size:12px;color:rgba(255,255,255,0.5)">Previous price:</span>
+        <span style="font-size:14px;color:#fff;text-decoration:line-through;opacity:.6" id="topUpPrevPriceDisplay">₦0</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+        <span style="font-size:12px;color:rgba(255,255,255,0.5)">New price:</span>
+        <span style="font-size:18px;font-weight:800;color:#ffd700" id="topUpNewPriceDisplay">₦0</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding-top:8px;border-top:1px solid rgba(255,255,255,0.08)">
+        <span style="font-size:12px;color:rgba(255,255,255,0.5)">You'll pay now:</span>
+        <span style="font-size:14px;font-weight:700;color:#22c55e" id="topUpAmountDisplay">₦0</span>
+      </div>
+      <div style="font-size:11px;color:rgba(255,255,255,0.5);margin-top:10px;margin-bottom:4px">Reason:</div>
+      <div style="font-size:13px;color:#fff;line-height:1.5" id="topUpReasonDisplay"></div>
+    </div>
+
+    <p style="font-size:11px;color:rgba(255,255,255,0.4);text-align:center;margin-bottom:16px;line-height:1.5">
+      ⚠️ Only approve if you genuinely agree the job justifies the new price. Approved funds go to escrow until the job completes.
+    </p>
+
+    <div style="display:flex;gap:10px">
+      <button type="button" id="topUpRejectBtn" style="flex:1;padding:12px;border-radius:11px;background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid rgba(239,68,68,0.3);font-weight:700;cursor:pointer">Reject</button>
+      <button type="button" id="topUpApproveBtn" style="flex:1;padding:12px;border-radius:11px;background:#22c55e;color:#fff;border:none;font-weight:700;cursor:pointer">Approve & Pay</button>
+    </div>
+  </div>
+  
+</div>
+<div id="priceProposalBanner" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9600;align-items:center;justify-content:center;padding:20px">
+  <div style="background:#041b2b;border:1px solid rgba(255,215,0,0.3);border-radius:18px;max-width:400px;width:100%;padding:24px;color:#fff">
+    <div style="text-align:center;font-size:42px;margin-bottom:10px">💬</div>
+    <h3 style="font-size:18px;font-weight:800;color:#ffd700;text-align:center;margin-bottom:6px">New Price Proposed</h3>
+    <p style="font-size:12.5px;color:rgba(255,255,255,0.6);text-align:center;margin-bottom:18px">
+      <span id="proposalArtisanName">Your artisan</span> wants to change the price before you pay.
+    </p>
+    <div style="background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.2);border-radius:12px;padding:16px;margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+        <span style="font-size:12px;color:rgba(255,255,255,0.5)">Previous price:</span>
+        <span style="font-size:14px;color:#fff;text-decoration:line-through;opacity:.6" id="proposalPrevPrice">₦0</span>
+      </div>
+      <div style="display:flex;justify-content:space-between">
+        <span style="font-size:12px;color:rgba(255,255,255,0.5)">Proposed price:</span>
+        <span style="font-size:18px;font-weight:800;color:#ffd700" id="proposalNewPrice">₦0</span>
+      </div>
+      <div style="font-size:11px;color:rgba(255,255,255,0.5);margin-top:10px;margin-bottom:4px">Reason:</div>
+      <div style="font-size:13px;color:#fff;line-height:1.5" id="proposalReason"></div>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button type="button" id="proposalRejectBtn" style="flex:1;padding:12px;border-radius:11px;background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid rgba(239,68,68,0.3);font-weight:700;cursor:pointer">Reject</button>
+      <button type="button" id="proposalApproveBtn" style="flex:1;padding:12px;border-radius:11px;background:#22c55e;color:#fff;border:none;font-weight:700;cursor:pointer">Accept New Price</button>
+    </div>
+  </div>
+</div>
+<div id="fixaRatingModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9700;align-items:center;justify-content:center;padding:20px">
+  <div style="background:#041b2b;border:1px solid rgba(255,215,0,0.3);border-radius:18px;max-width:380px;width:100%;padding:24px;color:#fff;text-align:center">
+    <div style="font-size:42px;margin-bottom:8px">🎉</div>
+    <h3 style="font-size:18px;font-weight:800;color:#ffd700;margin-bottom:4px">Job Completed!</h3>
+    <p style="font-size:12.5px;color:rgba(255,255,255,0.6);margin-bottom:18px">
+      How was your experience with <span id="ratingArtisanName">your artisan</span>?
+    </p>
+    <div id="starRow" style="display:flex;justify-content:center;gap:6px;margin-bottom:16px;font-size:34px">
+      <span class="star" data-val="1" style="cursor:pointer;color:#4a5568">★</span>
+      <span class="star" data-val="2" style="cursor:pointer;color:#4a5568">★</span>
+      <span class="star" data-val="3" style="cursor:pointer;color:#4a5568">★</span>
+      <span class="star" data-val="4" style="cursor:pointer;color:#4a5568">★</span>
+      <span class="star" data-val="5" style="cursor:pointer;color:#4a5568">★</span>
+    </div>
+    <textarea id="ratingComment" rows="3" placeholder="Leave a comment (optional)" style="width:100%;padding:10px;border-radius:8px;border:none;margin-bottom:16px;resize:vertical;font-family:inherit"></textarea>
+    <div style="display:flex;gap:10px">
+      <button type="button" id="ratingSkipBtn" style="flex:1;padding:11px;border-radius:9px;background:rgba(255,255,255,0.08);color:#fff;border:none;font-weight:700;cursor:pointer">Skip</button>
+      <button type="button" id="ratingSubmitBtn" style="flex:1;padding:11px;border-radius:9px;background:#ffd700;color:#000;border:none;font-weight:700;cursor:pointer">Submit</button>
+    </div>
+  </div>
+</div>
+</body>
+</html>

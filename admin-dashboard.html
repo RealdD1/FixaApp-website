@@ -1,0 +1,1704 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Fixa Admin Dashboard</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#f0f2f5;color:#1a1a2e}
+:root{--navy:#001d36;--gold:#FFD700;--gold-dark:#e6c200}
+
+.sidebar{width:260px;min-height:100vh;background:var(--navy);display:flex;flex-direction:column;flex-shrink:0}
+.sidebar-logo{padding:24px 20px 16px;font-size:26px;font-weight:800;color:var(--gold);letter-spacing:-0.5px;border-bottom:1px solid rgba(255,255,255,.08)}
+.sidebar-logo span{font-size:11px;font-weight:500;color:#9aa6b2;display:block;margin-top:2px;letter-spacing:.5px}
+.nav-section{padding:8px 12px;font-size:10px;font-weight:600;color:#4a5568;letter-spacing:.8px;text-transform:uppercase;margin-top:8px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 16px;margin:2px 8px;border-radius:8px;cursor:pointer;color:#9aa6b2;font-size:13.5px;font-weight:500;transition:all .15s;position:relative}
+.nav-item:hover{background:rgba(255,255,255,.07);color:#fff}
+.nav-item.active{background:var(--gold);color:var(--navy);font-weight:700}
+.nav-item .icon{font-size:15px;width:20px;text-align:center}
+.badge-count{margin-left:auto;background:#ef4444;color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:999px;min-width:18px;text-align:center}
+.nav-item.active .badge-count{background:var(--navy);color:#fff}
+.sidebar-footer{margin-top:auto;padding:16px;border-top:1px solid rgba(255,255,255,.08)}
+.logout-btn{width:100%;padding:8px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:#fca5a5;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;transition:all .15s}
+.logout-btn:hover{background:rgba(239,68,68,.2)}
+
+.main{flex:1;overflow-y:auto;padding:28px 32px;background:#f0f2f5}
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
+.page-title{font-size:24px;font-weight:800;color:#111827}
+.page-subtitle{font-size:13px;color:#6b7280;margin-top:2px}
+.header-actions{display:flex;gap:10px;align-items:center}
+
+.card{background:#fff;border-radius:12px;border:1px solid #e5e7eb;padding:20px}
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+.stat-card{background:#fff;border-radius:12px;border:1px solid #e5e7eb;padding:20px;position:relative;overflow:hidden}
+.stat-card::before{content:'';position:absolute;top:0;left:0;width:4px;height:100%;background:var(--accent,#6366f1)}
+.stat-label{font-size:12px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.5px}
+.stat-value{font-size:28px;font-weight:800;color:#111827;margin:6px 0 4px}
+.stat-sub{font-size:12px;color:#6b7280}
+.stat-sub.up{color:#10b981}
+.stat-sub.down{color:#ef4444}
+
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead tr{border-bottom:2px solid #f3f4f6}
+th{padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap}
+tbody tr{border-bottom:1px solid #f9fafb;transition:background .1s}
+tbody tr:hover{background:#fafafa}
+td{padding:12px 12px;color:#374151;vertical-align:middle}
+.td-id{font-family:monospace;font-size:11px;color:#9ca3af}
+
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.2px;white-space:nowrap}
+.badge::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor;opacity:.7}
+.badge-pending{background:#fef3c7;color:#92400e}
+.badge-approved,.badge-active,.badge-completed{background:#d1fae5;color:#065f46}
+.badge-rejected,.badge-canceled,.badge-suspended{background:#fee2e2;color:#991b1b}
+.badge-open{background:#fee2e2;color:#991b1b}
+.badge-resolved{background:#d1fae5;color:#065f46}
+.badge-customer{background:#dbeafe;color:#1e40af}
+.badge-artisan{background:#ede9fe;color:#5b21b6}
+.badge-ongoing{background:#fef9c3;color:#854d0e}
+
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;border:none;transition:all .15s;white-space:nowrap}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn-primary{background:#6366f1;color:#fff}
+.btn-primary:hover:not(:disabled){background:#4f46e5}
+.btn-success{background:#10b981;color:#fff}
+.btn-success:hover:not(:disabled){background:#059669}
+.btn-danger{background:#ef4444;color:#fff}
+.btn-danger:hover:not(:disabled){background:#dc2626}
+.btn-warn{background:#f59e0b;color:#fff}
+.btn-warn:hover:not(:disabled){background:#d97706}
+.btn-ghost{background:#f3f4f6;color:#374151;border:1px solid #e5e7eb}
+.btn-ghost:hover:not(:disabled){background:#e5e7eb}
+.btn-sm{padding:5px 10px;font-size:11px}
+
+.filter-bar{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:18px;align-items:center}
+.search-input{padding:8px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;outline:none;background:#fafafa;width:240px;color:#111827}
+.search-input:focus{border-color:#6366f1;background:#fff}
+.filter-select{padding:8px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;outline:none;background:#fafafa;color:#374151;cursor:pointer}
+.filter-select:focus{border-color:#6366f1}
+
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:1000;padding:20px}
+.modal-overlay.open{display:flex}
+.modal-box{background:#fff;border-radius:16px;width:100%;max-width:800px;max-height:90vh;overflow-y:auto;position:relative}
+.modal-header{padding:24px 28px 16px;border-bottom:1px solid #f3f4f6;display:flex;align-items:center;justify-content:space-between}
+.modal-title{font-size:18px;font-weight:700;color:#111827}
+.modal-body{padding:24px 28px}
+.modal-footer{padding:16px 28px 24px;border-top:1px solid #f3f4f6;display:flex;justify-content:flex-end;gap:10px}
+.close-btn{width:32px;height:32px;border-radius:50%;border:1px solid #e5e7eb;background:#f9fafb;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;color:#6b7280}
+.close-btn:hover{background:#f3f4f6}
+
+.img-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.img-wrap img{width:100%;height:140px;object-fit:cover;border-radius:10px;border:1px solid #e5e7eb;display:block}
+.img-label{font-size:11px;color:#6b7280;text-align:center;margin-top:5px}
+
+.info-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px}
+.info-row:last-child{border:none}
+.info-key{color:#6b7280;font-weight:500}
+.info-val{color:#111827;font-weight:600;text-align:right}
+
+#toast{position:fixed;top:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast-item{padding:12px 18px;border-radius:10px;font-size:13px;font-weight:600;color:#fff;pointer-events:auto;animation:slideIn .25s ease;box-shadow:0 4px 16px rgba(0,0,0,.18);display:flex;align-items:center;gap:8px;max-width:340px}
+.toast-success{background:#10b981}
+.toast-error{background:#ef4444}
+.toast-info{background:#6366f1}
+.toast-warn{background:#f59e0b}
+@keyframes slideIn{from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:translateX(0)}}
+
+.view{display:none}
+.view.active{display:block}
+
+.form-group{margin-bottom:18px}
+.form-label{display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:6px}
+.form-input{width:100%;padding:10px 14px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;color:#111827;outline:none;font-family:inherit}
+.form-input:focus{border-color:#6366f1}
+textarea.form-input{resize:vertical;min-height:100px}
+
+.confirm-modal-box{background:#fff;border-radius:16px;width:100%;max-width:420px;padding:28px}
+.confirm-icon{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;margin:0 auto 16px}
+
+/* ── NOTIFICATION BROADCAST PREVIEW ── */
+.notif-preview{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-top:12px;display:none}
+.notif-preview h4{font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:99px}
+
+
+.badge-pending{
+  background:#f59e0b;
+  color:white;
+  padding:4px 8px;
+  border-radius:6px;
+  font-size:12px;
+  font-weight:600;
+}
+/* Action buttons alignment */
+.action-btns{display:flex;gap:6px;flex-wrap:nowrap;align-items:center}
+
+@media(max-width:900px){.sidebar{width:220px}.stat-grid{grid-template-columns:repeat(2,1fr)}.main{padding:16px}}
+</style>
+</head>
+<body>
+<div style="display:flex;min-height:100vh">
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-logo">Fixa<span>Admin Dashboard</span></div>
+  <nav style="padding:8px 0;flex:1">
+    <div class="nav-section">Main</div>
+    <div class="nav-item active" data-view="dashboard"><span class="icon">🏠</span> Dashboard</div>
+    <div class="nav-item" data-view="users"><span class="icon">👥</span> User Management</div>
+    <div class="nav-item" data-view="verification">
+      <span class="icon">✅</span> Verification Center
+      <span class="badge-count" id="pending-nav-count">0</span>
+    </div>
+    <div class="nav-item" data-view="bookings"><span class="icon">🗓️</span> Bookings</div>
+    <div class="nav-item" data-view="payments"><span class="icon">💳</span> Payments</div>
+    <div class="nav-item" data-view="payouts"><span class="icon">💸</span> Payouts & Top-Ups</div>
+    <div class="nav-item" data-view="disputes"><span class="icon">⚠️</span> Disputes</div>
+    <div class="nav-item" data-view="reviews"><span class="icon">⭐</span> Reviews</div>
+    <div class="nav-section">System</div>
+    <div class="nav-item" data-view="notifications"><span class="icon">🔔</span> Notifications</div>
+    <div class="nav-item" data-view="announcements"><span class="icon">📢</span> Announcements</div>
+    <div class="nav-item" data-view="settings"><span class="icon">⚙️</span> Settings</div>
+  </nav>
+  <div class="sidebar-footer">
+    <div style="font-size:12px;color:#6b7280;margin-bottom:8px">Logged in as <strong style="color:#9ca3af">Admin</strong></div>
+    <button class="logout-btn" onclick="handleLogout()">Sign Out</button>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+
+  <!-- DASHBOARD -->
+  <div id="view-dashboard" class="view active">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Dashboard Overview</div>
+        <div class="page-subtitle" id="dash-subtitle">Loading platform data…</div>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-ghost btn-sm" onclick="refreshDashboard()">↻ Refresh</button>
+      </div>
+    </div>
+    <div class="stat-grid">
+      <div class="stat-card" style="--accent:#6366f1">
+        <div class="stat-label">Total Users</div>
+        <div class="stat-value" id="stat-users">—</div>
+        <div class="stat-sub" id="stat-users-sub">Artisans + Customers</div>
+      </div>
+      <div class="stat-card" style="--accent:#10b981">
+        <div class="stat-label">Verified Artisans</div>
+        <div class="stat-value" id="stat-verified">—</div>
+        <div class="stat-sub" id="stat-pending-verif">Loading…</div>
+      </div>
+      <div class="stat-card" style="--accent:#f59e0b">
+        <div class="stat-label">Platform Commission (MTD)</div>
+        <div class="stat-value" id="stat-commission">—</div>
+        <div class="stat-sub up" id="stat-commission-sub">Loading…</div>
+      </div>
+      <div class="stat-card" style="--accent:#ef4444">
+        <div class="stat-label">Open Disputes</div>
+        <div class="stat-value" id="stat-disputes">—</div>
+        <div class="stat-sub down" id="stat-disputes-sub">Loading…</div>
+      </div>
+    </div>
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <div style="font-size:15px;font-weight:700;color:#111827">Pending Verifications</div>
+        <button class="btn btn-ghost btn-sm" onclick="switchView('verification')">View all →</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Name</th><th>ID Type</th><th>Submitted</th><th>Status</th><th>Action</th></tr></thead>
+          <tbody id="dash-verif-list"><tr><td colspan="5" style="text-align:center;padding:24px;color:#9ca3af">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- USERS -->
+  <div id="view-users" class="view">
+    <div class="page-header">
+      <div><div class="page-title">User Management</div><div class="page-subtitle">Manage all artisans and customers</div></div>
+      <div class="header-actions">
+        <button class="btn btn-ghost btn-sm" onclick="loadUsers()">↻ Refresh</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="filter-bar">
+        <input class="search-input" id="user-search" placeholder="Search name, email or ID…" oninput="filterUsers()"/>
+        <select class="filter-select" id="user-role-filter" onchange="filterUsers()">
+          <option value="">All roles</option>
+          <option value="artisan">Artisan</option>
+          <option value="customer">Customer</option>
+        </select>
+        <select class="filter-select" id="user-status-filter" onchange="filterUsers()">
+          <option value="">All statuses</option>
+          <option value="active">Active</option>
+          <option value="chat_banned">Chat Banned</option>
+          <option value="suspended">Suspended</option>
+        </select>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <!-- ✅ FIX: Added "Actions" header with enough width for both suspend + activate + delete -->
+          <thead><tr><th>User</th><th>Role</th><th>Status</th><th>Joined</th><th style="min-width:200px">Actions</th></tr></thead>
+          <tbody id="user-list"><tr><td colspan="5" style="text-align:center;padding:24px;color:#9ca3af">Loading…</td></tr></tbody>
+        </table>
+      </div>
+      <div id="user-pagination" style="margin-top:16px;display:flex;gap:8px;align-items:center;justify-content:flex-end;font-size:13px;color:#6b7280"></div>
+    </div>
+  </div>
+
+  <!-- VERIFICATION -->
+  <div id="view-verification" class="view">
+    <div class="page-header">
+      <div><div class="page-title">Verification Center</div><div class="page-subtitle">Review artisan ID & skill documents</div></div>
+      <button class="btn btn-ghost btn-sm" onclick="loadVerifications()">↻ Refresh</button>
+    </div>
+    <div class="card">
+      <div class="filter-bar">
+        <select class="filter-select" id="verif-status-filter" onchange="filterVerifications()">
+          <option value="">All statuses</option>
+          <option value="pending">Pending</option>
+          <option value="approved">Approved</option>
+          <option value="rejected">Rejected</option>
+        </select>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Artisan</th><th>ID Type</th><th>Submitted</th><th>Status</th><th>Action</th></tr></thead>
+          <tbody id="verif-list"><tr><td colspan="5" style="text-align:center;padding:24px;color:#9ca3af">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOOKINGS -->
+<div id="view-bookings" class="view">
+  <div class="page-header">
+    <div>
+      <div class="page-title">Bookings Management</div>
+      <div class="page-subtitle">All platform bookings</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-ghost btn-sm" onclick="loadBookings()">↻ Refresh</button>
+      <button class="btn btn-danger btn-sm" onclick="promptClearBookings()">🗑 Clear All</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="filter-bar">
+      <input class="search-input" id="booking-search" placeholder="Search by Booking ID, customer, artisan…" oninput="filterBookings()"/>
+      <select class="filter-select" id="booking-status-filter" onchange="filterBookings()">
+        <option value="">All statuses</option>
+        <option value="pending">Pending</option>
+        <option value="accepted">Accepted</option>
+        <option value="ongoing">Ongoing</option>
+        <option value="completed">Completed</option>
+        <option value="rejected">Rejected</option>
+        <option value="cancelled">Cancelled</option>
+        <option value="expired">Expired</option>
+      </select>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Booking ID</th>
+            <th>Service</th>
+            <th>Customer</th>
+            <th>Artisan</th>
+            <th>Status</th>
+            <th>Payment</th>
+            <th>Amount</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody id="bookings-list">
+          <tr><td colspan="8" style="text-align:center;padding:24px;color:#9ca3af">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- 2FA Confirm Modal (reusable) -->
+<div id="twoFaModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:99999;align-items:center;justify-content:center;padding:20px">
+  <div style="background:#002b45;border:1px solid rgba(255,215,0,0.3);border-radius:18px;max-width:380px;width:100%;padding:28px;text-align:center">
+    <div style="font-size:40px;margin-bottom:12px" id="twoFaModalIcon">🔐</div>
+    <h3 style="font-size:17px;font-weight:800;color:#fff;margin-bottom:6px" id="twoFaModalTitle">Confirm with Authenticator</h3>
+    <p style="font-size:12.5px;color:rgba(255,255,255,0.5);margin-bottom:20px;line-height:1.6" id="twoFaModalDesc">
+      Enter your 6-digit Google Authenticator code to confirm this action.
+    </p>
+    <input type="number" id="twoFaModalCode"
+      placeholder="000000"
+      maxlength="6"
+      style="width:100%;padding:14px;font-size:26px;letter-spacing:10px;text-align:center;font-weight:700;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);border-radius:11px;color:#fff;margin-bottom:8px"
+      oninput="if(this.value.length>6)this.value=this.value.slice(0,6)"
+    />
+    <div id="twoFaModalError" style="display:none;color:#ef4444;font-size:12px;margin-bottom:12px;background:rgba(239,68,68,0.1);border-radius:8px;padding:8px"></div>
+    <div style="display:flex;gap:10px;margin-top:12px">
+      <button onclick="closeTwoFaModal()" style="flex:1;padding:12px;border-radius:10px;background:rgba(255,255,255,0.07);color:rgba(255,255,255,0.6);border:1px solid rgba(255,255,255,0.1);font-weight:700;cursor:pointer">Cancel</button>
+      <button id="twoFaModalConfirmBtn" onclick="submitTwoFaModal()" style="flex:1;padding:12px;border-radius:10px;background:#ef4444;color:#fff;border:none;font-weight:700;cursor:pointer">Confirm</button>
+    </div>
+  </div>
+</div>
+  <!-- PAYMENTS -->
+  <div id="view-payments" class="view">
+    <div class="page-header">
+      <div><div class="page-title">Payments & Transactions</div><div class="page-subtitle">Platform earnings and payouts</div></div>
+      <button class="btn btn-success btn-sm" onclick="toast('Report exported!','success')">⬇ Export CSV</button>
+    </div>
+    <div class="stat-grid" style="grid-template-columns:repeat(3,1fr)">
+      <div class="stat-card" style="--accent:#f59e0b"><div class="stat-label">Commission (MTD)</div><div class="stat-value" id="pay-commission">—</div></div>
+      <div class="stat-card" style="--accent:#6366f1"><div class="stat-label">Pending Payouts</div><div class="stat-value" id="pay-pending">—</div></div>
+      <div class="stat-card" style="--accent:#10b981"><div class="stat-label">Refunds (MTD)</div><div class="stat-value" id="pay-refunds">—</div></div>
+    </div>
+    <div class="card">
+      <div style="font-size:15px;font-weight:700;margin-bottom:16px">Transaction History</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Transaction ID</th><th>Type</th><th>User</th><th>Amount</th><th>Date</th><th>Status</th></tr></thead>
+          <tbody id="payments-list"><tr><td colspan="6" style="text-align:center;padding:24px;color:#9ca3af">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  
+  <!-- PAYOUTS -->
+   <div id="view-payouts" class="view">
+  <div class="page-header">
+    <div><div class="page-title">Payouts & Top-Ups</div><div class="page-subtitle">Artisan settlements and mid-job price changes</div></div>
+    <button class="btn btn-ghost btn-sm" onclick="loadPayoutsAdmin()">↻ Refresh</button>
+  </div>
+
+  <div class="stat-grid" style="grid-template-columns:repeat(3,1fr)">
+    <div class="stat-card" style="--accent:#f59e0b"><div class="stat-label">Pending Payouts</div><div class="stat-value" id="po-pending">—</div></div>
+    <div class="stat-card" style="--accent:#10b981"><div class="stat-label">Paid This Month</div><div class="stat-value" id="po-paid-month">—</div></div>
+    <div class="stat-card" style="--accent:#6366f1"><div class="stat-label">Pending Top-Up Requests</div><div class="stat-value" id="po-topup-pending">—</div></div>
+  </div>
+
+  <div class="card" style="margin-bottom:20px">
+    <div style="font-size:15px;font-weight:700;margin-bottom:16px">Artisan Payouts</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Artisan</th><th>Amount</th><th>Reference</th><th>Status</th><th>Date</th></tr></thead>
+        <tbody id="payouts-list"><tr><td colspan="5" style="text-align:center;padding:24px;color:#9ca3af">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div style="font-size:15px;font-weight:700;margin-bottom:16px">Top-Up Requests</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Booking</th><th>Customer</th><th>Artisan</th><th>Previous → New</th><th>Reason</th><th>Status</th></tr></thead>
+        <tbody id="topups-list"><tr><td colspan="6" style="text-align:center;padding:24px;color:#9ca3af">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+  <!-- DISPUTES -->
+  <div id="view-disputes" class="view">
+    <div class="page-header">
+      <div><div class="page-title">Disputes & Complaints</div><div class="page-subtitle">Resolve user disputes</div></div>
+      <button class="btn btn-ghost btn-sm" onclick="loadDisputes()">↻ Refresh</button>
+    </div>
+    <div class="card">
+      <div class="table-wrap">
+        <input type="text" id="disputeSearch" placeholder="Search by Booking ID..." class="form-input" style="margin-bottom:12px;max-width:300px"/>
+        <table>
+          <thead><tr><th>ID</th><th>Booking</th><th>Reporter</th><th>Reason</th><th>Priority</th><th>Status</th><th>Action</th></tr></thead>
+          <tbody id="disputes-list"><tr><td colspan="7" style="text-align:center;padding:24px;color:#9ca3af">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- REVIEWS -->
+  <div id="view-reviews" class="view">
+    <div class="page-header">
+      <div><div class="page-title">Reviews & Ratings</div><div class="page-subtitle">Moderate artisan reviews</div></div>
+      <button class="btn btn-ghost btn-sm" onclick="loadReviews()">↻ Refresh</button>
+    </div>
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Artisan</th><th>Rating</th><th>Comment</th><th>Date</th><th>Action</th></tr></thead>
+          <tbody id="reviews-list"><tr><td colspan="5" style="text-align:center;padding:24px;color:#9ca3af">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── NOTIFICATIONS (NEW) ─────────────────────────────── -->
+  <div id="view-notifications" class="view">
+    <div class="page-header">
+      <div><div class="page-title">Push Notifications</div><div class="page-subtitle">Send targeted notifications to artisans and/or customers</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+      <!-- Send form -->
+      <div class="card">
+        <div style="font-size:15px;font-weight:700;margin-bottom:18px">📤 Send Notification</div>
+        <div class="form-group">
+          <label class="form-label">Title</label>
+          <input class="form-input" id="notif-title" type="text" placeholder="e.g. Platform Maintenance"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Message</label>
+          <textarea class="form-input" id="notif-body" rows="4" placeholder="Your notification message…"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Recipients</label>
+          <select class="form-input" id="notif-target">
+            <option value="all">All Users (Artisans + Customers)</option>
+            <option value="artisans">Artisans Only</option>
+            <option value="customers">Customers Only</option>
+            <option value="unverified">Unverified Artisans Only</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Type</label>
+          <select class="form-input" id="notif-type">
+            <option value="info">ℹ️ Info</option>
+            <option value="warning">⚠️ Warning</option>
+            <option value="success">✅ Success</option>
+            <option value="urgent">🔴 Urgent</option>
+          </select>
+        </div>
+        <!-- Preview -->
+        <div class="notif-preview" id="notifPreview">
+          <h4>Preview</h4>
+          <div style="background:#001d36;border-radius:8px;padding:12px;color:#fff">
+            <div style="font-size:13px;font-weight:700;margin-bottom:4px" id="prevTitle">Notification Title</div>
+            <div style="font-size:12px;color:#cbd5e1" id="prevBody">Message body here...</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:16px">
+          <button class="btn btn-ghost" onclick="previewNotification()">👁 Preview</button>
+          <button class="btn btn-primary" id="notif-send-btn" onclick="sendNotification()">📤 Send Now</button>
+        </div>
+      </div>
+      <!-- History -->
+      <div class="card">
+        <div style="font-size:15px;font-weight:700;margin-bottom:16px">📋 Notification History</div>
+        <div id="notif-history" style="max-height:460px;overflow-y:auto">
+          <div style="text-align:center;padding:30px;color:#9ca3af;font-size:13px">No notifications sent yet</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ANNOUNCEMENTS -->
+  <div id="view-announcements" class="view">
+    <div class="page-header">
+      <div><div class="page-title">Announcements</div><div class="page-subtitle">Send platform-wide notifications</div></div>
+    </div>
+    <div class="card" style="max-width:640px">
+      <div class="form-group">
+        <label class="form-label">Notification Title</label>
+        <input class="form-input" id="ann-title" type="text" placeholder="e.g. Fixa Policy Update"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Recipient Group</label>
+        <select class="form-input" id="ann-target">
+          <option value="all">All Users</option>
+          <option value="artisans">Artisans Only</option>
+          <option value="customers">Customers Only</option>
+          <option value="unverified">Unverified Artisans Only</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Message</label>
+        <textarea class="form-input" id="ann-message" rows="5" placeholder="Type your announcement…"></textarea>
+      </div>
+      <div style="display:flex;justify-content:flex-end">
+        <button class="btn btn-primary" id="ann-btn" onclick="sendAnnouncement()">Send Announcement</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div id="view-settings" class="view">
+    <div class="page-header">
+      <div><div class="page-title">System Settings</div><div class="page-subtitle">Platform configuration</div></div>
+    </div>
+    <div class="card" style="max-width:520px">
+      <div class="form-group">
+        <label class="form-label">Commission Rate (%)</label>
+        <input class="form-input" type="number" value="15" min="1" max="50" id="setting-commission"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Timed Job Chat Duration (minutes)</label>
+        <input class="form-input" type="number" value="30" min="5" max="120" id="setting-chat-timer"/>
+        <div style="font-size:12px;color:#6b7280;margin-top:5px">How long artisan-customer chat stays open after job acceptance</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Minimum Artisan Rating</label>
+        <input class="form-input" type="number" value="3.5" min="1" max="5" step="0.1" id="setting-min-rating"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Chat Violation Bans</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px">
+          <div><div style="font-size:12px;color:#6b7280;margin-bottom:4px">Strike 3 (hours)</div><input class="form-input" type="number" value="24" id="setting-ban3"/></div>
+          <div><div style="font-size:12px;color:#6b7280;margin-bottom:4px">Strike 4 (hours)</div><input class="form-input" type="number" value="72" id="setting-ban4"/></div>
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+    </div>
+  </div>
+
+</main>
+</div>
+
+<!-- VERIFICATION MODAL -->
+<div class="modal-overlay" id="verif-modal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title">Review Verification Request</div>
+      <button class="close-btn" onclick="closeVerifModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+        <div>
+          <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:12px">Applicant Details</div>
+          <div id="modal-info"></div>
+        </div>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:12px">Submitted Documents</div>
+          <div class="img-grid" id="modal-imgs"></div>
+        </div>
+      </div>
+      <div style="margin-top:20px">
+        <label class="form-label">Review Notes <span style="font-weight:400;color:#9ca3af">(required for rejection)</span></label>
+        <textarea class="form-input" id="modal-notes" rows="3" placeholder="Add notes or rejection reason…"></textarea>
+      </div>
+      <div id="modal-status-msg" style="display:none;margin-top:12px;padding:10px 14px;border-radius:8px;font-size:13px;font-weight:600"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeVerifModal()">Cancel</button>
+      <button class="btn btn-danger" id="btn-reject" onclick="submitReview('rejected')">✕ Reject</button>
+      <button class="btn btn-success" id="btn-approve" onclick="submitReview('approved')">✓ Approve</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM MODAL -->
+<div class="modal-overlay" id="confirm-modal">
+  <div class="confirm-modal-box">
+    <div class="confirm-icon" id="confirm-icon">⚠️</div>
+    <div style="text-align:center">
+      <div style="font-size:16px;font-weight:700;color:#111827;margin-bottom:8px" id="confirm-title">Confirm Action</div>
+      <div style="font-size:13px;color:#6b7280;margin-bottom:24px;line-height:1.6" id="confirm-body"></div>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-ghost" style="flex:1" onclick="closeConfirm()">Cancel</button>
+      <button class="btn" style="flex:1" id="confirm-ok-btn" onclick="executeConfirm()">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── CONFIG ────────────────────────────────────────────────────────────────────
+const BASE = 'http://localhost:5000/api';
+let token  = localStorage.getItem('adminToken') || '';
+let notificationHistory = [];
+
+function api(path, opts = {}) {
+  return fetch(BASE + path, {
+    ...opts,
+    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', ...(opts.headers || {}) }
+  }).then(async r => {
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      throw new Error(err.message || `HTTP ${r.status}`);
+    }
+    return r.json();
+  });
+}
+
+// ── TOAST ─────────────────────────────────────────────────────────────────────
+function toast(msg, type = 'info') {
+  const el = document.createElement('div');
+  el.className = `toast-item toast-${type}`;
+  const icon = { success:'✓', error:'✕', info:'ℹ', warn:'⚠' }[type] || 'ℹ';
+  el.innerHTML = `<span style="font-size:16px">${icon}</span><span>${msg}</span>`;
+  document.getElementById('toast').appendChild(el);
+  setTimeout(() => el.remove(), 3800);
+}
+
+// ── NAVIGATION ────────────────────────────────────────────────────────────────
+const VIEW_LOADERS = {
+  dashboard: refreshDashboard, users: loadUsers, verification: loadVerifications,
+  bookings: loadBookings, payments: loadPayments, disputes: loadDisputes, reviews: loadReviews,
+  payouts: loadPayoutsAdmin,
+};
+
+function switchView(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const view = document.getElementById(`view-${name}`);
+  const nav  = document.querySelector(`[data-view="${name}"]`);
+  if (view) view.classList.add('active');
+  if (nav)  nav.classList.add('active');
+  if (VIEW_LOADERS[name]) VIEW_LOADERS[name]();
+}
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => switchView(item.dataset.view));
+});
+
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+function badge(status) {
+  const map = {
+    pending:'badge-pending', approved:'badge-approved', active:'badge-approved',
+    completed:'badge-approved', rejected:'badge-rejected', cancelled:'badge-rejected',
+    canceled:'badge-rejected', suspended:'badge-suspended', open:'badge-open',
+    resolved:'badge-resolved', customer:'badge-customer', artisan:'badge-artisan',
+    ongoing:'badge-ongoing'
+  };
+  const cls = map[(status||'').toLowerCase()] || 'badge-ghost';
+  return `<span class="badge ${cls}">${(status||'N/A').toUpperCase()}</span>`;
+}
+
+function fmtDate(d) {
+  if (!d) return '—';
+  try { return new Date(d).toLocaleDateString('en-NG',{day:'numeric',month:'short',year:'numeric'}); }
+  catch { return d; }
+}
+function fmtTime(d) {
+  if (!d) return '';
+  try { return new Date(d).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}); }
+  catch { return ''; }
+}
+function fmtMoney(n) { return n == null ? '—' : '₦' + Number(n).toLocaleString('en-NG'); }
+function stars(n) { n=Math.round(n||0); return '★'.repeat(Math.min(n,5))+'☆'.repeat(Math.max(0,5-n)); }
+function emptyRow(cols, msg='No records found') {
+  return `<tr><td colspan="${cols}" style="text-align:center;padding:32px;color:#9ca3af;font-size:13px">${msg}</td></tr>`;
+}
+function loadingRow(cols) {
+  return `<tr><td colspan="${cols}" style="text-align:center;padding:32px;color:#9ca3af;font-size:13px">Loading…</td></tr>`;
+}
+
+// ── DASHBOARD ─────────────────────────────────────────────────────────────────
+async function refreshDashboard() {
+  document.getElementById('dash-subtitle').textContent = 'Fetching latest data…';
+  try {
+    const [stats, verifs] = await Promise.all([
+      api('/admin/stats').catch(() => null),
+      api('/admin/verifications?status=pending&limit=5').catch(() => null),
+    ]);
+    if (stats) {
+      document.getElementById('stat-users').textContent = (stats.totalUsers||0).toLocaleString();
+      document.getElementById('stat-users-sub').textContent = `${stats.artisanCount||0} artisans · ${stats.customerCount||0} customers`;
+      document.getElementById('stat-verified').textContent = stats.verifiedArtisans || 0;
+      const pending = stats.pendingVerifications || 0;
+      document.getElementById('stat-pending-verif').textContent = `${pending} pending review`;
+      document.getElementById('pending-nav-count').textContent = pending;
+      document.getElementById('stat-commission').textContent = fmtMoney(stats.commissionMTD || 0);
+      document.getElementById('stat-commission-sub').textContent = stats.commissionChange || 'This month';
+      document.getElementById('stat-disputes').textContent = stats.openDisputes || 0;
+      document.getElementById('stat-disputes-sub').textContent = `${stats.criticalDisputes||0} critical`;
+    }
+    const tbody = document.getElementById('dash-verif-list');
+    if (verifs?.length) {
+      tbody.innerHTML = verifs.map(v => `<tr>
+        <td><strong>${v.artisanName || v.artisanId?.username || '—'}</strong></td>
+        <td>${v.idType||'—'}</td>
+        <td>${fmtDate(v.submittedAt||v.createdAt)}</td>
+        <td>${badge(v.status)}</td>
+        <td><button class="btn btn-primary btn-sm" onclick="openVerifModal('${v._id}')">Review</button></td>
+      </tr>`).join('');
+    } else {
+      tbody.innerHTML = emptyRow(5, verifs === null ? 'Could not load — check API' : 'No pending verifications');
+    }
+    document.getElementById('dash-subtitle').textContent = 'Last updated ' + new Date().toLocaleTimeString();
+  } catch(e) {
+    document.getElementById('dash-subtitle').textContent = 'Failed — ' + e.message;
+  }
+}
+
+// ── USERS — ✅ FIXED suspend/unsuspend button visibility ──────────────────────
+let allUsers = [];
+
+async function loadUsers() {
+  document.getElementById('user-list').innerHTML = loadingRow(5);
+  try {
+    const data = await api('/admin/users');
+    allUsers = Array.isArray(data) ? data : (data.users || []);
+    filterUsers();
+  } catch(e) {
+    document.getElementById('user-list').innerHTML = emptyRow(5, 'Failed: ' + e.message);
+    toast('Failed to load users', 'error');
+  }
+}
+
+function filterUsers() {
+  const q = (document.getElementById('user-search').value || '').toLowerCase();
+  const role = (document.getElementById('user-role-filter').value || '').toLowerCase();
+  const status = (document.getElementById('user-status-filter').value || '').toLowerCase();
+
+  const filtered = allUsers.filter(u => {
+    const matchQ =
+      !q ||
+      (u.username || u.name || '').toLowerCase().includes(q) ||
+      (u.email || '').toLowerCase().includes(q) ||
+      String(u._id || '').includes(q);
+
+    const matchRole =
+      !role || (u.role || '').toLowerCase() === role;
+
+    // ✅ Detect statuses
+    let uStatus = 'active';
+
+    if (u.isSuspended === true || u.suspended === true || u.status === 'suspended') {
+      uStatus = 'suspended';
+    } else if (u.chatBanned === true) {
+      uStatus = 'chat_banned';
+    }
+
+    const matchStatus =
+      !status || uStatus === status;
+
+    return matchQ && matchRole && matchStatus;
+  });
+
+  const tbody = document.getElementById('user-list');
+
+  if (!filtered.length) {
+    tbody.innerHTML = emptyRow(5);
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(u => {
+
+    const isSuspended =
+      u.isSuspended === true ||
+      u.suspended === true ||
+      u.status === 'suspended';
+
+    const isChatBanned =
+      u.chatBanned === true && !isSuspended;
+
+    // ✅ Status badge
+    let statusBadge = badge('active');
+
+    if (isSuspended) {
+      statusBadge = badge('suspended');
+    } else if (isChatBanned) {
+      statusBadge = `<span class="badge badge-pending">CHAT BANNED</span>`;
+    }
+
+    const uName = u.username || u.name || '—';
+    const uid = u._id || u.id;
+
+    return `
+      <tr>
+        <td>
+          <div style="font-weight:600;color:#111827">
+            ${escHtml(uName)}
+          </div>
+
+          <div style="font-size:12px;color:#9ca3af">
+            ${escHtml(u.email || u.phone || '—')}
+          </div>
+        </td>
+
+        <td>${badge(u.role || 'user')}</td>
+
+        <td>${statusBadge}</td>
+
+        <td style="font-size:12px;color:#6b7280">
+          ${fmtDate(u.createdAt)}
+        </td>
+
+        <td>
+          <div class="action-btns">
+
+            ${
+              isSuspended
+                ? `
+                  <button
+                    class="btn btn-success btn-sm"
+                    onclick="toggleSuspend('${uid}','activate','${escHtml(uName)}')">
+                    ✓ Activate
+                  </button>
+                `
+                : `
+                  <button
+                    class="btn btn-warn btn-sm"
+                    onclick="toggleSuspend('${uid}','suspend','${escHtml(uName)}')">
+                    ⊘ Suspend
+                  </button>
+                `
+            }
+
+            ${
+              isChatBanned
+                ? `
+                  <button
+                    class="btn btn-success btn-sm"
+                    onclick="toggleChatBan('${uid}','unban','${escHtml(uName)}')">
+                    💬 Unban Chat
+                  </button>
+                `
+                : `
+                  <button
+                    class="btn btn-secondary btn-sm"
+                    onclick="toggleChatBan('${uid}','ban','${escHtml(uName)}')">
+                    🚫 Ban Chat
+                  </button>
+                `
+            }
+
+            <button
+              class="btn btn-primary btn-sm"
+              onclick="sendNotifToUser('${uid}','${escHtml(uName)}')">
+              🔔 Notify
+            </button>
+
+            <button
+              class="btn btn-danger btn-sm"
+              onclick="confirmDelete('${uid}','${escHtml(uName)}')">
+              🗑 Delete
+            </button>
+
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+// ✅ FIX: toggleSuspend now correctly handles both suspend AND activate with proper API calls
+function toggleSuspend(userId, action, name) {
+  const isSuspending = action === 'suspend';
+  openConfirm(
+    isSuspending ? '⊘' : '✅',
+    isSuspending ? 'Suspend User?' : 'Activate User?',
+    isSuspending
+      ? `<strong>${name}</strong> will lose access to the platform immediately. They will be notified.`
+      : `<strong>${name}</strong> will regain full platform access. They will be notified.`,
+    isSuspending ? 'btn-warn' : 'btn-success',
+    isSuspending ? 'Suspend Account' : 'Activate Account',
+    async () => {
+      try {
+        // ✅ Match your backend: PUT /admin/users/:id/suspend or /activate
+        const endpoint = isSuspending
+          ? `/admin/users/${userId}/suspend`
+          : `/admin/users/${userId}/activate`;
+        
+        const payload = isSuspending
+          ? { reason: 'Suspended by administrator. Contact support@fixa.ng.' }
+          : {};
+        
+        await api(endpoint, { 
+          method: 'PUT',
+          body: JSON.stringify(payload)
+        });
+
+        // Backend already sends the notification + socket event — no need to duplicate
+        toast(`User ${isSuspending ? 'suspended' : 'activated'} successfully`, 'success');
+        loadUsers();
+      } catch(e) {
+        toast('Action failed: ' + e.message, 'error');
+      }
+    }
+  );
+}
+function confirmDelete(userId, name) {
+  openConfirm('🗑️','Delete User?',
+    `This will <strong>permanently delete</strong> <strong>${name}</strong> and all their data. This cannot be undone.`,
+    'btn-danger','Delete',
+    async () => {
+      try {
+        await api(`/admin/users/${userId}`, { method: 'DELETE' });
+        toast('User deleted', 'success');
+        loadUsers();
+      } catch(e) { toast('Delete failed: '+e.message,'error'); }
+    }
+  );
+}
+
+// Notify a specific user directly
+function sendNotifToUser(userId, name) {
+  openConfirm('🔔', `Notify ${name}`,
+    `<div style="text-align:left">
+      <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:6px">Message</label>
+      <textarea id="quick-notif-msg" style="width:100%;padding:8px;border:1px solid #e5e7eb;border-radius:6px;font-size:13px;resize:none" rows="3" placeholder="Type notification message..."></textarea>
+    </div>`,
+    'btn-primary', 'Send',
+    async () => {
+      const msg = document.getElementById('quick-notif-msg')?.value?.trim();
+      if (!msg) { toast('Enter a message', 'error'); return; }
+      try {
+        await api('/admin/notifications/send', {
+          method: 'POST',
+          body: JSON.stringify({ userIds: [userId], title: 'Fixa Admin', body: msg, type: 'info' })
+        });
+        toast('Notification sent to ' + name, 'success');
+      } catch(e) { toast('Failed: '+e.message, 'error'); }
+    }
+  );
+}
+
+// ── VERIFICATION ──────────────────────────────────────────────────────────────
+let allVerifs = [], activeVerif = null;
+
+async function loadVerifications() {
+  document.getElementById('verif-list').innerHTML = loadingRow(5);
+  try {
+    const data = await api('/admin/verifications');
+    allVerifs = Array.isArray(data) ? data : (data.verifications || []);
+    const pending = allVerifs.filter(v => v.status === 'pending').length;
+    document.getElementById('pending-nav-count').textContent = pending;
+    filterVerifications();
+  } catch(e) {
+    document.getElementById('verif-list').innerHTML = emptyRow(5,'Failed: '+e.message);
+    toast('Failed to load verifications','error');
+  }
+}
+
+function filterVerifications() {
+  const statusF = document.getElementById('verif-status-filter').value;
+  const filtered = statusF ? allVerifs.filter(v => v.status === statusF) : allVerifs;
+  const tbody = document.getElementById('verif-list');
+  if (!filtered.length) { tbody.innerHTML = emptyRow(5); return; }
+  tbody.innerHTML = filtered.map(v => `<tr>
+    <td><div style="font-weight:600">${v.artisanName||v.artisanId?.username||'—'}</div><div class="td-id">${v.artisanId?._id||v.artisanId||'—'}</div></td>
+    <td>${v.idType||'—'}</td>
+    <td style="font-size:12px;color:#6b7280">${fmtDate(v.submittedAt||v.createdAt)}</td>
+    <td>${badge(v.status)}</td>
+    <td><button class="btn ${v.status==='pending'?'btn-primary':'btn-ghost'} btn-sm" onclick="openVerifModal('${v._id}')">${v.status==='pending'?'Review':'View'}</button></td>
+  </tr>`).join('');
+}
+
+function openVerifModal(id) {
+  activeVerif = allVerifs.find(v => v._id === id) || { _id: id };
+  document.getElementById('modal-info').innerHTML = [
+    ['Request ID', `<span class="td-id">${activeVerif._id}</span>`],
+    ['Name', activeVerif.artisanName||activeVerif.artisanId?.username||'—'],
+    ['ID Type', activeVerif.idType||'—'],
+    ['ID Number', activeVerif.idNumber||'—'],
+    ['Submitted', fmtDate(activeVerif.submittedAt||activeVerif.createdAt)],
+    ['Status', badge(activeVerif.status)],
+  ].map(([k,v]) => `<div class="info-row"><span class="info-key">${k}</span><span class="info-val">${v}</span></div>`).join('');
+  const B = 'http://localhost:5000';
+  const imgs = [
+    ['Profile Photo', activeVerif.profileImage||activeVerif.profilePicture],
+    ['Live Selfie', activeVerif.liveFaceImage||activeVerif.selfie],
+    ['ID Document', activeVerif.idImage||activeVerif.idDocument],
+    ['Skill Proof', activeVerif.skillProof||activeVerif.certificate],
+  ];
+  document.getElementById('modal-imgs').innerHTML = imgs.map(([label,src]) => `
+    <div><div class="img-wrap"><img src="${src?(src.startsWith('http')?src:B+'/'+src):''}"
+      onerror="this.src='https://placehold.co/200x140/f1f5f9/94a3b8?text=No+Image'" alt="${label}"/></div>
+    <div class="img-label">${label}</div></div>`).join('');
+  document.getElementById('modal-notes').value = activeVerif.comments||'';
+  document.getElementById('modal-status-msg').style.display = 'none';
+  const isPending = activeVerif.status === 'pending';
+  document.getElementById('btn-reject').disabled = !isPending;
+  document.getElementById('btn-approve').disabled = !isPending;
+  document.getElementById('verif-modal').classList.add('open');
+}
+
+function closeVerifModal() { document.getElementById('verif-modal').classList.remove('open'); activeVerif=null; }
+
+async function submitReview(newStatus) {
+  if (!activeVerif) return;
+  const notes = document.getElementById('modal-notes').value.trim();
+  if (newStatus==='rejected' && !notes) { showModalMsg('Please add rejection notes.','error'); return; }
+  document.getElementById('btn-approve').disabled = true;
+  document.getElementById('btn-reject').disabled = true;
+  showModalMsg('Processing…','info');
+  try {
+    await api(`/admin/verifications/${activeVerif._id}/review`, {
+      method:'PUT', body: JSON.stringify({ status: newStatus, comments: notes })
+    });
+    // Notify the artisan of verification result
+    const artisanId = activeVerif.artisanId?._id || activeVerif.artisanId;
+    if (artisanId) {
+      await sendSocketNotification(artisanId,
+        newStatus === 'approved' ? '✅ Verification Approved!' : '⚠️ Verification Update',
+        newStatus === 'approved'
+          ? 'Congratulations! Your Fixa account has been verified. You can now receive job requests.'
+          : `Your verification was not approved. Reason: ${notes}`
+      ).catch(() => {});
+    }
+    showModalMsg(`Successfully ${newStatus}. Closing…`,'success');
+    const v = allVerifs.find(x => x._id === activeVerif._id);
+    if (v) { v.status=newStatus; v.comments=notes; }
+    setTimeout(() => { closeVerifModal(); filterVerifications(); loadUsers(); refreshDashboard(); }, 800);
+  } catch(e) {
+    showModalMsg('Failed: '+e.message,'error');
+    document.getElementById('btn-approve').disabled = false;
+    document.getElementById('btn-reject').disabled = false;
+  }
+}
+
+function showModalMsg(msg,type) {
+  const el = document.getElementById('modal-status-msg');
+  const bg = {success:'#d1fae5',error:'#fee2e2',info:'#e0e7ff'};
+  const tc = {success:'#065f46',error:'#991b1b',info:'#3730a3'};
+  el.style.display='block'; el.style.background=bg[type]||bg.info; el.style.color=tc[type]||tc.info; el.textContent=msg;
+}
+
+// ── BOOKINGS ──────────────────────────────────────────────────────────────────
+// ── Booking state ──────────────────────────────────────────────────────────────
+let allBookings = [];
+
+async function loadBookings() {
+  document.getElementById('bookings-list').innerHTML = loadingRow(8);
+  try {
+    const data = await api('/admin/bookings');
+    allBookings = Array.isArray(data) ? data : [];
+    renderBookings(allBookings);
+  } catch (e) {
+    document.getElementById('bookings-list').innerHTML = emptyRow(8, 'Failed: ' + e.message);
+  }
+}
+
+function renderBookings(list) {
+  const tbody = document.getElementById('bookings-list');
+  if (!list.length) {
+    tbody.innerHTML = emptyRow(8, 'No bookings found');
+    return;
+  }
+
+  const statusColors = {
+    pending:   '#f59e0b',
+    accepted:  '#3b82f6',
+    ongoing:   '#8b5cf6',
+    completed: '#22c55e',
+    rejected:  '#ef4444',
+    cancelled: '#6b7280',
+    expired:   '#6b7280',
+  };
+  const payColors = {
+    unpaid:   '#f59e0b',
+    escrowed: '#3b82f6',
+    released: '#22c55e',
+    refunded: '#ef4444',
+  };
+
+  tbody.innerHTML = list.map(b => {
+    const sc = statusColors[b.status] || '#9ca3af';
+    const pc = payColors[b.paymentStatus] || '#9ca3af';
+    const date = b.createdAt ? new Date(b.createdAt).toLocaleDateString('en-GB', {
+      day: '2-digit', month: 'short', year: 'numeric'
+    }) : '—';
+
+    // ✅ Use bookingId (FIXA-XXXXX), not MongoDB _id
+    const displayId = b.bookingId || `FIXA-${String(b._id).slice(-8).toUpperCase()}`;
+
+    return `<tr>
+      <td>
+        <span style="font-family:monospace;font-size:12px;font-weight:700;color:#ffd700;background:rgba(255,215,0,0.08);padding:3px 8px;border-radius:6px">
+          ${displayId}
+        </span>
+      </td>
+      <td>${b.category || b.serviceCategory || '—'}</td>
+      <td>${b.customerName || b.customerId?.username || '—'}</td>
+      <td>${b.artisanName || b.artisanId?.user?.username || '—'}</td>
+      <td><span style="font-size:11px;font-weight:700;color:${sc};background:${sc}20;padding:3px 8px;border-radius:6px;text-transform:capitalize">${b.status || '—'}</span></td>
+      <td><span style="font-size:11px;font-weight:700;color:${pc};text-transform:capitalize">${b.paymentStatus || 'unpaid'}</span></td>
+      <td>₦${(b.estimatedPrice || 0).toLocaleString()}</td>
+      <td style="font-size:12px;color:#9ca3af">${date}</td>
+    </tr>`;
+  }).join('');
+}
+
+function filterBookings() {
+  const q      = document.getElementById('booking-search').value.toLowerCase().trim();
+  const status = document.getElementById('booking-status-filter').value;
+  const filtered = allBookings.filter(b => {
+    const matchesStatus = !status || b.status === status;
+    const matchesSearch = !q || [
+      b.bookingId,
+      b.customerName, b.customerId?.username,
+      b.artisanName,  b.artisanId?.user?.username,
+      b.category,     b.serviceCategory,
+      String(b._id)
+    ].some(v => String(v || '').toLowerCase().includes(q));
+    return matchesStatus && matchesSearch;
+  });
+  renderBookings(filtered);
+}
+
+// ── 2FA Modal (used for destructive actions) ───────────────────────────────────
+let _twoFaCallback = null;
+
+function openTwoFaModal({ icon = '🔐', title, desc, btnColor = '#ef4444', btnText = 'Confirm', onConfirm }) {
+  _twoFaCallback = onConfirm;
+  document.getElementById('twoFaModalIcon').textContent = icon;
+  document.getElementById('twoFaModalTitle').textContent = title;
+  document.getElementById('twoFaModalDesc').textContent = desc;
+  document.getElementById('twoFaModalConfirmBtn').style.background = btnColor;
+  document.getElementById('twoFaModalConfirmBtn').textContent = btnText;
+  document.getElementById('twoFaModalCode').value = '';
+  document.getElementById('twoFaModalError').style.display = 'none';
+  document.getElementById('twoFaModal').style.display = 'flex';
+  setTimeout(() => document.getElementById('twoFaModalCode').focus(), 100);
+}
+
+function closeTwoFaModal() {
+  document.getElementById('twoFaModal').style.display = 'none';
+  document.getElementById('twoFaModalCode').value = '';
+  document.getElementById('twoFaModalError').style.display = 'none';
+  // NOTE: do NOT null _twoFaCallback here — submitTwoFaModal needs it
+}
+
+function resetTwoFaModal() {
+  // Call this only after callback has finished
+  _twoFaCallback = null;
+  document.getElementById('twoFaModal').style.display = 'none';
+  document.getElementById('twoFaModalCode').value = '';
+  document.getElementById('twoFaModalError').style.display = 'none';
+}
+
+async function submitTwoFaModal() {
+  const code  = document.getElementById('twoFaModalCode').value.trim();
+  const errEl = document.getElementById('twoFaModalError');
+  const btn   = document.getElementById('twoFaModalConfirmBtn');
+  errEl.style.display = 'none';
+
+  if (!code || code.length < 6) {
+    errEl.textContent = 'Enter the full 6-digit code';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Verifying…';
+
+  try {
+    const res = await fetch('http://localhost:5000/api/admin/2fa/verify-action', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${localStorage.getItem('adminToken')}`
+      },
+      body: JSON.stringify({ code })
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      errEl.textContent = data.message || 'Invalid code';
+      errEl.style.display = 'block';
+      document.getElementById('twoFaModalCode').value = '';
+      document.getElementById('twoFaModalCode').focus();
+      return;
+    }
+
+    // ✅ Close FIRST, THEN run callback (not the other way around)
+    const cb = _twoFaCallback;   // save reference before nulling
+    resetTwoFaModal();            // close + null the callback
+    if (typeof cb === 'function') await cb();
+
+  } catch (err) {
+    errEl.textContent = 'Network error — check your connection';
+    errEl.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
+}
+// ── Clear All Bookings ─────────────────────────────────────────────────────────
+function promptClearBookings() {
+  openTwoFaModal({
+    icon: '🗑️',
+    title: 'Clear All Bookings',
+    desc: `This will permanently delete all ${allBookings.length} bookings from the database. This action cannot be undone. Enter your authenticator code to confirm.`,
+    btnColor: '#ef4444',
+    btnText: 'Delete All',
+    onConfirm: async () => {
+      try {
+        const data = await api('/admin/bookings/clear', { method: 'DELETE' });
+        toast(`Cleared ${data.deleted} booking(s)`, 'success');
+        allBookings = [];
+        renderBookings([]);
+      } catch (err) {
+        toast('Failed: ' + err.message, 'error');
+      }
+    }
+  });
+}
+// ── PAYMENTS ──────────────────────────────────────────────────────────────────
+async function loadPayments() {
+  try {
+    const data = await api('/admin/payments').catch(()=>null);
+    document.getElementById('pay-commission').textContent = fmtMoney(data?.commissionMTD);
+    document.getElementById('pay-pending').textContent = fmtMoney(data?.pendingPayouts);
+    document.getElementById('pay-refunds').textContent = fmtMoney(data?.refundsMTD);
+    const txns = data?.transactions||[];
+    const tbody = document.getElementById('payments-list');
+    if (!txns.length) { tbody.innerHTML = emptyRow(6,'No transactions'); return; }
+    tbody.innerHTML = txns.map(t=>`<tr>
+      <td class="td-id">${String(t._id||'').slice(-10)}</td>
+      <td>${t.type||'—'}</td>
+      <td>${t.user?.username||t.userId||'—'}</td>
+      <td style="font-weight:600">${fmtMoney(t.amount)}</td>
+      <td style="font-size:12px;color:#6b7280">${fmtDate(t.createdAt)}</td>
+      <td>${badge(t.status||'completed')}</td>
+    </tr>`).join('');
+  } catch {}
+}
+//--Payout Admin
+async function loadPayoutsAdmin() {
+  document.getElementById('payouts-list').innerHTML = loadingRow(5);
+  document.getElementById('topups-list').innerHTML = loadingRow(6);
+  try {
+    const [payoutData, topUpData] = await Promise.all([
+      api('/admin/payouts'),
+      api('/admin/topups'),
+    ]);
+
+    document.getElementById('po-pending').textContent = fmtMoney(payoutData.pendingTotal);
+    document.getElementById('po-paid-month').textContent = fmtMoney(payoutData.paidThisMonth);
+    document.getElementById('po-topup-pending').textContent =
+      topUpData.filter(t => t.topUp.status === 'pending').length;
+
+    const payoutRows = payoutData.payouts;
+    document.getElementById('payouts-list').innerHTML = payoutRows.length
+      ? payoutRows.map(p => `<tr>
+          <td>${p.artisan?.name || p.artisan?.user?.username || '—'}</td>
+          <td style="font-weight:600">${fmtMoney(p.amount)}</td>
+          <td class="td-id">${p.reference}</td>
+          <td>${badge(p.status)}</td>
+          <td style="font-size:12px;color:#6b7280">${fmtDate(p.createdAt)}</td>
+        </tr>`).join('')
+      : emptyRow(5, 'No payouts yet');
+
+    document.getElementById('topups-list').innerHTML = topUpData.length
+      ? topUpData.map(t => `<tr>
+          <td class="td-id">${t.bookingId || '—'}</td>
+          <td>${t.customerName || '—'}</td>
+          <td>${t.artisanName || '—'}</td>
+          <td>${fmtMoney(t.topUp.previousPrice)} → <strong>${fmtMoney(t.topUp.newPrice)}</strong></td>
+          <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(t.topUp.reason)}</td>
+          <td>${badge(t.topUp.status)}</td>
+        </tr>`).join('')
+      : emptyRow(6, 'No top-up requests');
+  } catch (e) {
+    toast('Failed to load payouts/top-ups: ' + e.message, 'error');
+  }
+}
+
+// ── DISPUTES ──────────────────────────────────────────────────────────────────
+let allDisputes = [];
+async function loadDisputes() {
+  document.getElementById('disputes-list').innerHTML = loadingRow(7);
+  try {
+    const data = await api('/admin/disputes');
+    allDisputes = Array.isArray(data) ? data : (data.disputes||[]);
+    renderDisputes(allDisputes);
+  } catch(e) { document.getElementById('disputes-list').innerHTML = emptyRow(7,'Failed: '+e.message); }
+}
+function renderDisputes(list) {
+  const tbody = document.getElementById('disputes-list');
+  if (!list.length) { tbody.innerHTML = emptyRow(7, 'No disputes found'); return; }
+
+  tbody.innerHTML = list.map(d => {
+    const pc = d.priority==='high' ? '#ef4444' : d.priority==='medium' ? '#f59e0b' : '#6b7280';
+
+    // ✅ Use bookingId string, not MongoDB _id
+    const bookingDisplay = d.bookingId?.bookingId
+      || (d.bookingId?._id ? String(d.bookingId._id).slice(-8) : '—');
+
+    return `<tr style="cursor:pointer" onclick="viewDispute('${d._id}')">
+      <td><span style="font-family:monospace;font-size:11px;color:#ffd700">${String(d._id).slice(-8)}</span></td>
+      <td><span style="font-family:monospace;font-size:11px;color:#60a5fa">${bookingDisplay}</span></td>
+      <td>${d.reporter?.username || '—'}</td>
+      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${d.reason || '—'}</td>
+      <td style="font-weight:700;color:${pc}">${d.priority || 'low'}</td>
+      <td>${badge(d.status || 'open')}</td>
+      <td onclick="event.stopPropagation()">
+        <button class="btn btn-sm btn-ghost" onclick="viewDispute('${d._id}')">View</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+document.getElementById('disputeSearch').addEventListener('input', (e) => {
+  const query = e.target.value.toLowerCase().trim();
+  if (!query) { renderDisputes(allDisputes); return; }
+  const filtered = allDisputes.filter(d => {
+    const bid = String(d.bookingId?._id || d.bookingId || '').toLowerCase();
+    const did = String(d._id || '').toLowerCase();
+    return bid.includes(query) || did.includes(query);
+  });
+  renderDisputes(filtered);
+});
+async function viewDispute(id) {
+  try {
+    const result = await api(`/admin/disputes/${id}`);
+
+    // Backend now returns { dispute, booking, chat, payment } separately
+    const { dispute, booking, chat, payment } = result;
+
+    // Safe field readers
+    const safeBooking = booking || {};
+    const customer = safeBooking.customerId || {};
+    const artisanObj = safeBooking.artisanId || {};
+    const artisanUser = artisanObj.user || {};
+
+    // Format evidence files
+    const evidenceHtml = (dispute.evidence || []).length
+      ? dispute.evidence.map(url => {
+          const isImg = /\.(jpg|jpeg|png|gif|webp)$/i.test(url);
+          return isImg
+            ? `<a href="${url}" target="_blank" style="display:inline-block;margin:4px">
+                 <img src="${url}" style="width:80px;height:80px;object-fit:cover;border-radius:6px;border:1px solid rgba(255,255,255,0.1)"/>
+               </a>`
+            : `<a href="${url}" target="_blank" style="display:inline-block;margin:4px;padding:6px 10px;background:rgba(255,255,255,0.07);border-radius:6px;color:#ffd700;font-size:12px">📎 File</a>`;
+        }).join('')
+      : '<em style="color:#6b7280;font-size:12px">No evidence uploaded</em>';
+
+    // Format chat messages
+    const msgs = chat?.messages || [];
+    const messagesHtml = msgs.length
+      ? msgs.map(m => `
+          <div style="margin-bottom:8px;padding:8px 10px;background:#0d1f2d;border-radius:8px">
+            <div style="font-size:10px;color:#6b7280;margin-bottom:2px">
+              ${m.sender?.username || 'Unknown'} · ${m.createdAt ? new Date(m.createdAt).toLocaleString() : ''}
+            </div>
+            <div style="font-size:13px;color:#e2e8f0">${escHtml(m.text || '[media]')}</div>
+          </div>`).join('')
+      : '<em style="color:#6b7280;font-size:12px">No chat history found</em>';
+
+    const isOpen = !dispute.status || dispute.status === 'open';
+
+    openConfirm('⚖️', 'Dispute Detail',
+      `<div style="text-align:left;font-size:13px">
+
+        <!-- Booking info -->
+        <div style="background:#0d1f2d;border-radius:10px;padding:12px;margin-bottom:14px">
+          <div style="font-size:10px;font-weight:700;color:#ffd700;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Booking</div>
+          ${booking ? `
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px">
+              <div><span style="color:#6b7280">Booking ID:</span><br/>
+                <span style="font-family:monospace;color:#ffd700">${safeBooking.bookingId || '—'}</span>
+              </div>
+              <div><span style="color:#6b7280">Service:</span><br/>${safeBooking.category || '—'}</div>
+              <div><span style="color:#6b7280">Customer:</span><br/>${customer.username || '—'}</div>
+              <div><span style="color:#6b7280">Artisan:</span><br/>${artisanUser.username || '—'}</div>
+              <div><span style="color:#6b7280">Status:</span><br/>
+                <span style="text-transform:capitalize">${safeBooking.status || '—'}</span>
+              </div>
+              <div><span style="color:#6b7280">Payment:</span><br/>
+                ${payment
+                  ? `<span style="color:#22c55e">${payment.status} — ₦${(payment.amount||0).toLocaleString()}</span>`
+                  : '<span style="color:#f59e0b">No payment</span>'}
+              </div>
+            </div>` : `
+            <p style="color:#ef4444;font-size:12px">⚠️ Booking no longer exists (may have been deleted)</p>
+          `}
+        </div>
+
+        <!-- Dispute info -->
+        <div style="background:#0d1f2d;border-radius:10px;padding:12px;margin-bottom:14px">
+          <div style="font-size:10px;font-weight:700;color:#ffd700;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Dispute</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;margin-bottom:8px">
+            <div><span style="color:#6b7280">Reporter:</span><br/>${dispute.reporter?.username || '—'}</div>
+            <div><span style="color:#6b7280">Priority:</span><br/>
+              <span style="text-transform:capitalize;color:${dispute.priority==='high'?'#ef4444':dispute.priority==='medium'?'#f59e0b':'#9ca3af'}">${dispute.priority || 'low'}</span>
+            </div>
+            <div><span style="color:#6b7280">Reason:</span><br/>${dispute.reason || '—'}</div>
+            <div><span style="color:#6b7280">Filed:</span><br/>${dispute.createdAt ? new Date(dispute.createdAt).toLocaleDateString() : '—'}</div>
+          </div>
+          <div style="color:#6b7280;font-size:11px;margin-bottom:4px">Description:</div>
+          <div style="background:#051525;border-radius:6px;padding:10px;font-size:12px;color:#e2e8f0;line-height:1.6">${escHtml(dispute.description || '—')}</div>
+        </div>
+
+        <!-- Evidence -->
+        <div style="background:#0d1f2d;border-radius:10px;padding:12px;margin-bottom:14px">
+          <div style="font-size:10px;font-weight:700;color:#ffd700;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Evidence</div>
+          ${evidenceHtml}
+        </div>
+
+        <!-- Chat history -->
+        <div style="background:#0d1f2d;border-radius:10px;padding:12px;margin-bottom:14px">
+          <div style="font-size:10px;font-weight:700;color:#ffd700;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Chat History</div>
+          <div style="max-height:180px;overflow-y:auto">${messagesHtml}</div>
+        </div>
+
+        <!-- Resolution form (only if open) -->
+        ${isOpen ? `
+          <div style="background:#0d1f2d;border-radius:10px;padding:12px">
+            <div style="font-size:10px;font-weight:700;color:#ffd700;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Resolve</div>
+            <label style="font-size:11px;color:#6b7280;display:block;margin-bottom:4px">Resolution Type</label>
+            <select id="resType" style="width:100%;background:#051525;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:9px;color:#fff;margin-bottom:10px;font-size:13px">
+              <option value="release_to_artisan">Release funds to artisan (reject customer claim)</option>
+              <option value="refund_full">Full refund to customer</option>
+              <option value="refund_partial">Partial refund to customer</option>
+              <option value="rework">Order rework (no money moves)</option>
+              <option value="no_action">Dismiss — no action</option>
+            </select>
+            <label style="font-size:11px;color:#6b7280;display:block;margin-bottom:4px">Partial refund amount (₦)</label>
+            <input id="resAmount" type="number" placeholder="Only needed for partial refund"
+              style="width:100%;background:#051525;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:9px;color:#fff;margin-bottom:10px;font-size:13px"/>
+            <label style="font-size:11px;color:#6b7280;display:block;margin-bottom:4px">Resolution note (visible to both parties)</label>
+            <textarea id="resNote" rows="3" placeholder="Explain your decision clearly…"
+              style="width:100%;background:#051525;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:9px;color:#fff;font-size:13px;resize:vertical;font-family:inherit"></textarea>
+          </div>
+        ` : `
+          <div style="background:#0d1f2d;border-radius:10px;padding:12px">
+            <div style="font-size:10px;font-weight:700;color:#22c55e;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">✓ Resolved</div>
+            <div style="font-size:12px;color:#9ca3af"><strong>Type:</strong> ${dispute.resolutionType || '—'}</div>
+            <div style="font-size:12px;color:#9ca3af;margin-top:4px">${dispute.resolution || ''}</div>
+          </div>
+        `}
+      </div>`,
+      'btn-success',
+      isOpen ? 'Apply Resolution' : 'Close',
+      isOpen ? async () => {
+        const resolutionType = document.getElementById('resType')?.value;
+        const refundAmount   = Number(document.getElementById('resAmount')?.value || 0);
+        const resolution     = document.getElementById('resNote')?.value.trim();
+
+        if (!resolution) { toast('Please write a resolution note', 'error'); return; }
+
+        try {
+          await api(`/admin/disputes/${id}/resolve`, {
+            method: 'PUT',
+            body: JSON.stringify({ resolutionType, refundAmount, resolution })
+          });
+          toast('Dispute resolved successfully', 'success');
+          loadDisputes();
+        } catch (e) {
+          toast('Failed: ' + e.message, 'error');
+        }
+      } : null
+    );
+
+  } catch (e) {
+    console.error('[viewDispute]', e);
+    toast('Failed to load dispute: ' + e.message, 'error');
+  }
+}
+
+// Safe HTML escape helper
+function escHtml(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+async function resolveDispute(id) {
+  openConfirm('⚖️','Resolve Dispute',
+    `<div style="text-align:left">
+      <label class="form-label">Resolution Type</label>
+      <select id="resType" class="form-input">
+        <option value="release_to_artisan">Release to artisan (customer claim rejected)</option>
+        <option value="refund_full">Full refund to customer</option>
+        <option value="refund_partial">Partial refund to customer</option>
+        <option value="rework">Order rework (no money moves)</option>
+        <option value="no_action">No action (close)</option>
+      </select>
+      <label class="form-label" style="margin-top:12px">Refund Amount (if partial)</label>
+      <input id="resAmount" type="number" class="form-input" placeholder="e.g. 5000"/>
+      <label class="form-label" style="margin-top:12px">Resolution Note (visible to users)</label>
+      <textarea id="resNote" class="form-input" rows="3" placeholder="Explain the decision..."></textarea>
+    </div>`,
+    'btn-success', 'Resolve',
+    async () => {
+      const resolutionType = document.getElementById('resType').value;
+      const refundAmount = Number(document.getElementById('resAmount').value || 0);
+      const resolution = document.getElementById('resNote').value.trim();
+      try {
+        await api(`/admin/disputes/${id}/resolve`, {
+          method: 'PUT',
+          body: JSON.stringify({ resolutionType, refundAmount, resolution })
+        });
+        toast('Dispute resolved', 'success');
+        loadDisputes();
+      } catch(e) { toast('Failed: ' + e.message, 'error'); }
+    }
+  );
+}
+
+// ── REVIEWS ───────────────────────────────────────────────────────────────────
+async function loadReviews() {
+  document.getElementById('reviews-list').innerHTML = loadingRow(5);
+  try {
+    const data = await api('/admin/reviews');
+    const list = Array.isArray(data) ? data : (data.reviews||[]);
+    const tbody = document.getElementById('reviews-list');
+    if (!list.length) { tbody.innerHTML = emptyRow(5); return; }
+  tbody.innerHTML = list.map(r=>`<tr>
+  <td><div style="font-weight:600">${r.artisanId?.name || r.artisanId?.user?.username || '—'}</div></td>
+  <td style="color:#f59e0b;font-size:16px;letter-spacing:2px">${stars(r.rating)}</td>
+  <td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(r.comment)||'—'}</td>
+  <td style="font-size:12px;color:#6b7280">${fmtDate(r.createdAt)}</td>
+  <td><button class="btn btn-danger btn-sm" onclick="deleteReview('${r._id}')">Delete</button></td>
+</tr>`).join('');
+  } catch(e) { document.getElementById('reviews-list').innerHTML = emptyRow(5,'Failed'); }
+}
+async function deleteReview(id) {
+  openConfirm('🗑️','Delete Review?','This review will be permanently removed.','btn-danger','Delete', async () => {
+    try { await api(`/admin/reviews/${id}`,{method:'DELETE'}); toast('Deleted','success'); loadReviews(); }
+    catch(e) { toast('Failed','error'); }
+  });
+}
+
+// ── NOTIFICATIONS ─────────────────────────────────────────────────────────────
+function previewNotification() {
+  const title = document.getElementById('notif-title').value || 'Notification Title';
+  const body = document.getElementById('notif-body').value || 'Message body here...';
+  document.getElementById('prevTitle').textContent = title;
+  document.getElementById('prevBody').textContent = body;
+  document.getElementById('notifPreview').style.display = 'block';
+}
+
+async function sendNotification() {
+  const title  = document.getElementById('notif-title').value.trim();
+  const body   = document.getElementById('notif-body').value.trim();
+  const target = document.getElementById('notif-target').value;
+  const type   = document.getElementById('notif-type').value;
+
+  if (!title || !body) { toast('Title and message required', 'error'); return; }
+
+  const btn = document.getElementById('notif-send-btn');
+  btn.disabled = true; btn.textContent = 'Sending…';
+
+  try {
+    // ── Send via API (persists to DB + sends push) ──
+    await api('/admin/notifications/broadcast', {
+      method: 'POST',
+      body: JSON.stringify({ title, body, target, type })
+    });
+
+    // ── Log to history ──
+    notificationHistory.unshift({ title, body, target, type, time: new Date() });
+    renderNotifHistory();
+
+    toast(`Notification sent to ${target}`, 'success');
+    document.getElementById('notif-title').value = '';
+    document.getElementById('notif-body').value = '';
+    document.getElementById('notifPreview').style.display = 'none';
+  } catch(e) {
+    toast('Failed: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = '📤 Send Now';
+  }
+}
+
+function renderNotifHistory() {
+  const el = document.getElementById('notif-history');
+  if (!notificationHistory.length) {
+    el.innerHTML = '<div style="text-align:center;padding:30px;color:#9ca3af;font-size:13px">No notifications sent yet</div>';
+    return;
+  }
+  el.innerHTML = notificationHistory.map(n => {
+    const typeColors = { info:'#6366f1', warning:'#f59e0b', success:'#10b981', urgent:'#ef4444' };
+    const color = typeColors[n.type] || '#6b7280';
+    return `<div style="border-left:3px solid ${color};padding:10px 12px;margin-bottom:10px;background:#f8fafc;border-radius:0 8px 8px 0">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+        <strong style="font-size:13px;color:#111827">${escHtml(n.title)}</strong>
+        <span style="font-size:10px;color:#6b7280">${fmtTime(n.time)}</span>
+      </div>
+      <div style="font-size:12px;color:#374151;margin-bottom:4px">${escHtml(n.body)}</div>
+      <div style="font-size:11px;color:${color};font-weight:600">→ ${n.target} · ${n.type}</div>
+    </div>`;
+  }).join('');
+}
+
+// Send notification via socket (for real-time delivery to specific user)
+async function sendSocketNotification(userId, title, body) {
+  return api('/admin/notifications/send', {
+    method: 'POST',
+    body: JSON.stringify({ userIds: [userId], title, body, type: 'info' })
+  });
+}
+
+// ── ANNOUNCEMENTS ─────────────────────────────────────────────────────────────
+async function sendAnnouncement() {
+  const title   = document.getElementById('ann-title').value.trim();
+  const target  = document.getElementById('ann-target').value;
+  const message = document.getElementById('ann-message').value.trim();
+  if (!title||!message) { toast('Title and message required','error'); return; }
+  const btn = document.getElementById('ann-btn');
+  btn.disabled=true; btn.textContent='Sending…';
+  try {
+    await api('/admin/announcements',{method:'POST',body:JSON.stringify({title,target,message})});
+    toast(`Announcement sent to ${target}`,'success');
+    document.getElementById('ann-title').value='';
+    document.getElementById('ann-message').value='';
+    const users = await User.find(filter).select('_id');
+
+await Notification.insertMany(
+  users.map(u => ({
+    user: u._id,
+    title,
+    message,
+    type: "system"
+  }))
+);
+  } catch(e) { toast('Failed: '+e.message,'error'); }
+  finally { btn.disabled=false; btn.textContent='Send Announcement'; }
+}
+
+// ── SETTINGS ──────────────────────────────────────────────────────────────────
+async function saveSettings() {
+  const payload = {
+    commissionRate: Number(document.getElementById('setting-commission').value),
+    chatTimerMinutes: Number(document.getElementById('setting-chat-timer').value),
+    minRating: Number(document.getElementById('setting-min-rating').value),
+    ban3Hours: Number(document.getElementById('setting-ban3').value),
+    ban4Hours: Number(document.getElementById('setting-ban4').value),
+  };
+  try {
+    await api('/admin/settings',{method:'PUT',body:JSON.stringify(payload)});
+    toast('Settings saved','success');
+  } catch(e) { toast('Save failed: '+e.message,'error'); }
+}
+
+// ── CONFIRM MODAL ─────────────────────────────────────────────────────────────
+let _confirmFn = null;
+function openConfirm(icon, title, body, btnCls, btnLabel, fn) {
+  document.getElementById('confirm-icon').textContent = icon;
+  document.getElementById('confirm-title').textContent = title;
+  document.getElementById('confirm-body').innerHTML = body;
+  const okBtn = document.getElementById('confirm-ok-btn');
+  okBtn.className = `btn ${btnCls}`;
+  okBtn.textContent = btnLabel;
+  _confirmFn = fn;
+  document.getElementById('confirm-modal').classList.add('open');
+}
+async function executeConfirm() {
+  if (_confirmFn) {
+    const btn = document.getElementById('confirm-ok-btn');
+    btn.disabled=true; btn.textContent='Working…';
+    try { await _confirmFn(); } catch {}
+    btn.disabled=false;
+  }
+  closeConfirm();
+}
+function closeConfirm() { document.getElementById('confirm-modal').classList.remove('open'); _confirmFn=null; }
+
+function handleLogout() {
+  openConfirm('👋','Sign out?','You will be returned to the login screen.','btn-danger','Sign out',()=>{
+    localStorage.clear(); window.location.href='adminlogin.html';
+  });
+}
+
+// ── UTILS ──────────────────────────────────────────────────────────────────────
+function escHtml(s) {
+  return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Close modals on overlay click
+document.getElementById('verif-modal').addEventListener('click', e => { if(e.target===e.currentTarget) closeVerifModal(); });
+document.getElementById('confirm-modal').addEventListener('click', e => { if(e.target===e.currentTarget) closeConfirm(); });
+
+// ── BOOT ──────────────────────────────────────────────────────────────────────
+refreshDashboard();
+</script>
+</body>
+</html>

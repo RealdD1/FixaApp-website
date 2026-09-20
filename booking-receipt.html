@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Booking Receipt</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #00172B;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      color: white;
+    }
+      /* Logo section (icon + text) */
+    .logo-wrapper {
+      display: flex;
+      align-items: center;
+      
+    }
+
+    .logo-icon {
+      width: 60px; /* hand + spanner icon size */
+      height: auto;
+      
+    }
+
+    .logo-text {
+      font-size: 2rem;
+      font-weight: bold;
+      color: gold;
+      letter-spacing: 1px;
+    }
+    .container {
+      background: #002540;
+      padding: 30px;
+      border-radius: 12px;
+      max-width: 450px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    }
+    .success-icon {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: #FFD700;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 0 auto 20px;
+    }
+    .success-icon svg {
+      width: 50px;
+      height: 50px;
+      stroke: #00172B;
+      stroke-width: 3;
+      fill: none;
+    }
+    h2 {
+      margin: 10px 0;
+      font-size: 22px;
+      color: #FFD700;
+    }
+    .receipt {
+      text-align: left;
+      margin-top: 20px;
+      padding: 15px;
+      background: #00172B;
+      border-radius: 8px;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .receipt-section {
+      margin-bottom: 12px;
+    }
+    .label {
+      font-weight: bold;
+      color: #FFD700;
+    }
+    .value {
+      float: right;
+      color: #fff;
+    }
+    .home-btn {
+      display: inline-block;
+      margin-top: 25px;
+      padding: 12px 20px;
+      background: #FFD700;
+      color: #00172B;
+      text-decoration: none;
+      border-radius: 6px;
+      font-weight: bold;
+      transition: 0.3s;
+      cursor: pointer;
+    }
+    .home-btn:hover {
+      background: #e6c200;
+    }
+      @media print {
+    body {
+      background: white !important;
+      color: black !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .container {
+      box-shadow: none !important;
+      background: white !important;
+      color: black !important;
+    }
+    .home-btn {
+      display: none; /* Hide buttons on print */
+    }
+    /* Add more rules as needed for better print output */
+  }
+  
+  </style>
+</head>
+<body>
+  <div class="container" id="receipt-container">
+    <!-- Content loads dynamically -->
+  </div>
+
+  
+  <script>
+    
+    function renderReceipt() {
+      const booking = JSON.parse(localStorage.getItem('lastBooking'));
+      const container = document.getElementById('receipt-container');
+
+      if (!booking) {
+        container.innerHTML = `
+          <div class="success-icon">
+            <svg viewBox="0 0 52 52">
+              <line x1="15" y1="15" x2="37" y2="37"></line>
+              <line x1="37" y1="15" x2="15" y2="37"></line>
+            </svg>
+          </div>
+          <h2>No Booking Found</h2>
+          <p style="text-align:center; color:#ccc;">Please go back to the home page to make a new booking.</p>
+          <a href="customer-home.html" class="home-btn">Go Home</a>
+        `;
+        return;
+      }
+
+      // Format price safely
+      const price = parseFloat(booking.estimatedPrice);
+      const formattedPrice = !isNaN(price) ? price.toLocaleString() : 'N/A';
+
+      // Format booking ID nicely
+      const bookingId = booking.bookingId ;
+
+      container.innerHTML = `
+      <div class="logo-wrapper">
+          <img src="fixa-logo.png" alt="Hand holding spanner" class="logo-icon">
+          <div class="logo-text">Fixa</div>
+        </div>
+
+        <div class="success-icon">
+         <svg viewBox="0 0 52 52">
+    <path d="M14.1 27.2l7.1 7.2l16.7-16.8"></path>
+</svg>
+        </div>
+        <h2>Booking Confirmed</h2>
+        <p>Your booking was successful. Here are your receipt details:</p>
+
+        
+        <div class="receipt">
+          <div class="receipt-section">
+            <span class="label">Booking ID:</span>
+            <span class="value" id="receipt-id">${bookingId}</span>
+          </div>
+          <div class="receipt-section">
+            <span class="label">Artisan:</span>
+            <span class="value" id="receipt-artisan">${booking.artisanName || 'N/A'}</span>
+          </div>
+          <div class="receipt-section">
+            <span class="label">Category:</span>
+            <span class="value" id="receipt-category">${booking.category}</span>
+          </div>
+          <div class="receipt-section">
+            <span class="label">Description:</span>
+            <span class="value" id="receipt-description">${booking.description}</span>
+          </div>
+          <div class="receipt-section">
+            <span class="label">Date:</span>
+            <span class="value" id="receipt-date">${booking.date}</span>
+          </div>
+          <div class="receipt-section">
+            <span class="label">Time:</span>
+            <span class="value" id="receipt-time">${booking.time}</span>
+          </div>
+          <div class="receipt-section">
+            <span class="label">Address:</span>
+            <span class="value" id="receipt-address">${booking.address}</span>
+          </div>
+          <div class="receipt-section">
+            <span class="label">Price:</span>
+            <span class="value" id="receipt-price">₦${formattedPrice}</span>
+          </div>
+        </div>
+
+        <a href="booking-history.html" class="home-btn">Go Home</a>
+        <button class="home-btn" onclick="printReceipt()">Download</button>
+      `;
+    }
+
+    function printReceipt() {
+      window.print();
+    }
+
+    renderReceipt();
+  </script><script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<script src="socket-connection.js"></script>
+
+</body>
+</html>

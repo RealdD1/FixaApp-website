@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Fixa | Select Service</title>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg-dark: #00172b;
+      --bg-card: #012442;
+      --gold: #FFD700;
+      --gold-muted: rgba(255, 215, 0, 0.1);
+      --text-white: #ffffff;
+      --text-grey: #a0aec0;
+      --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-white);
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 500px;
+      padding: 2rem 1.5rem 8rem 1.5rem;
+    }
+
+    .header-box {
+      text-align: left;
+      margin-bottom: 2rem;
+    }
+
+    .header-box h2 {
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--gold);
+      margin: 0;
+    }
+
+    .header-box p {
+      color: var(--text-grey);
+      margin-top: 5px;
+      font-size: 0.9rem;
+    }
+
+    /* Sharp Search Box */
+    .search-container {
+      position: sticky;
+      top: 1rem;
+      z-index: 100;
+      margin-bottom: 2rem;
+    }
+
+    .search-box {
+      background: var(--bg-card);
+      border: 1px solid rgba(255, 215, 0, 0.2);
+      border-radius: 15px;
+      display: flex;
+      align-items: center;
+      padding: 0.5rem 1rem;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    }
+
+    #searchInput {
+      width: 100%;
+      padding: 0.8rem;
+      border: none;
+      background: transparent;
+      color: white;
+      font-size: 1rem;
+      outline: none;
+    }
+
+    .search-box .material-icons {
+      color: var(--gold);
+    }
+
+    /* Category Grid */
+    .category-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1rem;
+    }
+
+    .category-item {
+      background: var(--bg-card);
+      border-radius: 20px;
+      padding: 1.5rem 1rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: var(--transition);
+      position: relative;
+    }
+
+    .category-item:active {
+      transform: scale(0.95);
+    }
+
+    .category-item.selected {
+      border-color: var(--gold);
+      background: var(--gold-muted);
+      box-shadow: 0 0 20px rgba(255, 215, 0, 0.15);
+    }
+
+    .category-item .material-icons {
+      font-size: 32px;
+      margin-bottom: 12px;
+      color: var(--gold);
+      transition: var(--transition);
+    }
+
+    .category-item span.cat-name {
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: var(--text-white);
+    }
+
+    /* Hidden Radio */
+    .category-item input[type="radio"] {
+      display: none;
+    }
+
+    /* Floating Next Button */
+    .footer-action {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 2rem;
+      background: linear-gradient(transparent, var(--bg-dark) 40%);
+      display: flex;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .next-btn {
+      background: var(--gold);
+      color: var(--bg-dark);
+      font-weight: 800;
+      font-size: 1.1rem;
+      padding: 1.2rem;
+      width: 100%;
+      max-width: 400px;
+      border: none;
+      border-radius: 18px;
+      box-shadow: 0 10px 20px rgba(255, 215, 0, 0.2);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      transition: var(--transition);
+    }
+
+    .next-btn:disabled {
+      background: #4a5568;
+      color: #2d3748;
+      box-shadow: none;
+      cursor: not-allowed;
+    }
+
+    /* Loader Styles */
+    .loader {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: var(--bg-dark);
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      z-index: 99999;
+    }
+
+    .spinner-ring {
+      position: absolute;
+      width: 140px;
+      height: 140px;
+      border: 4px solid transparent;
+      border-top: 4px solid var(--gold);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin { 100% { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="header-box">
+      <h2>Find an Artisan</h2>
+      <p>Professional services at your doorstep</p>
+    </div>
+
+    <div class="search-container">
+      <div class="search-box">
+        <span class="material-icons">search</span>
+        <input type="text" id="searchInput" placeholder="What do you need?" autocomplete="off" />
+      </div>
+    </div>
+
+    <div class="category-grid" id="categoryList">
+      </div>
+
+    <div class="footer-action">
+      <button id="nextBtn" class="next-btn" disabled>
+        Proceed 
+        <span class="material-icons">arrow_forward</span>
+      </button>
+    </div>
+  </div>
+
+  <div id="loader" class="loader">
+    <div class="spinner-ring"></div>
+    <div class="logo" style="color: var(--gold); font-size: 2rem; font-weight: 800;">Fixa</div>
+  </div>
+
+  <script>
+    const categories = [
+      { name: "Electrician", icon: "lightbulb" },
+      { name: "Painter", icon: "format_paint" },
+      { name: "Tiler", icon: "grid_on" },
+      { name: "Mechanic", icon: "build" },
+      { name: "Welder", icon: "construction" },
+      { name: "Generator Repairer", icon: "power" },
+      { name: "POP Installer", icon: "roofing" },
+      { name: "Fashion Designer", icon: "checkroom" },
+      { name: "Make-Up Artist", icon: "face_retouching_natural" },
+      { name: "CCTV Installer", icon: "videocam" },
+      { name: "Solar Panel", icon: "solar_power" },
+      { name: "Cook/Caterer", icon: "restaurant" },
+      { name: "Handyman", icon: "handyman" },
+      { name: "Carpenter", icon: "chair" },
+      { name: "HVAC Tech", icon: "ac_unit" },
+      { name: "Gardener", icon: "yard" },
+      { name: "Appliance Repair", icon: "settings" },
+      { name: "Nanny/House help", icon: "child_friendly" }
+    ];
+
+    const categoryList = document.getElementById('categoryList');
+    const searchInput = document.getElementById('searchInput');
+    const nextBtn = document.getElementById('nextBtn');
+    let selectedCategory = null;
+
+    function renderCategories(filter = '') {
+      categoryList.innerHTML = '';
+      const filtered = categories.filter(c => c.name.toLowerCase().includes(filter.toLowerCase()));
+
+      filtered.forEach(category => {
+        const item = document.createElement('div');
+        item.classList.add('category-item');
+        if(selectedCategory === category.name) item.classList.add('selected');
+
+        item.innerHTML = `
+          <span class="material-icons">${category.icon}</span>
+          <span class="cat-name">${category.name}</span>
+        `;
+
+        item.addEventListener('click', () => {
+          // Remove selected class from others
+          document.querySelectorAll('.category-item').forEach(i => i.classList.remove('selected'));
+          
+          // Select this one
+          item.classList.add('selected');
+          selectedCategory = category.name;
+          nextBtn.disabled = false;
+        });
+
+        categoryList.appendChild(item);
+      });
+    }
+
+    // Initialize
+    renderCategories();
+
+    // Search logic
+    searchInput.addEventListener('input', (e) => {
+      renderCategories(e.target.value);
+    });
+
+    // Next Button Logic
+    nextBtn.addEventListener('click', () => {
+      if (!selectedCategory) return;
+
+      localStorage.setItem('selectedCategory', selectedCategory);
+      
+      // Visual feedback
+      document.getElementById('loader').style.display = 'flex';
+      nextBtn.disabled = true;
+
+      setTimeout(() => {
+        window.location.href = "map.html";
+      }, 1500);
+    });
+  </script>
+</body>
+</html>

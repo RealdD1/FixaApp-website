@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <title>Fixa - Artisan Dashboard</title>
+    <link rel="stylesheet" href="artisan-home.css">
+</head>
+<body>
+    <div id="app">
+        <section id="homePage" class="page active">
+            <h1 class="logo">Fixa</h1>
+            <p class="welcome">Welcome, <span class="usernameDisplay"></span>!</p>
+
+            <div class="dashboard-summary-card">
+                <p style="color: #ffc107;">You are currently: <strong>Available for jobs</strong></p>
+                <div class="summary-grid">
+                    <div class="summary-item">
+                        <strong>0</strong>
+                        <span>Active Jobs</span>
+                        <span style="display: block; font-size: 0.8em; color: #a0a0a0;">Trochilife 30m</span>
+                    </div>
+                    <div class="summary-item">
+                        <strong>0</strong>
+                        <span>New Requests</span>
+                    </div>
+                    <div class="summary-item" style="grid-column: span 2;">
+                        <strong>₦0</strong>
+                        <span>Total Earnings (This Month)</span>
+                    </div>
+                </div>
+            </div>
+
+          
+
+            <div class="job-requests-container">
+                </div>
+
+            <div class="upcoming-schedule-card dashboard-summary-card">
+                <h3>Your Active Jobs Schedule</h3>
+                <p>20/Jul/2025: AC Repair, Mrs. Adebayo, Calabar</p>
+                <p>21/Jul/2025: Plumbing Fix, Mr. Obi, Onitsha</p>
+            </div>
+
+            <div id="acceptedJobDetails" class="job-details-card" style="display: none;">
+                <h2>Accepted Job Details #FIXA12345</h2>
+                <div class="job-status-buttons">
+                    <button class="call-btn">On My Way</button>
+                    <button class="call-btn active">Job Accepted</button>
+                    <button class="call-btn">Job Completed</button>
+                </div>
+
+                <div class="dashboard-summary-card">
+                    <h3>Customer & Contact Information</h3>
+                    <p><strong>Mrs. Adebayo</strong></p>
+                    <p>No. 15 Eyo Ita Street, Calabar, Cross River State</p>
+                    <div class="job-buttons">
+                        <button class="call-btn">Call Customer</button>
+                        <button class="chat-btn">Chat with Customer</button>
+                    </div>
+                </div>
+
+                <div class="dashboard-summary-card">
+                    <h3>Job Location</h3>
+                    <p>No. 15 Eyo Ita Street, Calabar, Cross River State</p>
+                    <img src="https://via.placeholder.com/150x80/00172b/fff?text=Map+Location" alt="Job Location Map Placeholder" style="width: 100%; height: auto; margin-top: 10px; border-radius: 8px;">
+                    <button class="directions-btn" style="width: 100%; margin-top: 10px;">Get Directions</button>
+                </div>
+
+                <div class="dashboard-summary-card">
+                    <h3>What Needs Fixing</h3>
+                    <p>My AC stopped cooling suddenly. The fan works but no cold air. It's a split It the living room.</p>
+                    <img src="https://via.placeholder.com/150x80/00172b/fff?text=AC+Unit" alt="AC Unit Placeholder" style="width: 100%; height: auto; margin-top: 10px; border-radius: 8px;">
+                </div>
+
+                <div class="dashboard-summary-card">
+                    <h3>Payment & Quote Details Card</h3>
+                    <p>Your Earnings: <strong style="color: #ffc107;">₦20,000</strong> or.</p>
+                    <p>Customer requested quote. Please provide an estimate on arrival or via Chat.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="jobsPage" class="page">
+            <div id="chatListView">
+                <h2>💬 Messages</h2>
+                <div class="chat-list">
+                    </div>
+            </div>
+
+            <div id="individualChatView" class="chat-container" style="display: none;">
+                <div class="chat-header">
+                    <button id="chatBackBtn">←</button>
+                    <h2 id="chatRecipientName">💬 Fixa Private Chat</h2>
+                    <button id="chatCallBtn" style="background:none; border:none; color:white; cursor:pointer; font-size: 1.2em;">📞</button>
+                </div>
+                <div id="messages">
+                    </div>
+                <div class="chat-input-container">
+                    <input type="text" id="text" placeholder="Type a message..." />
+                    <input type="file" id="media" accept="image/*,video/*" style="display: none;"> 
+                    <button onclick="document.getElementById('media').click()" style="width: 40px;">📎</button>
+                    <button id="sendBtn" type="submit">Send</button>   
+                </div>
+            </div>
+        </section>
+
+        <section id="historyPage" class="page">
+            <div class="job-history-container">
+                <h2>Your Job History</h2>
+                <div id="jobHistoryList" class="card-list">
+                    </div>
+            </div>
+        </section>
+
+        <section id="accountPage" class="page">
+            <div class="account-container">
+                <div class="profile-section">
+                    <img src="illustration 1.png" class="profile-img" alt="Artisan Profile Picture" />
+                    <p><span class="usernameDisplay"></span></p>
+                    <p>Email: <span id="emailDisplay"></span></p>
+                    <p>Phone: <span id="phoneDisplay"></span></p>
+                    <p class="verified-text">Status: <span class="verified"></span></p>
+                </div>
+
+                <div class="card-list">
+                    <a class="account-card" href='personal-info.html'>
+                        <div><h3>🪪 Personal Information</h3><p>Name, address, bio</p></div><span class="arrow">➔</span>
+                    </a>
+                    <a class="account-card" href='my-services.html'>
+                        <div><h3>🛠️ My Services</h3><p>Availability & Location</p></div><span class="arrow">➔</span>
+                    </a>
+                    <button class="account-card">
+                        <div><h3><svg width="24" height="20" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L20 6V12C20 17.5 16 21.74 12 22C8 21.74 4 17.5 4 12V6L12 2Z" fill="black"/><path d="M9.5 12.5L11.5 14.5L15 10.5" stroke="gold" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Verified Status</h3><p>Your trusted professional badge</p></div><span class="arrow">➔</span>
+                    </button>
+                    <button class="account-card" onclick="window.location.href='payout settings.html'">
+                        <div><h3> 💳 Payout Settings</h3><p>Manage Your bank Account for earnings</p></div><span class="arrow">➔</span>
+                    </button>
+                    <button class="account-card" onclick="window.location.href='security&privacy.html'">
+                        <div><h3>🔐 Security & Privacy</h3><p>Manage password and data</p></div><span class="arrow">➔</span>
+                    </button>
+                </div>
+
+                <div class="extra-links">
+                    <a href="help and support.html">Help & Support</a>
+                    <a href="about.html">About Fixa</a>
+                </div>
+
+                <button class="logout-btn" id="logout-btn">Logout</button>
+            </div>
+        </section>
+    </div>
+
+    <div class="bottom-nav">
+        <button class="nav-btn active" onclick="showPage('homePage', this)">
+            <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg> Home
+        </button>
+        <button class="nav-btn" onclick="showPage('jobsPage', this)">
+            <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg> Messages
+        </button>
+        <button class="nav-btn" onclick="showPage('historyPage', this)">
+            <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg> History
+        </button>
+        <button class="nav-btn" onclick="showPage('accountPage', this)">
+            <svg viewBox="0 0 24 24"><path d="M12 12c2.7 0 4.9-2.2 4.9-4.9S14.7 2.2 12 2.2 7.1 4.4 7.1 7.1 9.3 12 12 12zm0 2.2c-3 0-9 1.5-9 4.4V22h18v-3.4c0-2.9-6-4.4-9-4.4z"/></svg> Account
+        </button>
+    </div>
+
+    <script src='artisan-home.js'></script>
+</body>
+</html>

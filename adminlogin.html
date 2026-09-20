@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Fixa Admin Login</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #00172b;
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .card {
+      background: #002b45;
+      border: 1px solid rgba(255,215,0,0.2);
+      border-radius: 16px;
+      padding: 36px 32px;
+      width: 100%;
+      max-width: 380px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    }
+    .logo {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+    .logo span {
+      font-size: 28px;
+      font-weight: 900;
+      color: #ffd700;
+      letter-spacing: 1px;
+    }
+    .logo small {
+      display: block;
+      font-size: 11px;
+      color: rgba(255,255,255,0.4);
+      margin-top: 2px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+    h2 {
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    .field { margin-bottom: 14px; }
+    label {
+      display: block;
+      font-size: 11px;
+      font-weight: 700;
+      color: rgba(255,255,255,0.4);
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      margin-bottom: 6px;
+    }
+    input {
+      width: 100%;
+      padding: 11px 14px;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 10px;
+      color: #fff;
+      font-size: 14px;
+      outline: none;
+      transition: border 0.2s;
+    }
+    input:focus { border-color: rgba(255,215,0,0.5); }
+    input::placeholder { color: rgba(255,255,255,0.25); }
+    .btn {
+      width: 100%;
+      padding: 13px;
+      background: #ffd700;
+      color: #000;
+      border: none;
+      border-radius: 11px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 6px;
+      transition: all 0.2s;
+    }
+    .btn:hover:not(:disabled) { background: #e6c200; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .error {
+      background: rgba(239,68,68,0.15);
+      border: 1px solid rgba(239,68,68,0.3);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 12.5px;
+      color: #ef4444;
+      margin-top: 12px;
+      display: none;
+    }
+
+    /* ── TOTP panel ── */
+    #totpPanel { display: none; }
+    .totp-hint {
+      font-size: 12px;
+      color: rgba(255,255,255,0.45);
+      text-align: center;
+      margin-bottom: 16px;
+      line-height: 1.6;
+    }
+    .code-input {
+      font-size: 28px;
+      letter-spacing: 10px;
+      text-align: center;
+      font-weight: 700;
+    }
+
+    /* ── QR setup panel ── */
+    #setupPanel { display: none; }
+    .qr-wrap {
+      text-align: center;
+      margin: 16px 0;
+    }
+    .qr-wrap img {
+      width: 180px;
+      height: 180px;
+      border: 4px solid #ffd700;
+      border-radius: 12px;
+    }
+    .secret-box {
+      background: rgba(255,215,0,0.08);
+      border: 1px solid rgba(255,215,0,0.2);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 12px;
+      color: #ffd700;
+      word-break: break-all;
+      text-align: center;
+      margin-bottom: 14px;
+      font-family: monospace;
+    }
+    .setup-steps {
+      font-size: 12px;
+      color: rgba(255,255,255,0.5);
+      line-height: 1.8;
+      margin-bottom: 16px;
+      padding-left: 0;
+      list-style: none;
+    }
+    .setup-steps li::before { content: '→ '; color: #ffd700; }
+
+    .back-link {
+      display: block;
+      text-align: center;
+      margin-top: 14px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.3);
+      cursor: pointer;
+      text-decoration: underline;
+    }
+    .back-link:hover { color: #ffd700; }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <div class="logo">
+    <span>Fixa</span>
+    <small>Admin Panel</small>
+  </div>
+
+  <!-- ── STEP 1: Password ── -->
+  <div id="passwordPanel">
+    <h2>Sign In</h2>
+    <div class="field">
+      <label>Email</label>
+      <input type="email" id="email" placeholder="admin@fixa.ng" autocomplete="email"/>
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input type="password" id="password" placeholder="••••••••" autocomplete="current-password"/>
+    </div>
+    <button class="btn" id="loginBtn" onclick="submitLogin()">Continue</button>
+    <div class="error" id="loginError"></div>
+  </div>
+
+  <!-- ── STEP 2A: TOTP code ── -->
+  <div id="totpPanel">
+    <h2>🔐 Two-Factor Auth</h2>
+    <p class="totp-hint">
+      Open <strong>Google Authenticator</strong> and enter the 6-digit code for <em>Fixa Admin</em>.
+    </p>
+    <div class="field">
+      <label>Authenticator Code</label>
+      <input type="number" id="totpCode" class="code-input" placeholder="000000"
+             maxlength="6" autocomplete="one-time-code"
+             oninput="if(this.value.length>6)this.value=this.value.slice(0,6)"/>
+    </div>
+    <button class="btn" id="totpBtn" onclick="submitTotp()">Verify</button>
+    <div class="error" id="totpError"></div>
+    <span class="back-link" onclick="goBack()">← Back to login</span>
+  </div>
+
+  <!-- ── STEP 2B: First-time QR setup ── -->
+  <div id="setupPanel">
+    <h2>📱 Set Up Google Authenticator</h2>
+    <ul class="setup-steps">
+      <li>Install <strong>Google Authenticator</strong> on your phone</li>
+      <li>Tap the <strong>+</strong> button in the app</li>
+      <li>Scan the QR code below</li>
+      <li>Enter the 6-digit code to confirm</li>
+    </ul>
+    <div class="qr-wrap">
+      <img id="qrImage" src="" alt="QR Code"/>
+    </div>
+    <p style="font-size:11px;color:rgba(255,255,255,0.35);text-align:center;margin-bottom:6px">
+      Can't scan? Enter this key manually:
+    </p>
+    <div class="secret-box" id="manualSecret"></div>
+    <div class="field">
+      <label>Enter the 6-digit code to confirm</label>
+      <input type="number" id="setupCode" class="code-input" placeholder="000000"
+             maxlength="6"
+             oninput="if(this.value.length>6)this.value=this.value.slice(0,6)"/>
+    </div>
+    <button class="btn" id="confirmBtn" onclick="confirmSetup()">Enable 2FA & Sign In</button>
+    <div class="error" id="setupError"></div>
+  </div>
+</div>
+
+<script>
+  const BASE = 'http://localhost:5000/api/admin';
+  let _preAuthToken = null;
+  let _setupToken   = null;
+
+  function showError(elId, msg) {
+    const el = document.getElementById(elId);
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+  function hideError(elId) {
+    document.getElementById(elId).style.display = 'none';
+  }
+  function setLoading(btnId, loading, text = 'Continue') {
+    const btn = document.getElementById(btnId);
+    btn.disabled = loading;
+    btn.textContent = loading ? 'Please wait…' : text;
+  }
+  function showPanel(id) {
+    ['passwordPanel', 'totpPanel', 'setupPanel'].forEach(p => {
+      document.getElementById(p).style.display = p === id ? 'block' : 'none';
+    });
+  }
+  function goBack() {
+    _preAuthToken = null;
+    _setupToken   = null;
+    showPanel('passwordPanel');
+  }
+
+  // Handle Enter key on all inputs
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    const panel = document.querySelector('[id$="Panel"][style*="block"], [id$="Panel"]:not([style*="none"])');
+    if (document.getElementById('passwordPanel').style.display !== 'none') submitLogin();
+    else if (document.getElementById('totpPanel').style.display !== 'none') submitTotp();
+    else if (document.getElementById('setupPanel').style.display !== 'none') confirmSetup();
+  });
+
+  // ── Step 1: password submit ──
+  async function submitLogin() {
+    hideError('loginError');
+    const email    = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    if (!email || !password) {
+      showError('loginError', 'Email and password required');
+      return;
+    }
+
+    setLoading('loginBtn', true);
+    try {
+      const res  = await fetch(`${BASE}/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        showError('loginError', data.message || 'Login failed');
+        return;
+      }
+
+      if (data.requires2FA) {
+        _preAuthToken = data.preAuthToken;
+        showPanel('totpPanel');
+        setTimeout(() => document.getElementById('totpCode').focus(), 100);
+        return;
+      }
+
+      if (data.requires2FASetup) {
+        _setupToken = data.setupToken;
+        await loadQRCode();
+        showPanel('setupPanel');
+        return;
+      }
+
+      // Shouldn't reach here but handle gracefully
+      showError('loginError', 'Unexpected response from server');
+    } catch (err) {
+      showError('loginError', 'Network error — is the server running?');
+    } finally {
+      setLoading('loginBtn', false, 'Continue');
+    }
+  }
+
+  // ── Load QR code for first-time setup ──
+  async function loadQRCode() {
+    try {
+      const res  = await fetch(`${BASE}/2fa/setup`, {
+        headers: { Authorization: `Bearer ${_setupToken}` }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+      document.getElementById('qrImage').src = data.qr;
+      document.getElementById('manualSecret').textContent = data.secret;
+    } catch (err) {
+      showError('setupError', 'Failed to load QR: ' + err.message);
+    }
+  }
+
+  // ── Step 2A: verify TOTP ──
+  async function submitTotp() {
+    hideError('totpError');
+    const code = document.getElementById('totpCode').value.trim();
+    if (!code || code.length < 6) {
+      showError('totpError', 'Enter the full 6-digit code');
+      return;
+    }
+
+    setLoading('totpBtn', true, 'Verifying…');
+    try {
+      const res  = await fetch(`${BASE}/2fa/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ preAuthToken: _preAuthToken, code })
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        showError('totpError', data.message || 'Verification failed');
+        document.getElementById('totpCode').value = '';
+        document.getElementById('totpCode').focus();
+        return;
+      }
+
+      localStorage.setItem('adminToken', data.token);
+      window.location.href = 'admin-dashboard.html';
+    } catch (err) {
+      showError('totpError', 'Network error');
+    } finally {
+      setLoading('totpBtn', false, 'Verify');
+    }
+  }
+
+  // ── Step 2B: confirm first-time setup ──
+  async function confirmSetup() {
+    hideError('setupError');
+    const code = document.getElementById('setupCode').value.trim();
+    if (!code || code.length < 6) {
+      showError('setupError', 'Enter the 6-digit code from your authenticator app');
+      return;
+    }
+
+    setLoading('confirmBtn', true, 'Enabling…');
+    try {
+      const res  = await fetch(`${BASE}/2fa/confirm`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${_setupToken}`
+        },
+        body: JSON.stringify({ code })
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        showError('setupError', data.message || 'Invalid code');
+        document.getElementById('setupCode').value = '';
+        return;
+      }
+
+      localStorage.setItem('adminToken', data.token);
+      window.location.href = 'admin-dashboard.html';
+    } catch (err) {
+      showError('setupError', 'Network error');
+    } finally {
+      setLoading('confirmBtn', false, 'Enable 2FA & Sign In');
+    }
+  }
+</script>
+
+</body>
+</html>

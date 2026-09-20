@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confirm Your Booking</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+    <link rel="stylesheet" href="booking.css">
+</head>
+<body>
+    <div class="container">
+         <div class="logo-wrapper">
+      <img src="fixa-logo.png" alt="Hand holding spanner" class="logo-icon">
+      <div class="logo-text">Fixa</div>
+    </div>
+    
+        <h2>Confirm Your Booking</h2>
+        <div class="summary">
+            <div class="summary-item">
+                <span class="material-icons">person</span>
+                <b>Artisan:</b> <span id="artisanName"></span>
+            </div>
+            <div class="summary-item">
+                <span class="material-icons">work</span>
+                <b>Category:</b> <span id="category"></span>
+            </div>
+            <div class="summary-item">
+                <span class="material-icons">star_half</span>
+                <b>Difficulty:</b> <span id="difficulty"></span>
+            </div>
+            <div class="summary-item">
+                <span class="material-icons">schedule</span>
+                <b>Hours:</b> <span id="hours"></span>
+            </div>
+            <div class="total-price">
+                Estimated Price: ₦<span id="minPrice"></span> - ₦<span id="maxPrice"></span>
+            </div>
+        </div>
+
+        <form id="bookingForm">
+            <label for="description">Service Description</label>
+            <textarea id="description" required placeholder="Describe the service you need in detail."></textarea>
+
+            <label for="date">Preferred Date</label>
+            <input type="date" id="date" required>
+
+            <label for="time">Preferred Time</label>
+            <input type="time" id="time" required>
+
+            <label for="address">Customer Address</label>
+            <input type="text" id="address" required placeholder="Your street address, city, state">
+            <small id="addressHelpText" style="color: #ccc; font-size: 0.8rem; display: block; margin-top: 5px;"></small>
+
+            <button type="submit" id="submitBtn">
+                Submit Booking
+            </button>
+          
+        </form>
+    </div>
+</body><script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<script src="socket-connection.js"></script>
+<script src="booking.js"></script>
+
+</html>

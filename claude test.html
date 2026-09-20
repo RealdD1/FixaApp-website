@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fixa — Artisan Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="artisan test.css" />
+ 
+  <script src="http://localhost:5000/socket.io/socket.io.js"></script>
+</head>
+<body>
+<div id="app">
+
+  <!-- ─── HOME PAGE ──────────────────────────────────────────────────────── -->
+  <section id="homePage" class="page active">
+    <h1 class="logo">Fixa</h1>
+    <p class="welcome text-gray-300">Welcome, <span class="usernameDisplay font-semibold text-white"></span>!</p>
+
+    <div class="dashboard-summary-card">
+      <p class="mb-2" style="color:#ffc107">You are currently: <strong>Available for jobs</strong></p>
+      <div class="summary-grid">
+        <div class="summary-item"><strong>0</strong><span>Active Jobs</span></div>
+        <div class="summary-item"><strong>0</strong><span>New Requests</span></div>
+        <div class="summary-item" style="grid-column:span 2"><strong>₦0</strong><span>Total Earnings (This Month)</span></div>
+      </div>
+    </div>
+
+    <div class="job-requests-container">
+      <h3 class="text-lg font-semibold mb-2">New Job Requests</h3>
+      <p class="no-requests text-center text-gray-500 text-sm">No new requests found.</p>
+    </div>
+  </section>
+
+  <!-- ─── MESSAGES PAGE ──────────────────────────────────────────────────── -->
+  <section id="jobsPage" class="page">
+    <div class="flex flex-col md:flex-row gap-4 h-full">
+
+      <!-- Sidebar: chat list -->
+      <aside class="w-full md:w-80 border-b md:border-r border-gray-800 p-3 flex-shrink-0">
+        <div class="flex justify-between items-center mb-3">
+          <h2 class="text-xl font-bold">💬 Messages</h2>
+        </div>
+        <input id="chatSearch" placeholder="Search chats"
+          class="w-full p-2 rounded-lg bg-[#01283a] border border-gray-700 text-white mb-3 focus:ring-yellow-500 focus:border-yellow-500" />
+        <div class="chat-list h-[calc(100vh-220px)] overflow-y-auto"></div>
+      </aside>
+
+      <!-- Main: conversation -->
+      <main class="flex-1 flex flex-col h-[calc(100vh-80px)]">
+
+        <!-- Chat header -->
+        <header class="flex items-center gap-3 p-3 border-b border-gray-800 bg-[#011d2d]">
+          <div id="chatHeaderAvatar" class="w-11 h-11 rounded-full bg-gray-600 flex items-center justify-center text-white font-bold"></div>
+          <div class="flex-1">
+            <div id="chatRecipientName" class="font-bold text-lg">Select a chat</div>
+            <div id="chatRecipientSub" class="text-xs text-gray-400">Last seen just now</div>
+          </div>
+          <div id="typingIndicator" class="text-xs text-yellow-500 mr-2 hidden">typing…</div>
+          <button type="button" id="chatBackBtn"
+            class="md:hidden bg-transparent border border-gray-700 hover:bg-gray-800 text-white py-1 px-3 rounded-lg transition">Back</button>
+        </header>
+
+        <!-- Messages area -->
+        <section id="messages" aria-live="polite"
+          class="flex-1 overflow-y-auto p-4 bg-[#011d2d] flex flex-col">
+          <div class="text-center text-gray-500">Select a conversation to start.</div>
+        </section>
+
+        <!-- ✅ FIX: NO <form> wrapping the chat input — just a plain div -->
+        <footer class="p-3 border-t border-gray-800 bg-[#011223]">
+          <div id="chatInputContainer" class="flex gap-2 items-center">
+            <!-- ✅ type="button" on every button to prevent any implicit form submit -->
+            <button type="button" id="attachBtn" title="Attach Media"
+              class="p-2 rounded-full hover:bg-gray-800 transition text-white">📎</button>
+            <button type="button" id="voiceBtn" title="Record Voice Note"
+              class="p-2 rounded-full hover:bg-gray-800 transition text-white">🎙️</button>
+            <input id="text" type="text" placeholder="Type a message…"
+              class="flex-1 p-3 rounded-full bg-[#01283a] border border-gray-700 text-white focus:ring-yellow-500 focus:border-yellow-500" />
+            <!-- ✅ type="file" is NOT inside a form; change event calls sendMedia directly -->
+            <input id="media" type="file" accept="image/*,video/*,audio/*" style="display:none" />
+            <button type="button" id="sendBtn"
+              class="bg-yellow-500 hover:bg-yellow-400 border-none p-3 rounded-full text-gray-900 font-semibold transition">Send</button>
+          </div>
+        </footer>
+      </main>
+    </div>
+
+    <!-- Voice recording UI -->
+    <div id="voiceRecordingUI"
+      class="fixed bottom-24 left-1/2 -translate-x-1/2 hidden items-center gap-3 bg-[#011223] p-3 rounded-xl shadow-2xl border border-yellow-500">
+      <div id="voiceTimer" class="text-white font-mono text-lg">00:00</div>
+      <!-- ✅ type="button" to prevent any submit -->
+      <button type="button" id="voiceCancel"
+        class="bg-red-600 hover:bg-red-500 text-white border-none py-1.5 px-3 rounded-lg text-sm transition">Cancel</button>
+      <button type="button" id="voiceStop"
+        class="bg-green-600 hover:bg-green-500 text-white border-none py-1.5 px-3 rounded-lg text-sm transition">Stop & Send</button>
+    </div>
+  </section>
+
+  <!-- ─── HISTORY PAGE ────────────────────────────────────────────────────── -->
+  <section id="historyPage" class="page">
+    <div class="container" style="padding:20px;max-width:600px;margin:auto">
+      <h2 style="margin-bottom:20px;font-weight:600">My Bookings</h2>
+      <div class="tabs" id="customerTabs" style="display:flex;gap:8px;margin-bottom:20px;overflow-x:auto">
+        <div class="tab active" onclick="filterJobs('all',event)">All</div>
+        <div class="tab" onclick="filterJobs('ongoing',event)">Active</div>
+        <div class="tab" onclick="filterJobs('completed',event)">Completed</div>
+        <div class="tab" onclick="filterJobs('cancelled',event)">Cancelled</div>
+      </div>
+      <div id="jobList"><div class="empty-state">Loading your history…</div></div>
+    </div>
+
+    <!-- Modal -->
+    <div id="modal" class="modal" style="display:none;position:fixed;z-index:999;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,.6);align-items:center;justify-content:center">
+      <div class="modal-box" style="background:#00172b;padding:20px;width:90%;max-width:400px;border-radius:12px;position:relative">
+        <span class="close" onclick="closeModal()" style="position:absolute;right:15px;top:10px;font-size:20px;cursor:pointer">×</span>
+        <div id="modalContent"></div>
+        <div id="modalActions"></div>
+      </div>
+    </div>
+    <div id="toast"></div>
+
+    <script>
+    // History page inline script (unchanged from original — kept isolated)
+    const HIST_API  = 'http://localhost:5000/api/bookings/artisan';
+    const HIST_BASE = 'http://localhost:5000/api/bookings';
+    let histJobs = [];
+
+    function mapStatus(s) {
+      if (!s) return 'ongoing';
+      s = s.toLowerCase();
+      if (s === 'completed') return 'completed';
+      if (s === 'verifying') return 'verifying';
+      if (s === 'rejected' || s === 'cancelled') return 'cancelled';
+      return 'ongoing';
+    }
+
+    async function loadJobs() {
+      const token = localStorage.getItem('token');
+      const list  = document.getElementById('jobList');
+      if (!list) return;
+      try {
+        const res  = await fetch(HIST_API, { headers: { Authorization: `Bearer ${token}` } });
+        const data = await res.json();
+        if (!Array.isArray(data)) { list.innerHTML = '<div>No jobs found yet.</div>'; return; }
+        histJobs = data.map(j => ({
+          id:           j._id,
+          customerName: j.customerId?.username || 'Customer',
+          customerPic:  j.customerId?.profilePic ? `http://localhost:5000/${j.customerId.profilePic}` : 'http://localhost:5000/uploads/default-avatar.png',
+          service:      j.category || 'General Service',
+          status:       mapStatus(j.status),
+          price:        j.estimatedPrice ? `₦${Number(j.estimatedPrice).toLocaleString()}` : 'Price TBD',
+          date:         new Date(j.createdAt).toLocaleDateString(),
+        }));
+        renderJobs('all');
+      } catch (e) { if (list) list.innerHTML = '<div>⚠️ Failed to load jobs.</div>'; }
+    }
+
+    function renderJobs(filter) {
+      const list    = document.getElementById('jobList');
+      const filtered = histJobs.filter(j => filter === 'all' || j.status === filter);
+      if (!filtered.length) { list.innerHTML = '<div>No jobs found.</div>'; return; }
+      list.innerHTML = filtered.map(job => {
+        let btns = '';
+        if (job.status === 'ongoing')   btns = `<button class="btn-fill" onclick="openCompleteModal('${job.id}')">Complete Job</button>`;
+        else if (job.status === 'verifying') btns = `<button class="btn-outline" disabled>Waiting for Customer…</button>`;
+        else btns = `<button class="btn-fill" onclick="viewDetails('${job.id}')">View Details</button>`;
+        return `<div class="card ${job.status}" style="background:#0f2a44;padding:16px;border-radius:15px;margin-bottom:15px;border-left:5px solid ${job.status==='completed'?'#2ecc71':job.status==='ongoing'?'#f39c12':'#e74c3c'}">
+          <div style="display:flex;gap:12px"><img src="${job.customerPic}" style="width:50px;height:50px;border-radius:50%;object-fit:cover"/>
+          <div style="flex:1"><h4 style="color:#ffd700;margin:0">${job.service}</h4>
+          <div style="color:#a0aec0;font-size:14px">Customer: ${job.customerName}</div>
+          <div style="font-weight:bold;color:#fff;font-size:16px">${job.price}</div>
+          <div style="margin-top:10px;display:flex;gap:8px">${btns}</div>
+          </div></div></div>`;
+      }).join('');
+    }
+
+    function filterJobs(type, e) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      e.target.classList.add('active');
+      renderJobs(type);
+    }
+
+    async function openCompleteModal(id) {
+      document.getElementById('modalContent').innerHTML = '<h3>Confirm Completion</h3><p>This will notify the customer to confirm the job.</p>';
+      document.getElementById('modalActions').innerHTML = `<button class="btn-fill" onclick="markAsDone('${id}')">Yes, Continue</button>`;
+      document.getElementById('modal').style.display = 'flex';
+    }
+
+    async function markAsDone(id) {
+      const token = localStorage.getItem('token');
+      try {
+        const res = await fetch(`${HIST_BASE}/${id}/mark-done`, { method: 'PUT', headers: { Authorization: `Bearer ${token}` } });
+        if (!res.ok) throw new Error();
+        closeModal(); loadJobs();
+      } catch { alert('Failed'); }
+    }
+
+    async function viewDetails(id) {
+      const token = localStorage.getItem('token');
+      try {
+        const res = await fetch(`${HIST_BASE}/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+        const job = await res.json();
+        document.getElementById('modalContent').innerHTML = `<h3>${job.category}</h3><p><b>Description:</b> ${job.description}</p><p><b>Status:</b> ${job.status}</p><p><b>Price:</b> ₦${job.estimatedPrice}</p>`;
+        document.getElementById('modalActions').innerHTML = `<button class="btn-fill" onclick="closeModal()">Close</button>`;
+        document.getElementById('modal').style.display = 'flex';
+      } catch { alert('Failed to load details'); }
+    }
+
+    function closeModal() { document.getElementById('modal').style.display = 'none'; }
+    window.onclick = e => { if (e.target.id === 'modal') closeModal(); };
+
+    // loadJobs is exposed globally so chat-core.js can call it on page switch
+    window.loadJobs = loadJobs;
+    </script>
+  </section>
+
+  <!-- ─── ACCOUNT PAGE ────────────────────────────────────────────────────── -->
+  <section id="accountPage" class="page">
+    <div class="account-container">
+      <div class="profile-section">
+        <img src="illustration 1.png" class="profile-img" alt="Profile" />
+        <p><span class="usernameDisplay"></span></p>
+        <p>Email: <span id="emailDisplay"></span></p>
+        <p>Phone: <span id="phoneDisplay"></span></p>
+        <p>Status: <span id="verificationBadge" class="verification-badge"><span id="badgeIcon"></span> <span id="badgeText">Loading…</span></span></p>
+      </div>
+      <div class="card-list">
+        <a class="account-card" href="personal-info.html"><div><h3>🪪 Personal Information</h3><p>Name, address, bio</p></div><span class="arrow">➔</span></a>
+        <a class="account-card" href="my-services.html"><div><h3>🛠️ My Services</h3><p>Availability & Location</p></div><span class="arrow">➔</span></a>
+        <button type="button" class="account-card" onclick="window.location.href='payout settings.html'"><div><h3>💳 Payout Settings</h3><p>Manage bank account for earnings</p></div><span class="arrow">➔</span></button>
+        <button type="button" class="account-card" onclick="window.location.href='security&privacy.html'"><div><h3>🔐 Security & Privacy</h3><p>Manage password and data</p></div><span class="arrow">➔</span></button>
+      </div>
+      <div class="extra-links">
+        <a href="help and support.html">Help & Support</a>
+        <a href="about.html">About Fixa</a>
+      </div>
+      <button type="button" class="logout-btn" id="logout-btn">Logout</button>
+    </div>
+  </section>
+
+</div><!-- /#app -->
+
+<!-- Status toast -->
+<div id="status-message-box" class="hidden fixed top-4 right-4 z-50 transition-all duration-300"></div>
+
+<!-- Bottom nav — data-page attribute drives showPage() -->
+<nav class="bottom-nav fixed bottom-0 left-0 right-0 flex bg-[#00172b] border-t border-gray-800">
+  <button type="button" class="nav-btn active" data-page="homePage">Home</button>
+  <button type="button" class="nav-btn" data-page="jobsPage">Messages</button>
+  <button type="button" class="nav-btn" data-page="historyPage">History</button>
+  <button type="button" class="nav-btn" data-page="accountPage">Account</button>
+</nav>
+
+<!-- ✅ Load chat-core FIRST, then initialise for artisan role -->
+<script src="claude test.js"></script>
+<script src="chat-guard.js"></script>
+<script>
+  // Auth guard
+  const _rawUser = localStorage.getItem('user');
+  const _user    = _rawUser ? JSON.parse(_rawUser) : null;
+  const _token   = localStorage.getItem('token');
+  if (!_user || !_token || _user.role !== 'artisan') {
+    window.location.href = 'SignIn.html';
+  } else {
+    // ✅ Init the shared chat engine for artisan role
+    FixaChat.init({
+      role:    'artisan',
+      user:    _user,
+      token:   _token,
+      baseUrl: 'http://localhost:5000',
+      
+    });
+FixaSystem.init(socket, user, token, BASE_URL, 'artisan');
+    // Init ChatGuard
+    if (window.ChatGuard) {
+      window.ChatGuard.init(_user._id || _user.id || _user.userId, _token);
+    }
+  }
+</script> <script src="fixa-notification-system.js"></script>
+</body>
+</html>

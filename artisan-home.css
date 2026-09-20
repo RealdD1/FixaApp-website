@@ -1,0 +1,498 @@
+:root {
+    --primary-color: #ffc107; /* Gold */
+    --background-color: #00172b; /* Dark Blue */
+    --card-background: #002340; /* Slightly lighter dark blue */
+    --text-color: #e0e0e0; /* Light grey */
+    --text-secondary: #a0a0a0; /* Lighter grey */
+    --border-color: #333;
+    --border-radius: 12px;
+    --font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* General PWA Feel */
+body {
+    font-family: var(--font-family);
+    margin: 0;
+    background-color: var(--background-color);
+    color: var(--text-color);
+    padding-bottom: 80px; /* Space for the bottom nav */
+}
+   
+/* Base Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+.page {
+    display: none;
+    padding: 1.5rem;
+}
+
+.page.active {
+    display: block;
+}
+
+.logo {
+    font-size: 2rem;
+    font-weight: bold;
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+}
+
+.welcome {
+    font-size: 1.2rem;
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+}
+
+/* Cards & Sections */
+.dashboard-summary-card,
+.new-job-request-card,
+.upcoming-schedule-card,
+.job-details-card {
+    background: var(--card-background);
+    padding: 1.2rem;
+    border-radius: var(--border-radius);
+    margin-bottom: 1.5rem;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.dashboard-summary-card h3,
+.new-job-request-card h3,
+.job-details-card h2 {
+    color: var(--primary-color);
+    margin-bottom: 0.8rem;
+    font-weight: 600;
+}
+
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    text-align: center;
+}
+
+.summary-item {
+    background: #003055;
+    padding: 1rem;
+    border-radius: 8px;
+}
+
+.summary-item strong {
+    display: block;
+    font-size: 1.8rem;
+    color: #fff;
+    font-weight: bold;
+}
+
+.summary-item span {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.job-description {
+    color: var(--text-secondary);
+    font-style: italic;
+    margin: 0.5rem 0;
+}
+
+/* Buttons */
+.job-buttons,
+.job-status-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 1rem;
+}
+
+.accept-btn,
+.decline-btn,
+.call-btn,
+.chat-btn,
+.directions-btn {
+    padding: 0.8rem 1.2rem;
+    border: none;
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.accept-btn {
+    background: #38b45d;
+    color: #fff;
+    flex: 1;
+}
+.decline-btn {
+    background: #e74c3c;
+    color: #fff;
+    flex: 1;
+}
+.accept-btn:active, .decline-btn:active {
+    transform: scale(0.98);
+}
+
+/* Navigation */
+.bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    background: #001020;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    height: 70px;
+    border-top: 1px solid #111;
+    z-index: 1000;
+    padding-bottom: env(safe-area-inset-bottom);
+}
+
+.nav-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding-top: 8px;
+    cursor: pointer;
+    transition: color 0.3s ease;
+}
+
+.nav-btn.active {
+    color: var(--primary-color);
+}
+.nav-btn svg {
+    width: 24px;
+    height: 24px;
+    fill: currentColor; /* Use the button's color */
+}
+.nav-btn:active {
+    transform: scale(0.95);
+}
+
+/* Chat */
+#jobsPage {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    padding-bottom: 80px; /* Account for bottom nav */
+}
+
+#chatListView h2 {
+    color: #fff;
+    margin-bottom: 1rem;
+}
+
+.chat-list-item {
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    background: var(--card-background);
+    border-radius: 8px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: background 0.3s ease;
+}
+.chat-list-item:hover {
+    background: #003055;
+}
+
+.profile-img-small{
+    width: 50px;
+    height: 50%;
+    border-radius: 50%;
+    margin-right: 15px;
+}
+.profile-img{
+    border-radius: 50px;
+    border-color: #ffc107;
+    border-style: solid;
+}
+
+.chat-list-item-info strong {
+    display: block;
+    color: #fff;
+}
+.chat-list-item-info p {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.chat-container {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    background: var(--background-color);
+    padding: 1.5rem;
+}
+
+.chat-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+#chatBackBtn {
+    background: none;
+    border: none;
+    color: var(--primary-color);
+    font-size: 2em;
+    padding-right: 10px;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+#chatBackBtn:hover {
+    transform: translateX(-5px);
+}
+
+#chatRecipientName {
+    margin: 0;
+    color: #fff;
+}
+
+#messages {
+    flex-grow: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-right: 10px;
+}
+
+.message {
+    padding: 0.8rem 1rem;
+    border-radius: 20px;
+    max-width: 80%;
+    word-wrap: break-word;
+}
+.message.sender {
+    align-self: flex-end;
+    background: var(--primary-color);
+    color: #00172b;
+    border-bottom-right-radius: 5px;
+}
+.message.receiver {
+    align-self: flex-start;
+    background: #333;
+    color: #fff;
+    border-bottom-left-radius: 5px;
+}
+
+.chat-input-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 1rem;
+}
+
+#text {
+    flex-grow: 1;
+    padding: 0.8rem;
+    border-radius: 20px;
+    border: none;
+    background: #333;
+    color: #fff;
+}
+#text::placeholder {
+    color: var(--text-secondary);
+}
+
+#media {
+    flex-grow: 1;
+    color: var(--text-color);
+}
+.chat-input-container button {
+    background: var(--primary-color);
+    color: #00172b;
+    border: none;
+    border-radius: 20px;
+    padding: 0.8rem 1.2rem;
+    cursor: pointer;
+}
+.chat-input-container button:active {
+    transform: scale(0.95);
+}
+
+/* Account Page */
+.profile-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    margin-bottom: 2rem;
+}
+.profile-section img {
+    margin-bottom: 1rem;
+}
+.profile-section p {
+    margin: 0.2rem 0;
+    color: var(--text-secondary);
+}
+.profile-section .verified {
+    font-weight: bold;
+}
+
+.card-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.account-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--card-background);
+    color: #fff;
+    padding: 1rem;
+    border-radius: var(--border-radius);
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    transition: background 0.3s ease, transform 0.2s ease;
+    width: 100%;
+    text-align: left;
+}
+.account-card:hover {
+    background: #003055;
+}
+.account-card:active {
+    transform: scale(0.98);
+}
+
+.account-card h3 {
+    font-size: 1.1rem;
+    font-weight: 500;
+}
+.account-card p {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+.account-card svg {
+    fill: #fff;
+    margin-right: 10px;
+}
+.account-card .arrow {
+    font-size: 1.5rem;
+    color: var(--text-secondary);
+}
+
+.extra-links a {
+    display: block;
+    text-align: center;
+    margin: 1rem 0;
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 0.9rem;
+}
+
+.logout-btn {
+    background: #ffc107;
+    color: black;
+    border: none;
+    border-radius: 8px;
+    padding: 1rem;
+    font-size: 1rem;
+    font-weight: bold;
+    width: 100%;
+    cursor: pointer;
+}
+/* --- JOB REQUESTS CONTAINER STYLES --- */
+.job-requests-container {
+    max-height: 50vh; /* Make sure the container has a visible height */
+    overflow-y: auto;
+    padding: 10px;
+     color: white;
+    border-radius: 8px;
+    background-color: #f8f8f8; /* Light background for contrast */
+}
+
+/* --- INDIVIDUAL JOB CARD STYLES --- */
+.job-card {
+    /* Ensure the card is visible and takes up space */
+    display: flex;
+    color: white;
+    flex-direction: column;
+    padding: 15px;
+    margin-bottom: 15px;
+    border: 2px solid #ffc107; /* Highlight with yellow/gold color */
+    border-radius: 12px;
+    background-color:rgb(0, 23, 47); /* Very light yellow background */
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.job-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
+}
+
+.job-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid #ffc107;
+}
+
+.job-card h3 {
+    font-size: 1.1em;
+    font-weight: bold;
+    color: #00172b;
+}
+
+.job-card p {
+    font-size: 0.9em;
+    color: #333;
+    margin: 4px 0;
+}
+
+.job-actions {
+    margin-top: 10px;
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+.job-actions button {
+    padding: 8px 12px;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.accept-btn {
+    background-color: #38b45d;
+    color: white;
+}
+
+.decline-btn {
+    background-color: #e53935;
+    color: white;
+}
+
+.map-view-btn {
+    background-color: #1e88e5;
+    color: white;
+}
+
+.accept-btn:hover { background-color: #2e8b4e; }
+.decline-btn:hover { background-color: #c62828; }
+.map-view-btn:hover { background-color: #1565c0; }
+
+.timestamp {
+    font-size: 0.75em;
+    color: #666;
+}

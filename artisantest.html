@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <title>Fixa - Artisan Dashboard</title>
+  <link rel="stylesheet" href="artisan-home.css">
+  <script src="fixa-notification-system.js"></script>
+  <script src="chat-guard.js"></script>
+   <script src='artisantest.js'></script>
+  <style>
+    /* ────────────────────────────────────────
+       BASE PAGE LAYOUT
+       ──────────────────────────────────────── */
+.page {
+  display: none;
+  width: 100%;
+  min-height: 100%;
+}
+
+.page.active {
+  display: block;
+}
+
+/* ONLY pages that need flex should use this */
+.page.flex-page.active {
+  display: flex;
+}
+
+    /* Messages page is special — needs flex */
+    #jobsPage { padding: 0; }
+    #jobsPage.active { display: flex; flex-direction: column; }
+
+    /* ────────────────────────────────────────
+       MESSAGES SHELL — list + conversation
+       ──────────────────────────────────────── */
+    .messages-shell {
+      display: flex;
+      height: calc(100vh - 90px);
+      overflow: hidden;
+      position: relative;
+      width: 100%;
+    }
+
+    /* Chat list panel */
+    #chatListView {
+      width: 320px;
+      flex-shrink: 0;
+      border-right: 1px solid rgba(255,255,255,0.08);
+      display: flex;
+      flex-direction: column;
+      background: rgba(0,0,0,0.15);
+      transition: width 0.25s ease, transform 0.25s ease;
+      overflow: hidden;
+    }
+    #chatListView.collapsed { width: 0; }
+
+    .chat-list-header {
+      padding: 14px 18px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+    .chat-list-header h2 {
+      font-size: 17px;
+      font-weight: 700;
+      flex: 1;
+      margin: 0;
+    }
+    #totalUnreadBadge {
+      background: #ef4444;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 800;
+      min-width: 20px;
+      height: 20px;
+      border-radius: 999px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 0 6px;
+    }
+
+    .chat-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0;
+    }
+
+    /* Individual chat view */
+    #individualChatView {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      height: 100%;
+      background: #041b2b;
+    }
+
+    .chat-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      flex-shrink: 0;
+      background: rgba(255,255,255,0.03);
+    }
+
+    #chatBackBtn {
+      background: rgba(255,215,0,0.12);
+      border: 1px solid rgba(255,215,0,0.3);
+      color: #ffd700;
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    #chatAvatarHeader {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: #2a4a6b;
+      color: #fff;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 16px;
+    }
+
+    .chat-header-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    #chatRecipientName {
+      font-size: 15px;
+      font-weight: 700;
+      color: #fff;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    #convStatus {
+      font-size: 11px;
+      color: #9aa6b2;
+      margin-top: 2px;
+    }
+
+    #artisanDisputeBtn {
+      background: rgba(239,68,68,0.15);
+      color: #ef4444;
+      border: 1px solid rgba(239,68,68,0.3);
+      padding: 7px 10px;
+      border-radius: 10px;
+      font-weight: 700;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    /* Empty state when no chat selected */
+    .chat-empty-state {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #9aa6b2;
+      padding: 40px 20px;
+      text-align: center;
+    }
+    .chat-empty-state .icon {
+      font-size: 64px;
+      margin-bottom: 16px;
+      opacity: 0.3;
+    }
+
+    /* Messages container */
+    #messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px 10px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Typing indicator */
+    #typingIndicator {
+      padding: 4px 16px;
+      font-size: 11px;
+      color: #ffc107;
+      height: 20px;
+      flex-shrink: 0;
+      font-style: italic;
+    }
+
+    /* Banners — all need flex-shrink */
+    #artisanPaymentBanner,
+    #artisanSecuredBanner,
+    #peerBanBanner,
+    #executionPanel {
+      flex-shrink: 0;
+      margin: 8px 12px;
+      padding: 10px 14px;
+      border-radius: 12px;
+    }
+
+    #artisanPaymentBanner {
+      background: linear-gradient(90deg, rgba(255,215,0,.12), rgba(255,215,0,.05));
+      border: 1px solid rgba(255,215,0,.3);
+      display: none;
+      align-items: center;
+      gap: 10px;
+    }
+
+    #artisanSecuredBanner {
+      background: linear-gradient(90deg, rgba(34,197,94,.12), rgba(34,197,94,.05));
+      border: 1px solid rgba(34,197,94,.3);
+      display: none;
+      align-items: center;
+      gap: 10px;
+    }
+
+    #peerBanBanner {
+      background: rgba(239,68,68,0.08);
+      border: 1px solid rgba(239,68,68,0.25);
+      display: none;
+    }
+
+    /* Execution panel */
+    #executionPanel {
+      display: none;
+      background: rgba(0,212,255,0.06);
+      border: 1px solid rgba(0,212,255,0.25);
+    }
+
+    .exec-btn {
+      flex: 1;
+      padding: 8px;
+      border-radius: 8px;
+      border: 1px solid rgba(0,212,255,0.3);
+      background: rgba(0,212,255,0.1);
+      color: #00d4ff;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .exec-btn:disabled { cursor: not-allowed; }
+
+    /* Chat input */
+    .chat-input-container {
+      padding: 10px 12px;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+      background: rgba(0,0,0,0.2);
+    }
+    .chat-input-container input[type="text"] {
+      flex: 1;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: #fff;
+      border-radius: 999px;
+      padding: 10px 16px;
+      font-size: 14px;
+      outline: none;
+    }
+    .chat-input-container input[type="text"]:focus {
+      border-color: rgba(255,215,0,0.4);
+    }
+
+    /* Voice UI */
+    .voice-ui {
+      position: fixed;
+      bottom: 110px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #051e30;
+      border: 1px solid #ffd700;
+      border-radius: 16px;
+      padding: 12px 20px;
+      display: none;
+      align-items: center;
+      gap: 12px;
+      z-index: 400;
+      box-shadow: 0 8px 32px rgba(0,0,0,.4);
+    }
+    .voice-ui.active { display: flex; }
+    .voice-timer {
+      font-family: monospace;
+      font-size: 18px;
+      font-weight: 700;
+      color: #ffd700;
+    }
+
+    /* Chat item (in list) */
+    .chat-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      cursor: pointer;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      transition: background 0.15s;
+      position: relative;
+    }
+    .chat-item:hover {
+      background: rgba(255,255,255,0.04);
+    }
+    .chat-item.active {
+      background: rgba(255,215,0,0.06);
+      border-left: 3px solid #ffd700;
+    }
+    .chat-item.has-unread .chat-item-name {
+      color: #ffd700;
+    }
+
+    /* Status message toast */
+    #status-message-box {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 9000;
+      min-width: 320px;
+      max-width: 350px;
+      border-radius: 12px;
+      padding: 16px;
+      transition: opacity 0.4s;
+    }
+    #status-message-box.hidden { display: none; }
+
+    /* Mobile responsive */
+    @media (max-width: 768px) {
+      #chatListView {
+        position: absolute;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 100%;
+        z-index: 10;
+      }
+      #chatListView.collapsed {
+        transform: translateX(-100%);
+        width: 100%;
+      }
+      #individualChatView {
+        width: 100%;
+      }
+    }
+    /* History page */
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  overflow-x: auto;
+  padding-bottom: 5px;
+}
+.tab {
+  padding: 10px 18px;
+  border-radius: 25px;
+  background: #1a3a5a;
+  color: #fff;
+  cursor: pointer;
+  white-space: nowrap;
+  font-size: 14px;
+  transition: 0.3s;
+}
+.tab.active { background: #ffd700; color: black; font-weight: bold; }
+
+#jobList .card {
+  background: #0f2a44;
+  padding: 16px;
+  border-radius: 15px;
+  margin-bottom: 15px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+  border-left: 5px solid transparent;
+}
+#jobList .card.completed { border-left-color: #2ecc71; }
+#jobList .card.ongoing   { border-left-color: #f39c12; }
+#jobList .card.cancelled { border-left-color: #e74c3c; }
+#jobList .card.verifying { border-left-color: #3b82f6; }
+
+#jobList .card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+#jobList .card h4 { margin: 0; font-size: 18px; color: #ffd700; }
+
+#jobList .badge {
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 11px;
+  text-transform: uppercase;
+  font-weight: bold;
+}
+#jobList .badge.completed { background: rgba(46, 204, 113, 0.2); color: #2ecc71; }
+#jobList .badge.ongoing   { background: rgba(243, 156, 18, 0.2); color: #f39c12; }
+#jobList .badge.cancelled { background: rgba(231, 76, 60, 0.2); color: #e74c3c; }
+#jobList .badge.verifying { background: rgba(59, 130, 246, 0.2); color: #3b82f6; }
+
+#jobList .details { margin: 12px 0; color: #a0aec0; font-size: 14px; }
+#jobList .price { font-weight: bold; color: white; font-size: 16px; margin-top: 5px; }
+
+#jobList .btns { display: flex; gap: 10px; margin-top: 15px; }
+.btn-outline {
+  flex: 1; padding: 10px;
+  border: 1px solid #ffd700;
+  background: transparent;
+  color: #ffd700;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+}
+.btn-fill {
+  flex: 1; padding: 10px;
+  border: none;
+  background: #ffd700;
+  color: black;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+}
+.btn-outline:disabled, .btn-fill:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.history-modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0,0,0,0.6);
+  align-items: center;
+  justify-content: center;
+}
+.history-modal.open { display: flex; }
+.history-modal-box {
+  background: #00172b;
+  padding: 24px;
+  width: 90%;
+  max-width: 400px;
+  border-radius: 12px;
+  position: relative;
+  color: #fff;
+}
+.history-modal-close {
+  position: absolute;
+  right: 15px;
+  top: 10px;
+  font-size: 24px;
+  cursor: pointer;
+  color: #fff;
+}
+
+.empty-state {
+  text-align: center;
+  color: #9aa6b2;
+  padding: 40px 20px;
+}
+  </style>
+</head>
+<body>
+  <div id="app">
+
+    <!-- ═══════════════════════ HOME PAGE ═══════════════════════ -->
+    <section id="homePage" class="page active">
+      <h1 class="logo">Fixa</h1>
+      <p class="welcome">Welcome, <span class="usernameDisplay"></span>!</p>
+
+      <div class="dashboard-summary-card">
+        <p style="color: #ffc107;">You are currently: <strong>Available for jobs</strong></p>
+        <div class="summary-grid">
+          <div class="summary-item">
+            <strong>0</strong>
+            <span>Active Jobs</span>
+          </div>
+          <div class="summary-item">
+            <strong>0</strong>
+            <span>New Requests</span>
+          </div>
+          <div class="summary-item" style="grid-column: span 2;">
+            <strong>₦0</strong>
+            <span>Total Earnings (This Month)</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="job-requests-container"></div>
+    </section>
+
+    <!-- ═══════════════════════ MESSAGES PAGE ═══════════════════════ -->
+    <section id="jobsPage" class="page">
+      <div class="messages-shell">
+
+        <!-- ───── Chat list (collapsible) ───── -->
+        <div id="chatListView">
+          <div class="chat-list-header">
+            <h2>💬 Messages</h2>
+            <span id="totalUnreadBadge"></span>
+          </div>
+          <div class="chat-list"></div>
+        </div>
+
+        <!-- ───── Individual chat ───── -->
+        <div id="individualChatView">
+
+          <!-- Chat header (hidden until a chat is selected) -->
+          <div class="chat-header" id="chatHeaderRow" style="display:none">
+            <button type="button" id="chatBackBtn" title="Show chat list">←</button>
+            <div id="chatAvatarHeader">?</div>
+            <div class="chat-header-info">
+              <div id="chatRecipientName">Chat</div>
+              <div id="convStatus">⚫ Offline</div>
+            </div>
+            <button type="button" id="artisanDisputeBtn" title="Report a problem" style="display:none">🚨</button>
+          </div>
+
+          <!-- Peer banned banner -->
+          <div id="peerBanBanner">
+            <div style="display:flex;align-items:flex-start;gap:10px">
+              <span style="font-size:18px">⚠️</span>
+              <div style="flex:1">
+                <div id="peerBanTitle" style="font-size:13px;font-weight:700;color:#ef4444">Customer messaging restricted</div>
+                <div id="peerBanReason" style="font-size:11px;color:rgba(255,255,255,0.6);margin-top:3px;line-height:1.45"></div>
+                <div id="peerBanCountdown" style="margin-top:8px;display:flex;gap:6px"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Payment deadline banner -->
+          <div id="artisanPaymentBanner">
+            <span style="font-size:18px">⏳</span>
+            <div style="flex:1">
+              <div style="font-size:11px;color:#ffc107;font-weight:700;text-transform:uppercase;letter-spacing:0.5px">Awaiting Payment</div>
+              <div style="font-size:11px;color:rgba(255,255,255,0.7);margin-top:2px">Customer has time to pay — chat is in booked state</div>
+            </div>
+            <div id="artisanTimerDisplay" style="font-family:monospace;font-size:20px;font-weight:800;color:#ffc107">--:--</div>
+          </div>
+
+          <!-- Escrow secured banner -->
+          <div id="artisanSecuredBanner">
+            <span style="font-size:18px">🔒</span>
+            <div>
+              <div style="font-size:12px;font-weight:700;color:#22c55e">Payment Secured</div>
+              <div style="font-size:11px;color:rgba(255,255,255,0.7);margin-top:2px">Funds held in escrow. Voice notes & location are unlocked.</div>
+            </div>
+          </div>
+
+          <!-- Execution status panel -->
+          <div id="executionPanel">
+            <div style="font-size:12px;font-weight:700;color:#00d4ff;margin-bottom:10px">📍 Update Job Status</div>
+            <div style="display:flex;gap:6px;margin-bottom:10px">
+              <button type="button" id="execOnTheWay" class="exec-btn" data-status="on_the_way">🚗 On the way</button>
+              <button type="button" id="execStarted" class="exec-btn" data-status="started">🔧 Started</button>
+              <button type="button" id="execCompleted" class="exec-btn" data-status="completed">✨ Completed</button>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <select id="proofPhotoType" style="flex:1;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:6px;color:#fff;font-size:11px">
+                <option value="before">Before</option>
+                <option value="during" selected>During</option>
+                <option value="after">After</option>
+              </select>
+              <button type="button" id="uploadProofBtn" style="background:rgba(255,215,0,0.15);color:#ffd700;border:1px solid rgba(255,215,0,0.3);padding:7px 12px;border-radius:8px;font-weight:700;font-size:11px;cursor:pointer">📸 Upload Photo</button>
+              <input type="file" id="proofPhotoInput" accept="image/*" style="display:none"/>
+            </div>
+          </div>
+
+          <!-- Empty state -->
+          <div class="chat-empty-state" id="chatEmptyState">
+            <div class="icon">💬</div>
+            <div style="font-size:15px;font-weight:600;margin-bottom:6px">Select a chat</div>
+            <div style="font-size:12px;opacity:0.7">Choose a conversation from the list to start chatting</div>
+          </div>
+
+          <!-- Messages -->
+          <div id="messages" style="display:none"></div>
+
+          <!-- Typing indicator -->
+          <div id="typingIndicator"></div>
+
+          <!-- Chat input -->
+          <div class="chat-input-container" id="chatFooter" style="display:none">
+            <input type="file" id="media" accept="image/*,video/*" style="display:none">
+            <button type="button" id="attachBtn" title="Attach file" style="background:none;border:none;color:#9aa6b2;cursor:pointer;font-size:20px">📎</button>
+            <button type="button" id="voiceBtn" title="Voice note" style="background:none;border:none;color:#9aa6b2;cursor:pointer;font-size:20px">🎤</button>
+            <input type="text" id="text" placeholder="Type a message..." autocomplete="off"/>
+            <button type="button" id="sendBtn" style="background:#ffd700;color:#000;border:none;padding:10px 18px;border-radius:999px;font-weight:700;cursor:pointer">Send</button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ═══════════════════════ HISTORY PAGE ═══════════════════════ -->
+    <section id="historyPage" class="page">
+  <div style="padding: 20px; max-width: 600px; margin: auto;">
+    <h2 style="margin-bottom: 20px; font-weight: 600;">My Bookings</h2>
+
+    <div class="tabs" id="historyTabs">
+      <div class="tab active" data-filter="all">All</div>
+      <div class="tab" data-filter="ongoing">Active</div>
+      <div class="tab" data-filter="completed">Completed</div>
+      <div class="tab" data-filter="cancelled">Cancelled</div>
+    </div>
+
+    <div id="jobList">
+      <div class="empty-state">Loading your history...</div>
+    </div>
+  </div>
+
+  <!-- History modal -->
+  <div id="historyModal" class="history-modal">
+    <div class="history-modal-box">
+      <span class="history-modal-close" id="historyModalClose">×</span>
+      <div id="historyModalContent"></div>
+      <div id="historyModalActions"></div>
+    </div>
+  </div>
+</section>
+    
+
+    <!-- ═══════════════════════ ACCOUNT PAGE ═══════════════════════ -->
+    <section id="accountPage" class="page">
+      <div class="account-container">
+        <div class="profile-section">
+          <img src="illustration 1.png" class="profile-img" alt="Profile" />
+          <p><span class="usernameDisplay"></span></p>
+          <p>Email: <span id="emailDisplay"></span></p>
+          <p>Phone: <span id="phoneDisplay"></span></p>
+        </div>
+
+        <div class="card-list">
+          <a class="account-card" href='personal-info.html'>
+            <div><h3>🪪 Personal Information</h3><p>Name, address, bio</p></div><span class="arrow">➔</span>
+          </a>
+          <a class="account-card" href='my-services.html'>
+            <div><h3>🛠️ My Services</h3><p>Availability & Location</p></div><span class="arrow">➔</span>
+          </a>
+          <button class="account-card" onclick="window.location.href='payout settings.html'">
+            <div><h3>💳 Payout Settings</h3><p>Manage Your bank Account for earnings</p></div><span class="arrow">➔</span>
+          </button>
+          <button class="account-card" onclick="window.location.href='security&privacy.html'">
+            <div><h3>🔐 Security & Privacy</h3><p>Manage password and data</p></div><span class="arrow">➔</span>
+          </button>
+        </div>
+
+        <button class="logout-btn" id="logout-btn">Logout</button>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- Voice recording UI -->
+  <div class="voice-ui" id="voiceRecordingUI">
+    <div style="font-size:20px;color:#ef4444">🔴</div>
+    <div class="voice-timer" id="voiceTimer">00:00</div>
+    <button type="button" id="voiceCancelBtn" style="background:rgba(239,68,68,0.15);border:1px solid #ef4444;color:#ef4444;padding:7px 14px;border-radius:8px;font-weight:700;cursor:pointer;font-size:12px">Cancel</button>
+    <button type="button" id="voiceStopBtn" style="background:rgba(34,197,94,0.15);border:1px solid #22c55e;color:#22c55e;padding:7px 14px;border-radius:8px;font-weight:700;cursor:pointer;font-size:12px">Send ✓</button>
+  </div>
+
+  <!-- Status toast -->
+  <div id="status-message-box" class="hidden"></div>
+
+  <!-- Ban overlay -->
+  <div id="banOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:9999;align-items:center;justify-content:center;padding:20px">
+    <div style="max-width:400px;width:100%;background:#0a1f33;border:1px solid rgba(255,59,92,0.3);border-radius:20px;padding:30px;text-align:center">
+      <div style="font-size:48px;margin-bottom:14px">🚫</div>
+      <h2 id="banTitle" style="color:#ff3b5c;font-size:20px;margin-bottom:10px">Messaging Suspended</h2>
+      <p id="banReason" style="color:rgba(255,255,255,0.7);font-size:13px;line-height:1.5;margin-bottom:20px"></p>
+      <div id="banCountdownCard" style="background:rgba(255,59,92,0.08);border:1px solid rgba(255,59,92,0.2);border-radius:12px;padding:16px;margin-bottom:20px">
+        <div style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:10px;text-transform:uppercase;letter-spacing:1px">Time remaining</div>
+        <div style="display:flex;justify-content:center;gap:8px">
+          <div style="background:rgba(0,0,0,0.3);border-radius:8px;padding:8px 10px;min-width:50px">
+            <div id="banDays" style="font-size:22px;font-weight:800;color:#fff;font-family:monospace">00</div>
+            <div style="font-size:9px;color:rgba(255,255,255,0.4);text-transform:uppercase">Days</div>
+          </div>
+          <div style="background:rgba(0,0,0,0.3);border-radius:8px;padding:8px 10px;min-width:50px">
+            <div id="banHours" style="font-size:22px;font-weight:800;color:#fff;font-family:monospace">00</div>
+            <div style="font-size:9px;color:rgba(255,255,255,0.4);text-transform:uppercase">Hrs</div>
+          </div>
+          <div style="background:rgba(0,0,0,0.3);border-radius:8px;padding:8px 10px;min-width:50px">
+            <div id="banMins" style="font-size:22px;font-weight:800;color:#fff;font-family:monospace">00</div>
+            <div style="font-size:9px;color:rgba(255,255,255,0.4);text-transform:uppercase">Min</div>
+          </div>
+          <div style="background:rgba(0,0,0,0.3);border-radius:8px;padding:8px 10px;min-width:50px">
+            <div id="banSecs" style="font-size:22px;font-weight:800;color:#ffc107;font-family:monospace">00</div>
+            <div style="font-size:9px;color:rgba(255,255,255,0.4);text-transform:uppercase">Sec</div>
+          </div>
+        </div>
+      </div>
+      <button type="button" id="banLogoutBtn" style="background:rgba(255,59,92,0.15);color:#ff3b5c;border:1px solid rgba(255,59,92,0.3);padding:10px 20px;border-radius:10px;font-weight:700;cursor:pointer;width:100%">Log out</button>
+    </div>
+  </div>
+
+  <!-- Bottom nav -->
+  <div class="bottom-nav">
+    <button class="nav-btn active" onclick="showPage('homePage', this)">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+      <span style="font-size:11px">Home</span>
+    </button>
+    <button class="nav-btn" onclick="showPage('jobsPage', this)" style="position:relative">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+      <span style="font-size:11px">Messages</span>
+      <span id="navUnreadBadge" style="position:absolute;top:-4px;right:25%;background:#ef4444;color:#fff;font-size:9px;font-weight:800;min-width:16px;height:16px;border-radius:999px;display:none;align-items:center;justify-content:center;padding:0 4px"></span>
+    </button>
+    <button class="nav-btn" onclick="showPage('historyPage', this)">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+      <span style="font-size:11px">History</span>
+    </button>
+    <button class="nav-btn" onclick="showPage('accountPage', this)">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12 12c2.7 0 4.9-2.2 4.9-4.9S14.7 2.2 12 2.2 7.1 4.4 7.1 7.1 9.3 12 12 12zm0 2.2c-3 0-9 1.5-9 4.4V22h18v-3.4c0-2.9-6-4.4-9-4.4z"/></svg>
+      <span style="font-size:11px">Account</span>
+    </button>
+  </div>
+<script>
+(function () {
+  'use strict';
+
+  const HIST_API   = 'http://localhost:5000/api/bookings/artisan';
+  const HIST_BASE  = 'http://localhost:5000/api/bookings';
+  let _historyJobs = [];
+  let _currentFilter = 'all';
+
+  function mapStatus(s) {
+    if (!s) return 'ongoing';
+    s = s.toLowerCase();
+    if (s === 'completed') return 'completed';
+    if (s === 'verifying') return 'verifying';
+    if (s === 'rejected' || s === 'cancelled') return 'cancelled';
+    return 'ongoing';
+  }
+
+  async function loadJobs() {
+    const token = localStorage.getItem('token');
+    const list = document.getElementById('jobList');
+    if (!list) return;
+    list.innerHTML = '<div class="empty-state">Loading your history...</div>';
+
+    try {
+      const res = await fetch(HIST_API, { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      if (!Array.isArray(data)) {
+        list.innerHTML = '<div class="empty-state">No jobs found yet.</div>';
+        return;
+      }
+
+      _historyJobs = data.map(j => ({
+        id: j._id,
+        customerName: j.customerId?.username || 'Customer',
+        customerPic: j.customerId?.profilePic
+          ? `http://localhost:5000/${j.customerId.profilePic}`
+          : 'http://localhost:5000/uploads/default-avatar.png',
+        service: j.category || 'General Service',
+        status: mapStatus(j.status),
+        price: j.estimatedPrice ? `₦${Number(j.estimatedPrice).toLocaleString()}` : 'Price TBD',
+        date: new Date(j.createdAt).toLocaleDateString()
+      }));
+
+      renderJobs(_currentFilter);
+    } catch (err) {
+      console.error('[history loadJobs]', err);
+      list.innerHTML = '<div class="empty-state">⚠️ Failed to load jobs.</div>';
+    }
+  }
+  window.loadJobs = loadJobs;  // expose so showPage('historyPage') can call it
+
+  function renderJobs(filter) {
+    _currentFilter = filter;
+    const list = document.getElementById('jobList');
+    if (!list) return;
+    const filtered = _historyJobs.filter(j => filter === 'all' || j.status === filter);
+    if (!filtered.length) {
+      list.innerHTML = '<div class="empty-state">No jobs found.</div>';
+      return;
+    }
+    list.innerHTML = filtered.map(job => {
+      let actions = '';
+      if (job.status === 'ongoing') {
+        actions = `
+          <button class="btn-outline" data-action="message" data-id="${job.id}">Message</button>
+          <button class="btn-fill" data-action="complete" data-id="${job.id}">Complete Job</button>`;
+      } else if (job.status === 'verifying') {
+        actions = `<button class="btn-outline" disabled>Waiting for Customer...</button>`;
+      } else {
+        actions = `<button class="btn-fill" data-action="details" data-id="${job.id}">View Details</button>`;
+      }
+      return `
+        <div class="card ${job.status}">
+          <div style="display:flex; gap:12px;">
+            <img src="${job.customerPic}" style="width:50px;height:50px;border-radius:50%;object-fit:cover;" />
+            <div style="flex:1;">
+              <div class="card-header">
+                <h4>${job.service}</h4>
+                <span class="badge ${job.status}">${job.status}</span>
+              </div>
+              <div class="details">
+                <div>Customer: ${job.customerName}</div>
+                <div style="font-size:12px;margin-top:4px;">Date: ${job.date}</div>
+                <div class="price">${job.price}</div>
+              </div>
+              <div class="btns">${actions}</div>
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  function showHistoryToast(msg, type) {
+    if (window.showStatusMessage) window.showStatusMessage(msg, type);
+    else console.log(`[${type}]`, msg);
+  }
+
+  async function markAsDone(id) {
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetch(`${HIST_BASE}/${id}/mark-done`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error();
+      closeHistoryModal();
+      showHistoryToast('Waiting for customer confirmation ⏳', 'success');
+      loadJobs();
+    } catch {
+      showHistoryToast('Failed', 'error');
+    }
+  }
+
+  async function viewDetails(id) {
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetch(`${HIST_BASE}/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+      const job = await res.json();
+      document.getElementById('historyModalContent').innerHTML = `
+        <h3 style="color:#ffd700;margin-bottom:14px">${job.category}</h3>
+        <p style="margin:6px 0"><b>Description:</b> ${job.description || 'N/A'}</p>
+        <p style="margin:6px 0"><b>Status:</b> ${job.status}</p>
+        <p style="margin:6px 0"><b>Price:</b> ₦${Number(job.estimatedPrice || 0).toLocaleString()}</p>
+        <p style="margin:6px 0"><b>Address:</b> ${job.address || 'N/A'}</p>`;
+      document.getElementById('historyModalActions').innerHTML =
+        `<button class="btn-fill" id="historyDetailsClose" style="margin-top:18px">Close</button>`;
+      document.getElementById('historyModal').classList.add('open');
+      document.getElementById('historyDetailsClose').onclick = closeHistoryModal;
+    } catch {
+      showHistoryToast('Failed to load details', 'error');
+    }
+  }
+
+  function openCompleteModal(id) {
+    document.getElementById('historyModalContent').innerHTML = `
+      <h3 style="color:#ffd700;margin-bottom:10px">Confirm Completion</h3>
+      <p style="color:#a0aec0;font-size:13.5px">This will notify the customer to confirm the job. Funds release after their confirmation.</p>`;
+    document.getElementById('historyModalActions').innerHTML = `
+      <div style="display:flex;gap:10px;margin-top:18px">
+        <button class="btn-outline" id="historyCancelBtn">Cancel</button>
+        <button class="btn-fill" id="historyConfirmBtn">Yes, Continue</button>
+      </div>`;
+    document.getElementById('historyModal').classList.add('open');
+    document.getElementById('historyCancelBtn').onclick = closeHistoryModal;
+    document.getElementById('historyConfirmBtn').onclick = () => markAsDone(id);
+  }
+
+  function closeHistoryModal() {
+    document.getElementById('historyModal').classList.remove('open');
+  }
+//  Rating
+let _ratingContext = null; // { bookingId, artisanId, artisanName }
+let _selectedRating = 0;
+
+function openRatingModal({ bookingId, artisanId, artisanName }) {
+  _ratingContext = { bookingId, artisanId };
+  _selectedRating = 0;
+  document.getElementById('ratingArtisanName').textContent = artisanName || 'your artisan';
+  document.getElementById('ratingComment').value = '';
+  document.querySelectorAll('#starRow .star').forEach(s => s.style.color = '#4a5568');
+  document.getElementById('fixaRatingModal').style.display = 'flex';
+}
+  // Delegated event handlers
+  document.addEventListener('click', (e) => {
+    // Tab clicks
+    const tab = e.target.closest('#historyTabs .tab');
+    if (tab) {
+      document.querySelectorAll('#historyTabs .tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      renderJobs(tab.dataset.filter);
+      return;
+    }
+    // Card action buttons
+    const btn = e.target.closest('[data-action]');
+    if (btn) {
+      const id = btn.dataset.id;
+      if (btn.dataset.action === 'message') {
+        if (window.openChat) window.openChat(id, 'Customer');
+        if (window.showPage) {
+          window.showPage('jobsPage', document.querySelectorAll('.nav-btn')[1]);
+        }
+      }
+      if (btn.dataset.action === 'complete') openCompleteModal(id);
+      if (btn.dataset.action === 'details')  viewDetails(id);
+    }
+    // Modal close (×) + backdrop click
+    if (e.target.id === 'historyModalClose' || e.target.id === 'historyModal') {
+      closeHistoryModal();
+    }
+  });
+
+  // Listen for completion events on the main socket (no duplicate socket!)
+  function attachToSharedSocket() {
+    if (!window.socket) {
+      setTimeout(attachToSharedSocket, 500);
+      return;
+    }
+    window.socket.on('bookingCompleted', () => {
+      showHistoryToast('Customer confirmed completion! 🎉', 'success');
+      if (document.getElementById('historyPage').classList.contains('active')) {
+        loadJobs();
+      }
+    });
+  }
+  attachToSharedSocket();
+})();
+</script>
+ 
+</body>
+</html>
