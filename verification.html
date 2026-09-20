@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Artisan Verification | Fixa</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: rgb(0,23,43);
+      color: #FFD700; /* gold */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      background: #001d36;
+      padding: 25px;
+      border-radius: 15px;
+      width: 100%;
+      max-width: 450px;
+      box-shadow: 0 0 15px rgba(255,215,0,0.2);
+    }
+
+    h2 {
+      text-align: center;
+      margin-bottom: 20px;
+      color: #FFD700;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 600;
+      color: #fff;
+      margin-top: 10px;
+    }
+
+    input[type="text"], input[type="file"], select {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 15px;
+      border: none;
+      border-radius: 8px;
+      background: #012b50;
+      color: #fff;
+    }
+
+    input[type="file"] {
+      padding: 5px 10px;
+    }
+    
+    input[type="radio"] {
+        width: auto;
+        margin-right: 5px;
+        margin-bottom: 0;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      background: #FFD700;
+      color: #001d36;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: all 0.2s ease;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    button:hover:not(:disabled) {
+      background: #e6c200;
+    }
+
+    button:active:not(:disabled) {
+      transform: scale(0.97);
+    }
+
+    button:disabled {
+      background: #aaa;
+      cursor: not-allowed;
+    }
+
+    video, canvas, img {
+      width: 100%;
+      border-radius: 10px;
+      margin-bottom: 10px;
+      background-color: #012b50;
+    }
+
+    .status {
+      text-align: center;
+      margin-top: 10px;
+      color: white;
+      min-height: 20px;
+    }
+    
+    /* Specific styles for Status Card */
+    .status-badge {
+        display: inline-block;
+        padding: 5px 15px;
+        border-radius: 15px;
+        font-weight: bold;
+        color: #001d36;
+        text-transform: uppercase;
+        margin-top: 15px;
+    }
+    .status-pending { background: #FFD700; }
+    .status-approved { background: #4CAF50; color: white;}
+    .status-rejected { background: #F44336; color: white;}
+
+
+    /* Modal Styling */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+
+    .modal-content {
+      background: #001d36;
+      padding: 30px;
+      border-radius: 10px;
+      max-width: 90%;
+      width: 350px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div id="loadingSpinner" style="text-align: center; padding: 50px; color: white;">
+        <svg class="animate-spin h-8 w-8 text-gold mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <p class="mt-3">Checking verification status...</p>
+    </div>
+
+    <div id="verificationFormContainer" class="hidden">
+        <h2>Artisan Verification</h2>
+        <form id="verificationForm" enctype="multipart/form-data">
+          <label for="idType">Select ID Type</label>
+          <select id="idType" name="idType" required>
+            <option value="">-- Choose ID Type --</option>
+            <option value="NIN">NIN</option>
+            <option value="Driver’s License">Driver’s License</option>
+            <option value="Passport">Passport</option>
+          </select>
+
+          <label for="idNumber">ID Number</label>
+          <input type="text" id="idNumber" name="idNumber" placeholder="Enter ID number" required />
+
+          <label for="idImage">Upload ID Image</label>
+          <input type="file" id="idImage" name="idImage" accept="image/*" required />
+
+          <label for="profileImage">Upload Profile Photo</label>
+          <input type="file" id="profileImage" name="profileImage" accept="image/*" required />
+
+          <label>Proof of Skill or Certificate</label>
+          <div id="proofOptions" style="border: 1px solid #012b50; padding: 10px; border-radius: 8px; margin-bottom: 15px;">
+              <div style="display: flex; justify-content: space-around; margin-bottom: 10px;">
+                  <label for="radioWork" style="font-weight: normal; margin-top: 0;">
+                    <input type="radio" name="proofType" value="work_sample" id="radioWork" checked> Work Sample Photo
+                  </label>
+                  <label for="radioCert" style="font-weight: normal; margin-top: 0;">
+                    <input type="radio" name="proofType" value="certificate" id="radioCert"> Certificate Image
+                  </label>
+              </div>
+              
+              <div id="workUpload">
+                <label for="workSampleImage" style="font-weight: 600;">Upload Work Sample</label>
+                <input type="file" id="workSampleImage" name="proofImage" accept="image/*" required />
+              </div>
+              
+              <div id="certificateUpload" style="display:none;">
+                <label for="certificateImage" style="font-weight: 600;">Upload Certificate</label>
+                <input type="file" id="certificateImage" name="proofImage" accept="image/*" />
+              </div>
+          </div>
+
+          <label>Take Live Selfie (Liveness Check)</label>
+          <video id="camera" autoplay playsinline></video>
+          <img id="selfiePreview" style="display:none;" alt="Selfie Preview" />
+          <div style="display: flex; gap: 10px;">
+            <button type="button" id="captureBtn">📸 Capture Selfie</button>
+            <button type="button" id="retakeBtn" style="display:none;">🔁 Retake</button>
+          </div>
+          <canvas id="snapshot" style="display:none;"></canvas>
+          <input type="hidden" id="liveFaceImage" name="liveFaceImage" />
+
+          <button type="submit" id="submitBtn" style="margin-top:15px;">Submit Verification</button>
+          <div class="status" id="statusMsg"></div>
+        </form>
+    </div>
+
+    <div id="verificationStatusCard" class="hidden">
+        <h2 class="text-2xl">Verification Status</h2>
+        <div class="p-4 rounded-lg text-white" style="background: #012b50;">
+            <p class="text-sm text-gray-400">Request Submitted:</p>
+            <p id="submittedAt" class="text-lg mb-4"></p>
+            
+            <p class="text-sm text-gray-400">ID Type:</p>
+            <p id="idTypeStatus" class="text-lg mb-4 font-semibold"></p>
+            
+            <p class="text-sm text-gray-400">Review Comments:</p>
+            <p id="comments" class="text-md mb-4 italic text-gray-300">Awaiting reviewer comments...</p>
+
+            <div class="text-center">
+                <span id="statusBadge" class="status-badge"></span>
+            </div>
+            
+            <div id="rejectionNote" class="mt-4 p-3 rounded text-center" style="background: #F44336; display: none;">
+                <p class="font-bold">You can resubmit!</p>
+                <p class="text-sm">Your previous request was rejected. Please review the comments and try again.</p>
+                <button type="button" id="resubmitBtn" class="mt-3" style="width: 50%; padding: 8px;">Start New Submission</button>
+            </div>
+        </div>
+    </div>
+
+
+  </div>
+
+  <div id="customModal" class="modal-overlay">
+    <div class="modal-content">
+      <h3 id="modalTitle" class="text-xl font-bold mb-3 text-white"></h3>
+      <p id="modalMessage" class="mb-4 text-gray-300"></p>
+      <button onclick="closeModal()" style="width: 100px; padding: 8px;">OK</button>
+    </div>
+  </div>
+
+  <script>
+    const video = document.getElementById('camera');
+    const canvas = document.getElementById('snapshot');
+    const captureBtn = document.getElementById('captureBtn');
+    const retakeBtn = document.getElementById('retakeBtn');
+    const selfiePreview = document.getElementById('selfiePreview');
+    const statusMsg = document.getElementById('statusMsg');
+    const submitBtn = document.getElementById('submitBtn');
+    const loadingSpinner = document.getElementById('loadingSpinner');
+
+    // NEW STATUS/VIEW ELEMENTS
+    const formContainer = document.getElementById('verificationFormContainer');
+    const statusCard = document.getElementById('verificationStatusCard');
+    const resubmitBtn = document.getElementById('resubmitBtn');
+
+    // NEW PROOF ELEMENTS
+    const radioWork = document.getElementById('radioWork');
+    const radioCert = document.getElementById('radioCert');
+    const workUpload = document.getElementById('workUpload');
+    const certificateUpload = document.getElementById('certificateUpload');
+    const workSampleImageInput = document.getElementById('workSampleImage');
+    const certificateImageInput = document.getElementById('certificateImage');
+
+    // Modal elements
+    const customModal = document.getElementById('customModal');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalMessage = document.getElementById('modalMessage');
+    
+    let stream = null;
+
+    // --- UTILITY FUNCTIONS ---
+
+    function showMessage(title, message) {
+      modalTitle.textContent = title;
+      modalMessage.textContent = message;
+      customModal.style.display = 'flex';
+    }
+
+    function closeModal() {
+      customModal.style.display = 'none';
+    }
+
+    function stopCamera() {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        stream = null;
+      }
+      video.srcObject = null;
+    }
+    
+    // 💡 NEW FUNCTION: Toggles between Form and Status Card
+    function displayView(view) {
+        loadingSpinner.style.display = 'none';
+        
+        if (view === 'form') {
+            formContainer.classList.remove('hidden');
+            statusCard.classList.add('hidden');
+            startCamera(); // Only start camera if showing the form
+        } else { // view === 'status'
+            formContainer.classList.add('hidden');
+            statusCard.classList.remove('hidden');
+            stopCamera(); // Stop camera if showing the status card
+        }
+    }
+
+    // --- FORM/CAMERA LOGIC ---
+
+    async function startCamera() {
+      if (stream) return;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "user" },
+          audio: false
+        });
+        video.srcObject = stream;
+        video.style.display = 'block';
+        selfiePreview.style.display = 'none';
+        captureBtn.style.display = 'block';
+        retakeBtn.style.display = 'none';
+        statusMsg.innerHTML = "Awaiting selfie capture.";
+      } catch (err) {
+        showMessage('Camera Error', 'Access denied or camera not supported. Please allow camera access to take a selfie.');
+        video.style.display = 'none';
+        captureBtn.style.display = 'none';
+        statusMsg.innerHTML = "Camera access required.";
+      }
+    }
+    
+    function toggleInputs() {
+      if (radioWork.checked) {
+        workUpload.style.display = 'block';
+        certificateUpload.style.display = 'none';
+        workSampleImageInput.required = true;
+        certificateImageInput.required = false;
+        certificateImageInput.value = '';
+      } else {
+        workUpload.style.display = 'none';
+        certificateUpload.style.display = 'block';
+        workSampleImageInput.required = false;
+        certificateImageInput.required = true;
+        workSampleImageInput.value = '';
+      }
+    }
+    
+    // --- EVENT LISTENERS ---
+
+    // Toggle logic for Proof inputs
+    radioWork.addEventListener('change', toggleInputs);
+    radioCert.addEventListener('change', toggleInputs);
+    toggleInputs(); // Initialize
+
+    captureBtn.addEventListener('click', () => {
+      if (video.videoWidth === 0 || video.videoHeight === 0) {
+        showMessage('Capture Error', 'Camera not ready. Please wait a moment.');
+        return;
+      }
+
+      const context = canvas.getContext('2d');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const selfieData = canvas.toDataURL('image/png');
+      
+      document.getElementById('liveFaceImage').value = selfieData;
+      
+      selfiePreview.src = selfieData;
+      selfiePreview.style.display = 'block';
+      video.style.display = 'none';
+      captureBtn.style.display = 'none';
+      retakeBtn.style.display = 'block';
+      statusMsg.innerHTML = "<span style='color:#38b45d;'>✅ Selfie captured!</span>";
+      
+      stopCamera();
+    });
+
+    retakeBtn.addEventListener('click', () => {
+      document.getElementById('liveFaceImage').value = "";
+      startCamera();
+      statusMsg.innerHTML = "Awaiting selfie capture.";
+    });
+    
+    // Resubmit button logic (for rejected status)
+    resubmitBtn.addEventListener('click', () => {
+        // Simple reload to start a fresh form state
+        window.location.reload(); 
+    });
+
+
+    // --- SUBMISSION LOGIC ---
+
+    document.getElementById('verificationForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      if (!document.getElementById("liveFaceImage").value) {
+        showMessage('Validation Failed', 'Please capture a live selfie before submitting.');
+        return;
+      }
+      
+      if (radioWork.checked && workSampleImageInput.files.length === 0) {
+          showMessage('Validation Failed', 'Please upload a Work Sample Photo.');
+          return;
+      }
+      if (radioCert.checked && certificateImageInput.files.length === 0) {
+          showMessage('Validation Failed', 'Please upload your Certificate Image.');
+          return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = 'Submitting...';
+      statusMsg.innerHTML = "⏳ Uploading... This may take a moment with large files.";
+
+      try {
+        const formData = new FormData();
+
+        formData.append("idType", document.getElementById("idType").value);
+        formData.append("idNumber", document.getElementById("idNumber").value);
+        formData.append("idImage", document.getElementById("idImage").files[0]);
+        formData.append("profileImage", document.getElementById("profileImage").files[0]);
+        
+        // Append the proof type and image
+        const proofField = radioWork.checked ? workSampleImageInput : certificateImageInput;
+        formData.append("proofType", radioWork.checked ? "work_sample" : "certificate");
+        formData.append("proofImage", proofField.files[0]);
+
+        // Convert Base64 dataURL back to Blob
+        const liveFaceData = document.getElementById("liveFaceImage").value;
+        const blob = await (await fetch(liveFaceData)).blob();
+        formData.append("liveFaceImage", blob, "selfie.png");
+
+        const res = await fetch("http://localhost:5000/api/verification/submit", {
+          method: "POST",
+          headers: {
+            Authorization: "Bearer " + localStorage.getItem("token"),
+          },
+          body: formData,
+        });
+
+      const data = await res.json();
+        if (res.ok && data.success) {
+          showMessage('Success!', 'Verification submitted successfully! Checking status...');
+          // On successful submission, immediately update the status card view
+          updateStatusCard(data.verification); 
+          displayView('status');
+        } else {
+          showMessage('Submission Failed', data.message || "An unexpected error occurred on the server.");
+          statusMsg.innerHTML = "<span style='color:red;'>❌ Submission failed.</span>";
+        }
+      } catch (err) {
+        console.error("Fetch error:", err);
+        showMessage('Connection Error', 'Could not connect to the server. Please check your network and try again.');
+        statusMsg.innerHTML = "<span style='color:red;'>❌ Error submitting verification.</span>";
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = 'Submit Verification';
+      }
+    });
+
+
+    // --- STATUS CHECKING LOGIC ---
+
+    function updateStatusCard(verification) {
+        const status = verification.status;
+        
+        // Format the date
+        const date = new Date(verification.submittedAt).toLocaleDateString('en-US', {
+            year: 'numeric', month: 'short', day: 'numeric'
+        });
+
+        // Update card content
+        document.getElementById('submittedAt').textContent = date;
+        document.getElementById('idTypeStatus').textContent = verification.idType || 'N/A';
+        document.getElementById('comments').textContent = verification.comments || 'Awaiting reviewer comments...';
+
+        // Update status badge and color
+        const statusBadge = document.getElementById('statusBadge');
+        statusBadge.textContent = status;
+        
+        // Reset classes
+        statusBadge.className = 'status-badge';
+        document.getElementById('rejectionNote').style.display = 'none';
+
+        if (status === 'pending') {
+            statusBadge.classList.add('status-pending');
+        } else if (status === 'approved') {
+            statusBadge.classList.add('status-approved');
+        } else if (status === 'rejected') {
+            statusBadge.classList.add('status-rejected');
+            document.getElementById('comments').textContent = verification.comments || 'The reviewer did not provide specific comments.';
+            document.getElementById('rejectionNote').style.display = 'block';
+        }
+    }
+
+    async function initVerificationPage() {
+        loadingSpinner.style.display = 'block';
+
+        try {
+            const token = localStorage.getItem("token");
+            if (!token) {
+                // If no token, show form (assuming login is required for access anyway)
+                displayView('form');
+                return;
+            }
+
+            const res = await fetch("http://localhost:5000/api/verification/status", {
+                method: "GET",
+                headers: {
+                    Authorization: "Bearer " + token,
+                },
+            });
+
+            const data = await res.json();
+            
+            // Server responds with { verification: null } if no record is found
+            if (data.success && data.verification) {
+                const status = data.verification.status;
+                
+                // If rejected, allow resubmission (show form)
+                if (status === 'rejected') {
+                    // Update card, then show form to allow resubmit
+                    updateStatusCard(data.verification);
+                    displayView('form');
+                    showMessage('Resubmit Required', 'Your previous verification was rejected. Please review the comments and submit a new request.');
+                } else {
+                    // Status is pending or approved, show the status card
+                    updateStatusCard(data.verification);
+                    displayView('status');
+                }
+            } else {
+                // No record found, show the submission form
+                displayView('form');
+            }
+
+        } catch (err) {
+            console.error("Error fetching status:", err);
+            // On failure, default to showing the form but alert the user
+            displayView('form');
+            showMessage('Network Error', 'Could not connect to the server to check status. Please try again.');
+        }
+    }
+
+    // Start the whole process when the page loads
+    window.onload = initVerificationPage;
+
+  </script>
+</body>
+</html>

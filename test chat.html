@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>test chat</title>
+</head>
+<body>
+    <section id="jobsPage" class="page">
+  <div style="display:flex; height:calc(100vh - 80px); overflow:hidden;">
+    <!-- LEFT: chat list -->
+    <aside id="artisanChatList" style="width:320px; border-right:1px solid #0a2a40; overflow-y:auto; flex-shrink:0;">
+      <div style="padding:14px;">
+        <h2 style="font-size:18px; font-weight:700;">💬 Messages</h2>
+      </div>
+      <div id="artisanChatListInner"></div>
+    </aside>
+
+    <!-- RIGHT: chat pane (FixaChat mounts here) -->
+    <div id="chatContainer" style="flex:1; display:flex; flex-direction:column;"></div>
+  </div>
+  <script>// Mount once
+FixaChat.mount(document.getElementById('chatContainer'), {
+  user:    user,               // { _id, username, role }
+  token:   token,
+  baseUrl: 'http://localhost:5000',
+  socket:  socket,
+  onBack:  () => {
+    document.getElementById('chatContainer').style.display = 'none';
+    document.getElementById('artisanChatList').style.display = 'block';
+  }
+});
+
+// When user clicks a chat row, open it:
+function onClickChatRow(chatId, peer) {
+  FixaChat.openChat(chatId, peer);
+  // On mobile, hide the list:
+  if (window.innerWidth < 768) {
+    document.getElementById('artisanChatList').style.display = 'none';
+    document.getElementById('chatContainer').style.display = 'flex';
+  }
+}</script>
+</section>
+</body>
+</html><script src="http://localhost:5000/socket.io/socket.io.js"></script>
+<script src="chat-guard.js"></script>
+<script src="fixa chat.js"></script>           <!-- NEW -->
+<script src="fixa-notification-system.js"></script>
+<script src="fixa-push.js"></script>            <!-- if using push -->
+
+<!-- Then your page-specific init script -->

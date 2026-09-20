@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fixa - Select Account Type</title>
+
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background-color: rgb(0, 21, 43);
+      font-family: Arial, sans-serif;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      min-height: 100vh;
+      text-align: center;
+    }
+    .logo {
+      color: #fbd106;
+      font-size: 2.5rem;
+      font-weight: bold;
+      margin-bottom: 2rem;
+    }
+    .selection-card {
+      background-color: rgb(0, 23, 43);
+      padding: 2rem 1.5rem;
+      border: 1px solid gray;
+      border-radius: 1rem;
+      width: 100%;
+      max-width: 450px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.3);
+      margin-top: 1rem;
+    }
+    .selection-card h2 {
+      margin-bottom: 1.5rem;
+      color: #fbd106;
+    }
+    .selection-card p {
+      margin-bottom: 1.5rem;
+      line-height: 1.5;
+      color: rgba(255, 255, 255, 0.9);
+    }
+    .button-group {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      margin-top: 1.5rem;
+    }
+    .selection-btn {
+      width: 100%;
+      padding: 1rem;
+      background-color: #fbd106;
+      border: none;
+      border-radius: 2rem;
+      font-weight: bold;
+      color: #004466;
+      font-size: 1.1rem;
+      cursor: pointer;
+      transition: background-color 0.3s ease, transform 0.2s ease;
+    }
+    .selection-btn:hover { background-color: #e3bb00; transform: translateY(-2px); }
+    .selection-btn:disabled {
+      background-color: #666;
+      color: #ccc;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .message {
+      margin-top: 15px;
+      padding: 10px;
+      border-radius: 5px;
+      font-weight: bold;
+      text-align: center;
+      min-height: 20px;
+      font-size: 0.9em;
+    }
+    .message.success { background-color: #388e3c; color: white; }
+    .message.error { background-color: #d32f2f; color: white; }
+    .message.info { background-color: #1976d2; color: white; }
+    .spinner {
+      border: 4px solid rgba(255, 255, 255, 0.3);
+      border-top: 4px solid #fbd106;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      animation: spin 1s linear infinite;
+      display: inline-block;
+      vertical-align: middle;
+      margin-left: 10px;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg);} 100% { transform: rotate(360deg);} }
+  </style>
+</head>
+<body>
+  <h1 class="logo">Fixa</h1>
+
+  <div class="selection-card">
+    <h2 id="welcomeMessage">Welcome!</h2>
+    <p>Please select the type of account you'd like to use. This helps us tailor your experience on Fixa.</p>
+
+    <div class="button-group">
+      <button class="selection-btn" id="customerBtn">Continue as Customer</button>
+      <button class="selection-btn" id="artisanBtn">Continue as Artisan</button>
+    </div>
+    <p id="messageDisplay" class="message"></p>
+  </div>
+<script>
+const user = JSON.parse(localStorage.getItem("user"));
+const token = localStorage.getItem("token");
+const messageDisplay = document.getElementById("messageDisplay");
+const customerBtn = document.getElementById("customerBtn");
+const artisanBtn = document.getElementById("artisanBtn");
+
+// If no user, go back to login
+if (!user || !token) {
+  window.location.href = "SignIn.html";
+}
+
+// If role already chosen, redirect automatically
+if (user.role && user.role !== "") {
+  redirectToDashboard(user.role);
+}
+
+function disableButtons() {
+  customerBtn.disabled = true;
+  artisanBtn.disabled = true;
+}
+
+function enableButtons() {
+  customerBtn.disabled = false;
+  artisanBtn.disabled = false;
+}
+
+function showMessage(text, type="info") {
+  messageDisplay.innerHTML = text;
+  messageDisplay.className = "message " + type;
+}
+
+async function setRole(role) {
+  disableButtons();
+  showMessage("Saving your role... <span class='spinner'></span>", "info");
+
+  try {
+    // 1️⃣ Set role on user
+    const res = await fetch("http://localhost:5000/api/users/set-role", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify({ role })
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || "Something went wrong");
+
+    // 2️⃣ Update local storage
+    user.role = role;
+    localStorage.setItem("user", JSON.stringify(user));
+
+    // 3️⃣ If artisan, auto-create profile
+    if (role === "artisan") {
+      const artisanRes = await fetch("http://localhost:5000/api/artisans/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ name: "", phone: "", bio: "" }) // optional defaults
+      });
+
+      if (!artisanRes.ok) {
+        const errData = await artisanRes.json();
+        throw new Error(errData.message || "Failed to create artisan profile");
+      }
+
+      const artisanProfile = await artisanRes.json();
+      localStorage.setItem("artisanProfile", JSON.stringify(artisanProfile));
+    }
+
+    showMessage("Role saved! Redirecting...", "success");
+    setTimeout(() => redirectToDashboard(role), 1000);
+
+  } catch (err) {
+    showMessage(err.message, "error");
+    enableButtons();
+  }
+}
+
+function redirectToDashboard(role) {
+  if (role === "customer") {
+    window.location.href = "customer-home.html";
+  } else if (role === "artisan") {
+    window.location.href = "artisan-home.html";
+  } else {
+    window.location.href = "SignIn.html";
+  }
+}
+
+// Button handlers
+customerBtn.addEventListener("click", () => setRole("customer"));
+artisanBtn.addEventListener("click", () => setRole("artisan"));
+</script>
+
+
+</body>
+</html>
