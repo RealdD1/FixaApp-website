@@ -6,7 +6,9 @@
   'use strict';
 
   // ─── CONFIG ────────────────────────────────────────────────
-  const BASE_URL        = 'http://localhost:5000';
+  
+// after
+const BASE_URL        = window.FIXA_CONFIG.API_URL;
   const SOCKET_URL      = BASE_URL;
   const ARTISAN_API_URL = `${BASE_URL}/api/artisans`;
   const JOB_API_URL     = `${BASE_URL}/api/jobs`;
