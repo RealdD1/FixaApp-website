@@ -413,19 +413,17 @@ signinForm.addEventListener('submit', async (e) => {
             // Save JWT token and user info
      // --- Login Success Block ---
 
-// Always store the full user object and token for general use
+const u = data.user;
+const uid = u._id || u.id;
+
 localStorage.setItem('token', data.token);
-localStorage.setItem('user', JSON.stringify(data.user._id || data.user.id));
+localStorage.setItem('user', JSON.stringify(u));      // the whole user object
 
-// Check the user's role and store their ID in the appropriate key
-if (data.user.role === "customer") {
-    // Store customer ID if the user is a customer
-    localStorage.setItem('customer_id', data.user.id);
-} else if (data.user.role === "artisan") {
-    // 💡 FIX: Store artisan ID if the user is an artisan
-    localStorage.setItem('artisan_id', data._id); 
+if (u.role === 'customer') {
+  localStorage.setItem('customer_id', uid);
+} else if (u.role === 'artisan') {
+  localStorage.setItem('artisan_id', uid);            // was data._id, which doesn't exist
 }
-
 // --- Redirection Logic ---
 
 if (!data.user.role || data.user.role.trim() === "") {
