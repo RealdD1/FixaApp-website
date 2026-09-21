@@ -4,6 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="config.js"></script>
   <title>Fixa Sign Up</title>
  <link rel="stylesheet" href="signup.css">
  <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -127,7 +128,7 @@ async function checkUsernameAvailability(username) {
     usernameLoader.style.display = 'inline-block'; // show loader
 
     try {
-        const res = await fetch(`http://localhost:5000/api/users/check-username?username=${username}`);
+   const res = await fetch(`${FIXA_CONFIG.API_URL}/api/users/check-username?username=${encodeURIComponent(username)}`);
         const data = await res.json();
 
         if (data.isAvailable) {
@@ -217,8 +218,8 @@ async function checkUsernameAvailability(username) {
 
     
     try {
-        const response = await fetch('http://localhost:5000/api/users/register', {
-            method: 'POST',
+const response = await fetch(`${FIXA_CONFIG.API_URL}/api/users/register`, {
+  method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
         });
@@ -257,8 +258,8 @@ async function handleGoogleAuth(response) {
   messageDisplay.style.color = 'black';
 
   try {
-    const res = await fetch('http://localhost:5000/api/users/google-auth', {
-      method: 'POST',
+const res = await fetch(`${FIXA_CONFIG.API_URL}/api/users/google-auth`, {
+  method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ credential })
       // No `role` here — user picks it on role-selection page
