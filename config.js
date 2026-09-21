@@ -11,6 +11,6 @@
   window.FIXA_CONFIG = {
     API_URL: isLocal
       ? 'http://localhost:5000'
-      : 'https://api.fixaapp.net',
+      : 'https://fixa-backend.onrender.com',
   };
 })();
