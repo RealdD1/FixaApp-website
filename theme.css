@@ -1,169 +1,602 @@
-/* ============================================================
-   Fixa theme.css — light/dark palette.
-   Light mode = white + blue + gold (matches your brand, just inverted
-   from the navy/gold dark mode instead of going flat grey).
-   Link this AFTER any page-specific <style> or <link>, so it wins the cascade.
-   Toggle is driven by data-theme="light" | "dark" on <html> (set by theme.js).
-   ============================================================ */
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Fixa Map</title>
+  <script src="config.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <style>
+    body, html { margin:0; padding:0; height:100%; }
+    #map { height: 100%; width: 100%; }
+    
+    /* Loader styles */
+    #loader {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0, 23, 43, 0.9);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      flex-direction: column;
+    }
+    .spinner {
+      border: 6px solid rgba(255, 215, 0, 0.2);
+      border-top: 6px solid gold;
+      border-radius: 50%;
+      width: 60px;
+      height: 60px;
+      animation: spin 1s linear infinite;
+      margin-bottom: 15px;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .loader-text { color: gold; font-size: 1.2rem; }
+    
+    /* Bottom popup */
+    .popup-bottom {
+      position: fixed;
+      bottom: -100%;
+      left: 0;
+      width: 100%;
+      background: #00172b;
+      color: #fff;
+      box-shadow: 0 -2px 10px rgba(0,0,0,0.5);
+      border-top-left-radius: 12px;
+      border-top-right-radius: 12px;
+      transition: bottom 0.3s ease-in-out;
+      z-index: 1000;
+      padding: 20px;
+    }
+    .popup-bottom.active { bottom: 0; }
+    .popup-header {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      margin-right: 45px;
+    }
+    
+    #closePopup {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: white;
+      background-color: none;
+      border-radius: 50%;
+      width: 32px;
+      height: 32px;
+      line-height: 28px;
+      text-align: center;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+    #closePopup:hover {
+      background: darkred;
+    }
+    
+    .popup-content button {
+      margin-right: 10px;
+      padding: 8px 16px;
+      background: gold;
+      border: none;
+      border-radius: 6px;
+      cursor:pointer;
+    }
+    
+    /* Custom Pin with avatar and pulse */
+    .artisan-marker {
+      position: relative;
+      width: 50px;
+      height: 50px;
+      transform: translate(-50%, -100%);
+      cursor: pointer;
+    }
+    
+    /* Google Maps–style pin (teardrop) */
+    .artisan-pin {
+      position: relative;
+      width: 50px;
+      height: 50px;
+      background: gold;
+      border-radius: 50% 50% 50% 0;
+      transform: rotate(-45deg);
+      box-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
+      animation: pulse 2s infinite;
+      overflow: hidden;
+    }
+    
+    /* Avatar inside the pin */
+    .artisan-pin img {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 70%;
+      height: 70%;
+      border-radius: 50%;
+      transform: translate(-50%, -50%) rotate(45deg); /* cancel rotation of parent */
+      border: 2px solid white;
+      object-fit: cover;
+    }
+    
+    /* Bottom little circle for pin tip */
+    .artisan-pin::after {
+      content: '';
+      position: absolute;
+      bottom: -6px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 12px;
+      height: 12px;
+      background: gold;
+      border-radius: 50%;
+      box-shadow: 0 0 6px rgba(255, 215, 0, 0.7);
+    }
+    
+    /* Pulse effect */
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.6); }
+      70% { box-shadow: 0 0 0 20px rgba(255, 215, 0, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0); }
+    }
+    
+    /* Modal styling */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 2000;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      justify-content: center;
+      align-items: center;
+    }
+    .modal-content {
+      background: #002544;
+      border-radius: 20px;
+      padding: 25px;
+      width: 350px;
+      max-width: 95%;
+      text-align: center;
+      box-shadow: 0px 8px 25px rgba(0,0,0,0.4);
+      transform: scale(0.7);
+      animation: bounceIn 0.5s forwards;
+      color: white; /* Added for text visibility */
+    }
+    @keyframes bounceIn {
+      0% { transform: scale(0.7); opacity: 0; }
+      60% { transform: scale(1.1); opacity: 1; }
+      80% { transform: scale(0.9); }
+      100% { transform: scale(1); }
+    }
+    .profile-pic {
+      width: 90px; height: 90px;
+      border-radius: 50%;
+      border: 3px solid #FFD700;
+      margin: 15px auto;
+      display: block;
+      object-fit: cover;
+    }
+    .close {
+      float: right;
+      font-size: 24px;
+      font-weight: bold;
+      color: #FFD700;
+      cursor: pointer;
+    }
+    .guide {
+      background: #012A4A;
+      border-radius: 12px;
+      padding: 12px;
+      margin: 15px 0;
+      text-align: left;
+      font-size: 13px;
+    }
+    .btn {
+      margin: 10px 0;
+      padding: 12px 20px;
+      border-radius: 8px;
+      border: none;
+      font-weight: bold;
+      cursor: pointer;
+      width: 100%;
+      font-size: 1rem;
+    }
+    .book-btn { background: #0066CC; color: #fff; }
+    
+    /* Style for the estimator */
+    .estimator {
+        background: #012A4A;
+        padding: 15px;
+        border-radius: 12px;
+        margin-top: 15px;
+    }
+    .estimator label, .estimator select, .estimator input {
+        display: block;
+        width: 100%;
+        margin-bottom: 10px;
+    }
+    .estimator select, .estimator input {
+        padding: 8px;
+        border-radius: 6px;
+        border: 1px solid #FFD700;
+        background-color: #00172B;
+        color: white;
+    }
 
-:root{
-  --gold:#ffd700;
-  --gold-dark:#e6b800;
-  --danger:#ff3b5c;
-  --success:#22c55e;
+    /* Styles for new rating and verification elements */
+    .artisan-header {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .artisan-rating {
+      color: gold;
+      font-size: 1.1rem;
+      margin-bottom: 5px;
+    }
+    .verification-badge {
+      display: inline-flex;
+      align-items: center;
+      color: white;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 0.8rem;
+      font-weight: bold;
+      margin-top: 5px;
+    }
+    .verification-badge.verified {
+      background-color: #388e3c; /* Green for verified */
+    }
+    .verification-badge.not-verified {
+      background-color: #d32f2f; /* Red for not verified */
+    }
+    .verification-badge .badge-icon {
+      margin-right: 5px;
+      font-size: 1rem;
+    }
+    
+    /* Custom blue dot marker for the customer's location */
+    .customer-location-marker {
+        width: 15px;
+        height: 15px;
+        background-color: #007bff;
+        border: 2px solid white;
+        border-radius: 50%;
+        box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  
+  <div id="loader">
+    <div class="spinner"></div>
+    <div class="loader-text">Loading artisans near you...</div>
+  </div>
+  
+  <div id="artisanModal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeArtisanModal()">&times;</span>
+      <img id="artisanPic" src="https://via.placeholder.com/90" class="profile-pic" alt="Artisan">
+      
+      <div class="artisan-header">
+        <h2 id="artisanName"></h2>
+        <p id="artisanOccupation"></p>
+        <div id="artisanRating" class="artisan-rating"></div>
+        <div id="verificationBadge" class="verification-badge">
+          <span id="badgeIcon" class="badge-icon"></span>
+          <span id="badgeText"></span>
+        </div>
+      </div>
+      <p id="artisanDetails"></p>
+      
+      <div class="guide">
+        <h3>Work Effort Guide ⚡</h3>
+        <ul>
+          <li><b>Easy:</b> Quick job (1-2 hrs) e.g., change a bulb</li>
+          <li><b>Medium:</b> Tools needed (3-4 hrs) e.g., fix wiring</li>
+          <li><b>Hard:</b> Big task (5+ hrs) e.g., house wiring</li>
+        </ul>
+      </div>
+      
+      <div class="estimator">
+        <h3>Estimate Price</h3>
+        <label>Hours: </label>
+        <input type="number" id="hoursInput" min="1" placeholder="Enter hours" />
+        <label>Difficulty:</label>
+        <select id="complexityInput">
+          <option value="1">🟢 Easy (x1)</option>
+          <option value="1.5">🟡 Medium (x1.5)</option>
+          <option value="2">🔴 Hard (x2)</option>
+          <option value="3">🔥 Very Hard (x3)</option>
+        </select>
+        <p>Rate: <span id="artisanRate">₦0</span> / hr</p>
+        <p>Total: <b id="totalPrice">₦0</b></p>
+        <small style="color: #facc15; display:block; margin-top:5px;">
+    💡 Note: This is only an estimate. Final price may vary after discussion with the artisan.
+  </small>
+        
+      </div>
+      
+      <div class="actions">
+        <button class="btn book-btn" id="bookBtn">📅 Book</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+   const rawUser = localStorage.getItem('user');
+const user = rawUser ? JSON.parse(rawUser) : null;
+const customerId = user?._id || user?.id || user?.userId || null;
+const customerToken = localStorage.getItem('token');
+const selectedCategory = localStorage.getItem('selectedCategory');
+
+if (!customerId || !customerToken) {
+  alert("You must be logged in to view the map.");
+  window.location.href = "SignIn.html";
+} else {
+      const API_BASE = window.FIXA_CONFIG.API_URL;
+
+      const map = L.map('map').setView([9.0820, 8.6753], 6);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(map);
+
+      // Connect to Socket.IO (single connection, driven by config, not hardcoded localhost)
+      const socket = io(API_BASE, { auth: { token: customerToken } });
+      const markersByArtisan = {};
+      let customerMarker = null; // New: Variable to hold the customer's marker
+
+      // Price rates based on category
+      const baseRates = {
+        "Electrician": 5000, "Painter": 3000, "Tiler": 4000, "Mechanic": 6000, "Welder": 4500,
+        "Generator Repairer": 5000, "POP Installer": 7000, "Fashion Designer": 4000, "Make-Up Artist": 3500,
+        "CCTV Installer": 6000, "Solar Panel Installer": 8000, "Cook/Caterer": 3000, "Handyman": 2500,
+        "Carpenter": 4000, "HVAC Technician": 7500, "Mobile Mechanic": 6500, "Gardener": 2000,
+        "Roof Repair Specialist": 7000, "Tech Support": 5000, "Appliance Repairer": 4500,
+        "Interior Designer": 10000, "Window Installer": 3500, "Furniture Assembler": 3000,
+        "Nanny/House help": 2500, "Massage Therapist": 4000
+      };
+
+      // Modal elements
+      const artisanModal = document.getElementById('artisanModal');
+      const hoursInput = document.getElementById("hoursInput");
+      const complexityInput = document.getElementById("complexityInput");
+      const artisanRateDisplay = document.getElementById("artisanRate");
+      const totalPriceDisplay = document.getElementById("totalPrice");
+      const bookBtn = document.getElementById("bookBtn");
+      
+      // New: Add listener to close modal when clicking outside
+      window.addEventListener('click', (event) => {
+        if (event.target === artisanModal) {
+          closeArtisanModal();
+        }
+      });
+
+
+      // Function to calculate estimated price range
+      function calculatePriceRange(category, hours, complexity) {
+        const base = baseRates[category] || 3000; // fallback base rate
+        const estimatedPrice = base * hours * complexity; 
+        const minPrice = Math.round(estimatedPrice * 0.8);
+        const maxPrice = Math.round(estimatedPrice * 1.2);
+        return { minPrice, maxPrice };
+      }
+
+      // Function to update the price estimator display
+      function updateEstimator() {
+        const artisan = window.currentArtisan;
+        if (!artisan) return;
+        const hours = parseFloat(hoursInput.value) || 0;
+        const complexity = parseFloat(complexityInput.value) || 1;
+        const base = baseRates[artisan.category] || 3000;
+        if (hours <= 0) {
+          artisanRateDisplay.textContent = `₦${base.toLocaleString()}`;
+          totalPriceDisplay.textContent = `Enter valid hours and difficulty.`;
+          window.estimatedPrice = 0;
+          return;
+        }
+        const { minPrice, maxPrice } = calculatePriceRange(artisan.category, hours, complexity);
+        artisanRateDisplay.textContent = `₦${base.toLocaleString()} / hr`;
+        totalPriceDisplay.textContent = `Fair Price Range: ₦${minPrice.toLocaleString()} – ₦${maxPrice.toLocaleString()}`;
+        window.estimatedPrice = Math.round((minPrice + maxPrice) / 2);
+        window.estimatedRange = { minPrice, maxPrice };
+      }
+
+      // -------------------------
+      // CUSTOM ARTISAN PIN
+      // -------------------------
+      function createArtisanIcon(artisan) {
+        const profilePicUrl = artisan.profilePic || 'https://tse1.explicit.bing.net/th/id/OIP.0CZd1ESLnyWIHdO38nyJDAHaGF?cb=thfc1&rs=1&pid=ImgDetMain&o=7&rm=3';
+        const div = document.createElement('div');
+        div.className = 'artisan-marker';
+        div.innerHTML = `<div class="artisan-pin"><img src="${profilePicUrl}" alt="${artisan.name}"></div>`;
+        return L.divIcon({ html: div.outerHTML, className: '', iconSize: [50, 65], iconAnchor: [25, 65] });
+      }
+
+      // -------------------------
+      // CUSTOMER LOCATION MARKER (New)
+      // -------------------------
+      function getUserLocationAndAddMarker() {
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              const latlng = [pos.coords.latitude, pos.coords.longitude];
+              map.setView(latlng, 15);
+              
+              if (customerMarker) {
+                customerMarker.setLatLng(latlng);
+              } else {
+                const customerIcon = L.divIcon({
+                  className: 'customer-location-marker',
+                  iconSize: [15, 15],
+                  iconAnchor: [7.5, 7.5],
+                });
+                customerMarker = L.marker(latlng, { icon: customerIcon }).addTo(map);
+              }
+            },
+            (err) => {
+              console.warn(`Geolocation error: ${err.message}`);
+              // Fallback to initial map view if geolocation fails
+              map.setView([9.0820, 8.6753], 6);
+            }
+          );
+        } else {
+          console.warn("Geolocation is not supported by this browser.");
+          map.setView([9.0820, 8.6753], 6);
+        }
+      }
+      
+      // -------------------------
+      // LOAD ARTISANS ON MAP
+      // -------------------------
+    async function loadArtisans(category) {
+  const loader = document.getElementById('loader');
+  loader.style.display = 'flex';
+
+  Object.values(markersByArtisan).forEach(m => map.removeLayer(m));
+  Object.keys(markersByArtisan).forEach(k => delete markersByArtisan[k]);
+
+  try {
+    const url = category 
+      ? `${API_BASE}/api/artisans/category/${encodeURIComponent(category)}` 
+      : `${API_BASE}/api/artisans`;
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${customerToken}` } });
+    if (!res.ok) throw new Error('Failed to load artisans');
+    const artisans = await res.json();
+
+    setTimeout(() => loader.style.display = 'none', 800);
+    if (!artisans.length) {
+      alert('No artisans found for this category.');
+      return;
+    }
+
+    artisans.forEach(a => {
+      const [lon, lat] = a.location?.coordinates ?? [null, null];
+      if (typeof lat !== 'number' || typeof lon !== 'number') return;
+      if (lat === 0 && lon === 0) return; // skip artisans without real location
+
+      const marker = L.marker([lat, lon], { 
+        icon: createArtisanIcon(a),
+        opacity: a.isOnline ? 1.0 : 0.4   // ← grey out offline ones
+      }).addTo(map);
+      
+      marker.on('click', () => showArtisanProfile(a, marker));
+      markersByArtisan[a._id] = marker;
+    });
+  } catch (err) {
+    console.error(err);
+    loader.style.display = 'none';
+    alert('Error loading artisans: ' + err.message);
+  }
 }
+socket.on('artisanOffline', ({ artisanId }) => {
+  const m = markersByArtisan[artisanId];
+  if (m) {
+    m.setOpacity(0.4);  // ← grey out instead of removing
+  }
+});
 
-/* ---------- DARK (default — matches your current design) ---------- */
-:root, [data-theme="dark"]{
-  --bg-dark:#00172b;
-  --bg-body:#00172b;
-  --bg-card:rgba(255,255,255,.06);
-  --bg-glass:rgba(255,255,255,.08);
-  --bg-input:#ffe4b5;
-  --text-main:#ffffff;
-  --text-muted:#b0b8c9;
-  --border-soft:rgba(255,255,255,.08);
-  --border-gold:rgba(255,215,0,.15);
-  --accent-blue:#3aa0ff;
-}
+socket.on('artisanOnline', (data) => {
+  const { artisanId, coordinates, category, name, profilePic } = data;
+  const existing = markersByArtisan[artisanId];
+  if (existing) {
+    existing.setOpacity(1.0);  // restore brightness if they came back
+    return;
+  }
+  // New marker for an artisan who came online while we were watching
+  if (selectedCategory && category !== selectedCategory) return;
+  if (!coordinates || coordinates.length !== 2) return;
+  const [lon, lat] = coordinates;
+  if (lat === 0 && lon === 0) return;
+  const artisan = { _id: artisanId, name, profilePic, category, location: { coordinates }, isOnline: true };
+  const marker = L.marker([lat, lon], { icon: createArtisanIcon(artisan) }).addTo(map);
+  marker.on('click', () => showArtisanProfile(artisan, marker));
+  markersByArtisan[artisanId] = marker;
+});
+      
+      // -------------------------
+      // SHOW ARTISAN PROFILE MODAL
+      // -------------------------
+      function showArtisanProfile(artisan, marker) {
+        // New: Auto-center and zoom the map on the artisan's marker
+        map.flyTo(marker.getLatLng(), 15, { duration: 1 });
+        
+        const rating = artisan.rating?.toFixed(1) || 'N/A';
+        const isVerified = artisan.verification || false;
 
-/* ---------- LIGHT: white base, blue accents, gold highlights ---------- */
-[data-theme="light"]{
-  --bg-dark:#ffffff;
-  --bg-body:#ffffff;
-  --bg-card:#f2f7fd;           /* pale blue-white card surface */
-  --bg-glass:rgba(255,255,255,.9);
-  --bg-input:#eaf3ff;          /* pale blue input fields */
-  --text-main:#0b2942;         /* deep navy-blue text */
-  --text-muted:#5b7690;        /* muted steel-blue */
-  --border-soft:rgba(11,64,110,.14);
-  --border-gold:rgba(200,150,0,.35);
-  --accent-blue:#1c6fd6;       /* primary blue accent */
-  --accent-blue-dark:#0f4f9e;
-}
+        document.getElementById('artisanName').textContent = artisan.name || '';
+        document.getElementById('artisanOccupation').textContent = artisan.category || '';
+        document.getElementById('artisanDetails').textContent = artisan.bio || 'No details available.';
+        document.getElementById('artisanPic').src = artisan.profilePic || 'https://via.placeholder.com/90';
+        document.getElementById('artisanRating').textContent = `⭐ ${rating} / 5`;
 
-/* ---------- Generic, variable-driven surfaces (works automatically on
-   pages already using var(--bg-dark) etc., e.g. customer home page) ---- */
-[data-theme="light"] body{ background:var(--bg-body); color:var(--text-main); }
-[data-theme="light"] .glass{ background:var(--bg-glass); border-color:var(--border-soft) !important; }
+        const verificationBadge = document.getElementById('verificationBadge');
+        const badgeText = document.getElementById('badgeText');
+        const badgeIcon = document.getElementById('badgeIcon');
 
-/* ---------- Hard-coded-color pages (SignIn / Signup / Artisan
-   dashboard / Select Service) — patched directly since those pages
-   don't use CSS variables yet. Safe to delete once you migrate those
-   pages to var(--bg-dark) etc. like the customer home page already does. */
-[data-theme="light"] body,
-[data-theme="light"] html{
-  background:#ffffff !important;
-  color:#0b2942 !important;
-}
+        if (isVerified) {
+          badgeText.textContent = 'Verified';
+          badgeIcon.textContent = '✓';
+          verificationBadge.className = 'verification-badge verified';
+        } else {
+          badgeText.textContent = 'Not Verified';
+          badgeIcon.textContent = '✕';
+          verificationBadge.className = 'verification-badge not-verified';
+        }
+        
+        window.currentArtisan = artisan;
+        
+        hoursInput.value = "";
+        complexityInput.value = "1";
+        updateEstimator();
+        
+        artisanModal.style.display = "flex";
+      }
 
-[data-theme="light"] .form-card,
-[data-theme="light"] .history-modal-box,
-[data-theme="light"] .hist-modal-box,
-[data-theme="light"] #jobList .card,
-[data-theme="light"] #historyPage .card,
-[data-theme="light"] .account-card,
-[data-theme="light"] .artisan-card,
-[data-theme="light"] .icon-square,
-[data-theme="light"] .service-item .icon-square,
-[data-theme="light"] .category-item,
-[data-theme="light"] .search-box,
-[data-theme="light"] .wallet-card,
-[data-theme="light"] .profile-card,
-[data-theme="light"] .home-header,
-[data-theme="light"] .msg-header,
-[data-theme="light"] .chat-list-header,
-[data-theme="light"] #chatListView,
-[data-theme="light"] .bottom-nav,
-[data-theme="light"] .dashboard-summary-card{
-  background:#f2f7fd !important;               /* pale blue card surface */
-  border:1px solid rgba(28,111,214,.18) !important;  /* soft blue border */
-  color:#0b2942 !important;
-  box-shadow:0 4px 14px rgba(28,111,214,.08) !important;
-}
+      function closeArtisanModal() {
+        artisanModal.style.display = "none";
+      }
 
-/* Give key headers/dividers a visible blue accent line, brand feel */
-[data-theme="light"] .home-header,
-[data-theme="light"] .msg-header,
-[data-theme="light"] .chat-list-header,
-[data-theme="light"] .bottom-nav{
-  border-bottom:2px solid rgba(28,111,214,.25) !important;
-}
-[data-theme="light"] .bottom-nav{
-  border-top:2px solid rgba(28,111,214,.25) !important;
-  border-bottom:none !important;
-}
+      // -------------------------
+      // PRICE ESTIMATOR LOGIC
+      // -------------------------
 
-[data-theme="light"] .chat-item:hover,
-[data-theme="light"] .account-card:hover{ background:#e4effc !important; }
+      hoursInput.addEventListener("input", updateEstimator);
+      complexityInput.addEventListener("change", updateEstimator);
 
-[data-theme="light"] .chat-item.active,
-[data-theme="light"] .nav-item.active,
-[data-theme="light"] .nav-btn.active{
-  color:var(--accent-blue) !important;
-}
-[data-theme="light"] .chat-item.active{
-  border-left:3px solid var(--accent-blue) !important;
-  background:#e4effc !important;
-}
+      // -------------------------
+      // BOOKING
+      // -------------------------
 
-[data-theme="light"] input,
-[data-theme="light"] textarea,
-[data-theme="light"] select{
-  background:#eaf3ff !important;
-  color:#0b2942 !important;
-  border:1px solid rgba(28,111,214,.25) !important;
-}
-[data-theme="light"] input::placeholder,
-[data-theme="light"] textarea::placeholder{ color:#7c94ac !important; }
-[data-theme="light"] input:focus,
-[data-theme="light"] textarea:focus{
-  border-color:var(--accent-blue) !important;
-  outline:none !important;
-}
+      if (bookBtn) {
+        bookBtn.addEventListener("click", () => {
+          const artisan = window.currentArtisan;
+          if (!artisan) return alert("No artisan selected");
+          if (window.estimatedPrice <= 0) return alert("Please enter a valid price estimate.");
+          const bookingData = {
+            artisanId: artisan._id,
+            artisanName: artisan.name,
+            category: artisan.category,
+            customerId,
+            estimatedPrice: window.estimatedPrice,
+            estimatedRange: window.estimatedRange,
+            hours: hoursInput.value,
+            difficulty: complexityInput.value,
+          };
+          localStorage.setItem("bookingData", JSON.stringify(bookingData));
+          window.location.href = "booking.html";
+        });
+      }
 
-[data-theme="light"] .msg-row.recv .bubble{
-  background:#e4effc !important;
-  color:#0b2942 !important;
-  border:1px solid rgba(28,111,214,.15) !important;
-}
-[data-theme="light"] .msg-row.sent .bubble{
-  background:linear-gradient(135deg,#ffd700,#ffb703) !important;
-  color:#0b2942 !important;
-}
+      // -------------------------
+      // INITIALIZE MAP & LOCATION
+      // -------------------------
+      getUserLocationAndAddMarker();
+      loadArtisans(selectedCategory);
+    }
+  </script>
 
-[data-theme="light"] .chat-preview,
-[data-theme="light"] .chat-preview-text,
-[data-theme="light"] #convStatus,
-[data-theme="light"] .details,
-[data-theme="light"] p,
-[data-theme="light"] span:not(.material-icons){ color:inherit; }
-
-[data-theme="light"] .signup-link, [data-theme="light"] .forgot-password-link,
-[data-theme="light"] .signin-link{ color:#0b2942 !important; }
-[data-theme="light"] .signup-link a, [data-theme="light"] .forgot-password-link a,
-[data-theme="light"] .signin-link a{ color:var(--accent-blue-dark) !important; }
-
-[data-theme="light"] .tab{ background:#eaf3ff !important; color:var(--accent-blue-dark) !important; border:1px solid rgba(28,111,214,.15) !important; }
-[data-theme="light"] .tab.active{ background:var(--gold) !important; color:#0b2942 !important; border-color:transparent !important; }
-
-/* Keep gold accents (logo, links, active states) identical in both themes —
-   gold is the brand constant that ties dark and light mode together */
-[data-theme="light"] .logo-text,
-[data-theme="light"] .logo,
-[data-theme="light"] .section-title a{ color:#c99b00 !important; }
-
-/* Primary buttons stay gold-on-navy for contrast; secondary/outline buttons go blue */
-[data-theme="light"] .btn-outline,
-[data-theme="light"] .back-btn{
-  border-color:var(--accent-blue) !important;
-  color:var(--accent-blue-dark) !important;
-}
-[data-theme="light"] .back-btn:hover{ background:rgba(28,111,214,.1) !important; }
-
-/* Wallet / summary numbers: swap the gold-on-dark glow for blue-on-white so
-   it doesn't look washed out against a white card */
-[data-theme="light"] #walletBalanceDisplay,
-[data-theme="light"] .summary-item strong{
-  color:var(--accent-blue-dark) !important;
-}
+</body>
+</html>
