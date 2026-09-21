@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Fixa Services</title>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #00172b;
+      color: #fff;
+      padding: 20px;
+      margin: 0;
+    }
+    input, textarea, button {
+      width: 100%;
+      padding: 10px;
+      font-size: 16px;
+      border-radius: 6px;
+      border: none;
+      margin-bottom: 15px;
+    }
+    .btn {
+      background: gold;
+      color: #00172b;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .toggle-container {
+      position: relative;
+      width: 60px;
+      height: 30px;
+      margin: 10px auto;
+    }
+    .toggle-container input { display: none; }
+    .toggle-label {
+      position: absolute;
+      cursor: pointer;
+      background: #555;
+      border-radius: 30px;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      transition: 0.3s;
+    }
+    .toggle-label::after {
+      content: "";
+      position: absolute;
+      background: #fff;
+      width: 24px; height: 24px;
+      border-radius: 50%;
+      top: 3px; left: 3px;
+      transition: 0.3s;
+    }
+    .toggle-container input:checked + .toggle-label { background: gold; }
+    .toggle-container input:checked + .toggle-label::after { transform: translateX(30px); }
+    .category-grid {
+      display: none;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 20px;
+      max-height: 300px;
+      overflow-y: auto;
+      margin-bottom: 20px;
+    }
+    .category-card {
+      background: #002b45;
+      border-radius: 10px;
+      padding: 15px;
+      text-align: center;
+      transition: 0.3s ease;
+    }
+    .category-card:hover {
+      background: #003a5c;
+      transform: scale(1.03);
+      cursor: pointer;
+    }
+    .material-icons { font-size: 36px; color: gold; }
+    .category-name { margin-top: 10px; }
+    .result-card {
+      margin-top: 20px;
+      text-align: center;
+      background: #0a2c44;
+      padding: 20px;
+      border-radius: 10px;
+    }
+    .result-card h3 { color: gold; }
+    .card-buttons {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 15px;
+    }
+    .edit-btn {
+      background: #ffc107;
+      color: #000;
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+    }
+    #dropArea {
+      border: 2px dashed #555;
+      border-radius: 10px;
+      padding: 20px;
+      text-align: center;
+      cursor: pointer;
+      margin-bottom: 15px;
+    }
+    #dropArea.hover {
+      border-color: gold;
+      background: #002b45;
+    }
+    #profilePreview {
+      display: block;
+      max-width: 120px;
+      border-radius: 50%;
+      margin: 10px auto;
+    }
+    #removeImageBtn {
+      display: block;
+      margin: 5px auto 15px;
+      background: #ff4444;
+      color: #fff;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    /* Notification */
+    .notification {
+      display: none;
+      padding: 15px;
+      border-radius: 8px;
+      text-align: center;
+      margin: 20px auto;
+      font-weight: bold;
+      max-width: 500px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+      opacity: 0;
+      transition: opacity 0.5s ease-in-out;
+    }
+    .notification.success { background-color: gold; color: #00172B; }
+    .notification.error { background-color: #e74c3c; color: white; }
+  </style>
+</head>
+<body>
+
+<div id="notificationArea" class="notification"></div>
+
+<div id="savedCard" style="display: none;"></div>
+
+<div id="formSection" style="display: none; text-align:center;">
+  <h2 style="font-size:0.9rem">Edit Profile</h2>
+
+  <div id="dropArea">Drag & Drop Image or Click to Select</div>
+  <input type="file" id="profilePicInput" accept="image/*" style="display:none;" />
+  <img id="profilePreview" style="display:none;" alt="Preview" />
+  <button id="removeImageBtn" style="display:none;">Remove Image</button>
+
+  <input type="text" placeholder="Click to select a service" id="categoryInput" readonly>
+  <div class="category-grid" id="categoryGrid"></div>
+
+  <label for="availabilityToggle">Availability</label>
+  <div class="toggle-container">
+    <input type="checkbox" id="availabilityToggle" />
+    <label class="toggle-label" for="availabilityToggle"></label>
+  </div>
+
+  <button class="btn" id="saveBtn">Save</button>
+</div>
+
+<script>
+const BACKEND_URL = "http://localhost:5000";
+const categories = [
+  { name: "Painter", icon: "format_paint" }, { name: "Tiler", icon: "grid_on" },
+  { name: "Mechanic", icon: "build" }, { name: "Welder", icon: "construction" },
+  { name: "Generator Repairer", icon: "power" }, { name: "POP Installer", icon: "roofing" },
+  { name: "Fashion Designer", icon: "checkroom" }, { name: "Make-Up Artist", icon: "face_retouching_natural" },
+  { name: "CCTV Installer", icon: "videocam" }, { name: "Solar Panel Installer", icon: "solar_power" },
+  { name: "Cook/Caterer", icon: "restaurant" }, { name: "Handyman", icon: "handyman" },
+  { name: "Carpenter", icon: "chair" }, { name: "HVAC Technician", icon: "ac_unit" },
+  { name: "Mobile Mechanic", icon: "directions_car" }, { name: "Gardener", icon: "yard" },
+  { name: "Roof Repair Specialist", icon: "roofing" }, { name: "Tech Support", icon: "support" },
+  { name: "Appliance Repairer", icon: "settings" }, { name: "Interior Designer", icon: "home" },
+  { name: "Window Installer", icon: "window" }, { name: "Furniture Assembler", icon: "weekend" },
+  { name: "Nanny/House help", icon: "child_friendly" }, { name: "Massage Therapist", icon: "spa" }
+];
+
+const categoryGrid = document.getElementById("categoryGrid");
+const categoryInput = document.getElementById("categoryInput");
+const savedCard = document.getElementById("savedCard");
+const profilePicInput = document.getElementById("profilePicInput");
+const dropArea = document.getElementById("dropArea");
+const profilePreview = document.getElementById("profilePreview");
+const removeImageBtn = document.getElementById("removeImageBtn");
+const formSection = document.getElementById("formSection");
+const notificationArea = document.getElementById("notificationArea");
+
+let currentProfile = {};
+let selectedFile = null;
+
+// Notification
+function showNotification(message, type) {
+  notificationArea.textContent = message;
+  notificationArea.className = `notification ${type}`;
+  notificationArea.style.display = "block";
+
+  // fade in
+  setTimeout(() => { notificationArea.style.opacity = 1; }, 10);
+
+  // hide after 3s with fade out
+  setTimeout(() => {
+    notificationArea.style.opacity = 0;
+    setTimeout(() => { notificationArea.style.display = "none"; }, 500);
+  }, 3000);
+}
+
+// Render categories
+categories.forEach(cat => {
+  const div = document.createElement("div");
+  div.className = "category-card";
+  div.innerHTML = `<span class="material-icons">${cat.icon}</span><div class="category-name">${cat.name}</div>`;
+  div.onclick = () => {
+    categoryInput.value = cat.name;
+    categoryGrid.style.display = "none";
+  };
+  categoryGrid.appendChild(div);
+});
+
+categoryInput.onclick = () => {
+  categoryGrid.style.display = categoryGrid.style.display === "grid" ? "none" : "grid";
+};
+
+document.addEventListener("click", e => {
+  if (!categoryGrid.contains(e.target) && e.target !== categoryInput) categoryGrid.style.display = "none";
+});
+
+// Fetch profile
+async function fetchProfile() {
+  try {
+    const token = localStorage.getItem("token");
+    if (!token) return window.location.href = "SignIn.html";
+    const res = await fetch(`${BACKEND_URL}/api/artisans/me`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!res.ok) throw new Error("Failed to load profile data.");
+    currentProfile = await res.json();
+    renderProfileCard(currentProfile);
+  } catch (err) { console.error(err); }
+}
+
+// Render profile card
+function renderProfileCard(data) {
+  savedCard.innerHTML = `
+    <div class="result-card">
+      ${data.profilePic ? `<img src="${data.profilePic}" alt="Profile" style="width:100px;height:100px;border-radius:50%;margin-bottom:10px;" />` : ""}
+      <h3>${data.category || "No Category"}</h3>
+      <p>Available: ${data.available ? "✅ Yes" : "❌ No"}</p>
+      <div class="card-buttons">
+        <button class="edit-btn" id="editBtn">Edit Profile</button>
+      </div>
+    </div>
+  `;
+  savedCard.style.display = "block";
+
+  document.getElementById("editBtn").onclick = () => {
+    formSection.style.display = "block";
+    savedCard.style.display = "none";
+    categoryInput.value = data.category || "";
+    document.getElementById("availabilityToggle").checked = data.available || false;
+    if (data.profilePic) { profilePreview.src = data.profilePic; profilePreview.style.display = "block"; removeImageBtn.style.display = "block"; }
+    else { profilePreview.style.display = "none"; removeImageBtn.style.display = "none"; }
+  };
+}
+
+// File handling
+function handleFile(file) {
+  const allowed = ["image/jpeg", "image/png", "image/gif"];
+  const maxSize = 5*1024*1024;
+  if (!allowed.includes(file.type)) return showNotification("Only JPEG, PNG, GIF allowed!", "error");
+  if (file.size > maxSize) return showNotification("File size must be <= 5MB!", "error");
+  selectedFile = file;
+  const reader = new FileReader();
+  reader.onload = e => { profilePreview.src = e.target.result; profilePreview.style.display = "block"; removeImageBtn.style.display = "block"; };
+  reader.readAsDataURL(file);
+}
+
+// Drag & drop
+dropArea.addEventListener("click", () => profilePicInput.click());
+dropArea.addEventListener("dragover", e => { e.preventDefault(); dropArea.classList.add("hover"); });
+dropArea.addEventListener("dragleave", e => { dropArea.classList.remove("hover"); });
+dropArea.addEventListener("drop", e => { e.preventDefault(); dropArea.classList.remove("hover"); if(e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]); });
+profilePicInput.addEventListener("change", e => handleFile(e.target.files[0]));
+removeImageBtn.addEventListener("click", () => { selectedFile=null; profilePreview.src=""; profilePreview.style.display="none"; removeImageBtn.style.display="none"; });
+
+// Save profile
+document.getElementById("saveBtn").addEventListener("click", async () => {
+  try {
+    // 1) Save the profile fields as before
+    const formData = new FormData();
+    if (selectedFile) formData.append("profilePic", selectedFile);
+    formData.append("category", categoryInput.value);
+    formData.append("available", document.getElementById("availabilityToggle").checked ? "true" : "false");
+
+    const res = await fetch(`${BACKEND_URL}/api/artisans/profile`, {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      body: formData
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || "Failed to save profile.");
+
+    // 2) NEW — also send their current location
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          try {
+            await fetch(`${BACKEND_URL}/api/artisans/location`, {
+              method: "PUT",
+              headers: {
+                Authorization: `Bearer ${localStorage.getItem("token")}`,
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify({
+                location: {
+                  type: "Point",
+                  coordinates: [pos.coords.longitude, pos.coords.latitude]
+                }
+              })
+            });
+            console.log("[Location] saved", pos.coords);
+          } catch (err) {
+            console.warn("Location update failed:", err);
+          }
+        },
+        (err) => console.warn("Geolocation denied:", err.message),
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    }
+
+    showNotification("Profile updated successfully!", "success");
+    currentProfile = data;
+    renderProfileCard(currentProfile);
+    formSection.style.display = "none";
+    selectedFile = null;
+  } catch (err) {
+    console.error(err);
+    showNotification(err.message || "A network error occurred.", "error");
+  }
+});
+
+fetchProfile();
+</script>
+</body>
+</html>
