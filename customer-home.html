@@ -430,29 +430,38 @@
   </button>
 </nav>
 
-<script>
+<script>// ============================================================
+// FIXA — customer-home.js
+// Load with:  <script defer src="customer-home.js"></script
+// (after config.js, socket.io CDN, fixa-notification-system.js, chat-guard.js)
+// ============================================================
+
 // ──────────────────────────────────────────
 // AUTH CHECK
 // ──────────────────────────────────────────
 const _raw = localStorage.getItem('user');
-const user = _raw ? JSON.parse(_raw) : null;
 const token = localStorage.getItem('token');
+let user = null;
+try { user = _raw ? JSON.parse(_raw) : null; } catch { user = null; }
 
 if (!user || !token) {
-  window.location.href = 'SignIn.html';
+  window.location.href = 'signin.html';
+  user = user || {};
 }
 user._id = user._id || user.id || user.userId || '';
 
-document.getElementById('usernameDisplay').textContent = user.username || 'User';
-document.getElementById('profileName').textContent = user.username || 'User';
-document.getElementById('profileEmail').textContent = user.email || '';
-document.getElementById('profileInitial').textContent = (user.username || 'U')[0].toUpperCase();
-
 // ──────────────────────────────────────────
-// CONFIG
+// CONFIG (no more hardcoded localhost)
 // ──────────────────────────────────────────
-const BASE_URL = 'http://localhost:5000';
-const MSG_API  = `${BASE_URL}/api/messages`;
+const BASE_URL = (window.FIXA_CONFIG && window.FIXA_CONFIG.API_URL) || 'http://localhost:5000';
+const MSG_API = `${BASE_URL}/api/messages`;
+const authH = (json = false) => {
+  const h = { Authorization: `Bearer ${token}` };
+  if (json) h['Content-Type'] = 'application/json';
+  return h;
+};
+const $ = (id) => document.getElementById(id);
+const toast = (title, body = '', type = 'system') => { if (window.FixaSystem) FixaSystem.showToast(title, body, type); };
 
 // ──────────────────────────────────────────
 // STATE
@@ -466,7 +475,6 @@ let activePaymentDeadline = null;
 let activeChatId = null;
 let chatSealed = false;
 let timerInterval = null;
-let timerSeconds = 1800;
 let isTyping = false;
 let typingTimer = null;
 let mediaRecorder = null;
@@ -476,106 +484,70 @@ let recordStart = 0;
 let _isCurrentlyBanned = false;
 let banCountdownInterval = null;
 let peerBanCountdownInterval = null;
+let _activeTopUp = null;
+let _selectedRating = 0;
+let _ratingContext = null;
 
-// Chat list state for unread tracking
 const chatListState = new Map();
-// Add near your other state variables
-const renderedMsgIds = new Set();
-let lastRenderedDateStr = null;
 
-function appendMessage(m) {
-  if (!m) return;
-  const msgsEl = document.getElementById('messages');
-  const msgId = m._id || m.id;
-
-  // TRUE dedup: if we've already rendered this real message, don't touch it.
-  // (Optimistic temp IDs like "temp-..." are never in this set, so they pass through fine.)
-  if (msgId && renderedMsgIds.has(msgId)) return;
-
-  const isMe = computeIsMe(m);
-  const msgDate = new Date(m.createdAt || Date.now());
-  const dateStr = msgDate.toDateString();
-
-  if (dateStr !== lastRenderedDateStr) {
-    const sep = document.createElement('div');
-    sep.className = 'date-sep';
-    sep.dataset.date = dateStr;
-    sep.innerHTML = `<span>${dateStr === new Date().toDateString() ? 'Today' : msgDate.toLocaleDateString()}</span>`;
-    msgsEl.appendChild(sep);
-    lastRenderedDateStr = dateStr;
-  }
-
-  const row = document.createElement('div');
-  row.className = `msg-row ${isMe ? 'sent' : 'recv'}`;
-  row.dataset.msgId = msgId || `local-${Date.now()}`;
-  const bubble = document.createElement('div');
-  bubble.className = 'bubble';
-
-  const mediaSrc = m.voiceNote || m.image || m.mediaUrl;
-  if (mediaSrc) {
-    const isAudio = String(mediaSrc).toLowerCase().match(/\.(webm|mp3|wav|ogg)$/i);
-    const fullSrc = String(mediaSrc).startsWith('blob:') || String(mediaSrc).startsWith('http')
-      ? mediaSrc
-      : `${BASE_URL}${String(mediaSrc).startsWith('/') ? '' : '/'}${mediaSrc}`;
-    if (m.voiceNote || isAudio) {
-      const audio = document.createElement('audio');
-      audio.controls = true; audio.src = fullSrc; audio.preload = 'metadata';
-      bubble.appendChild(audio);
-    } else {
-      const img = document.createElement('img');
-      img.src = fullSrc; img.loading = 'lazy'; img.style.cursor = 'pointer';
-      img.addEventListener('click', () => window.open(fullSrc, '_blank'));
-      bubble.appendChild(img);
-    }
-  }
-
-  const text = m.text || m.content;
-  if (text && text !== 'Voice note' && text !== 'Image') {
-    const t = document.createElement('div');
-    t.textContent = text;
-    bubble.appendChild(t);
-  }
-
-  const meta = document.createElement('div');
-  meta.className = 'bubble-meta';
-  meta.dataset.seen = String(!!m.seenAt || !!m.seen);
-  meta.dataset.delivered = String(!!m.deliveredAt || !!m.delivered);
-  meta.textContent = formatTime(new Date(m.createdAt || Date.now()));
-if (isMe) meta.textContent += (m.seenAt || m.seen) ? ' ✓✓' : (m.deliveredAt || m.delivered) ? ' ✓' : ' ·';
-  bubble.appendChild(meta);
-
-  row.appendChild(bubble);
-  msgsEl.appendChild(row);
-  if (msgId) renderedMsgIds.add(msgId);
-
-  const nearBottom = (msgsEl.scrollHeight - msgsEl.clientHeight - msgsEl.scrollTop) < 120;
-  if (nearBottom || isMe) msgsEl.scrollTop = msgsEl.scrollHeight;
+// ──────────────────────────────────────────
+// UTILS
+// ──────────────────────────────────────────
+function normalizeId(v) {
+  if (!v) return '';
+  if (typeof v === 'object') return String(v._id || v.id || '');
+  return String(v);
 }
 
-// ──────────────────────────────────────────
-// HELPERS
-// ──────────────────────────────────────────
+function computeIsMe(m) {
+  if (m.outgoing || m.isMine || m.isLocal) return true;
+  const senderId = normalizeId(m.senderId ?? m.sender ?? m.from ?? '');
+  return !!senderId && senderId === String(user._id);
+}
+
+function escHtml(s) {
+  return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function formatTime(d) {
+  try {
+    const dt = d instanceof Date ? d : new Date(d);
+    if (dt.toDateString() === new Date().toDateString())
+      return dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return dt.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  } catch { return ''; }
+}
+
+function formatLastSeen(d) {
+  const diff = Date.now() - new Date(d).getTime();
+  if (diff < 60000) return 'just now';
+  if (diff < 3600000) return `${Math.floor(diff / 60000)} min ago`;
+  if (diff < 86400000) return `${Math.floor(diff / 3600000)} h ago`;
+  return new Date(d).toLocaleDateString();
+}
+
+function fullMediaUrl(src) {
+  const s = String(src);
+  if (s.startsWith('blob:') || s.startsWith('http')) return s;
+  return `${BASE_URL}${s.startsWith('/') ? '' : '/'}${s}`;
+}
+
 function addNotification(title, body, chatId) {
-  if (window.FixaSystem) {
-    window.FixaSystem.addNotification(title, body, 'message', chatId || null);
-  }
+  if (window.FixaSystem) window.FixaSystem.addNotification(title, body, 'message', chatId || null);
+}
+
+function safeEmit(event, data) {
+  if (socket && socket.connected) { socket.emit(event, data); return true; }
+  return false;
 }
 
 function updateTotalUnreadBadge() {
   let total = 0;
-  for (const state of chatListState.values()) total += state.unread || 0;
-
-  const badge = document.getElementById('totalUnreadBadge');
-  const navBadge = document.getElementById('navUnreadBadge');
-
-  [badge, navBadge].forEach(el => {
+  for (const s of chatListState.values()) total += s.unread || 0;
+  [$('totalUnreadBadge'), $('navUnreadBadge')].forEach(el => {
     if (!el) return;
-    if (total > 0) {
-      el.style.display = 'flex';
-      el.textContent = total > 99 ? '99+' : total;
-    } else {
-      el.style.display = 'none';
-    }
+    if (total > 0) { el.style.display = 'flex'; el.textContent = total > 99 ? '99+' : total; }
+    else el.style.display = 'none';
   });
 }
 
@@ -585,56 +557,51 @@ function updateTotalUnreadBadge() {
 function switchPage(page) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-
-  const pageEl = document.getElementById(page + 'Page');
-  if (pageEl) pageEl.classList.add('active');
-
-  const navEl = document.querySelector(`.nav-item[data-page="${page}"]`);
-  if (navEl) navEl.classList.add('active');
-
+  $(page + 'Page')?.classList.add('active');
+  document.querySelector(`.nav-item[data-page="${page}"]`)?.classList.add('active');
   if (page === 'messages') loadChatList();
-  if (page === 'history') loadHistory(); 
+  if (page === 'history') loadHistory();
 }
 
 // ──────────────────────────────────────────
 // SOCKET
 // ──────────────────────────────────────────
 function initSocket() {
+  if (typeof io === 'undefined') { console.warn('[Socket] socket.io not loaded'); return; }
   try {
     socket = io(BASE_URL, { auth: { token }, transports: ['websocket', 'polling'] });
+    window.socket = socket;
 
     socket.on('connect', () => {
-      console.log('[Socket] Connected:', socket.id);
       socket.emit('register', user._id);
       if (activeChatId) socket.emit('joinChat', activeChatId);
     });
-
     socket.on('connect_error', e => console.warn('[Socket] Error:', e.message));
 
-    socket.on('accountSuspended', (data) => {
-      _isCurrentlyBanned = true;
-      showBanOverlay(data);
-    });
+    socket.on('accountSuspended', (data) => { _isCurrentlyBanned = true; showBanOverlay(data); });
     socket.on('accountActivated', () => {
       _isCurrentlyBanned = false;
       hideBanOverlay();
       addNotification('Welcome back!', 'Your account has been reactivated');
     });
 
- socket.on('newMessage', (payload) => {
-  const { chatId, message, unreadCount } = payload || {};
-  if (!chatId || !message) return;
-  if (String(activeChatId) === String(chatId)) {
-    appendMessage(message); // now safe — dedup by ID handles the echo
-  } else {
-    updateChatPreview(chatId, message, unreadCount);
-    addNotification(`New message from ${message.senderName || 'Artisan'}`, message.text || 'Sent a media file', chatId);
-  }
-});
-    socket.on('userOnline', ({ userId }) => {
-      if (window._activeChatPeerId && String(userId) === String(window._activeChatPeerId)) {
-        updatePeerStatus(true);
+    socket.on('newMessage', (payload) => {
+      const { chatId, message, unreadCount } = payload || {};
+      if (!chatId || !message) return;
+      if (String(activeChatId) === String(chatId)) {
+        appendMessage(message);
+        fetch(`${MSG_API}/${encodeURIComponent(chatId)}/read`, { method: 'POST', headers: authH() }).catch(() => {});
+      } else {
+        updateChatPreview(chatId, message, unreadCount);
+        addNotification(`New message from ${message.senderName || 'Artisan'}`, message.text || 'Sent a media file', chatId);
       }
+    });
+
+    socket.on('userOnline', ({ userId }) => {
+      if (window._activeChatPeerId && String(userId) === String(window._activeChatPeerId)) updatePeerStatus(true);
+    });
+    socket.on('userOffline', ({ userId }) => {
+      if (window._activeChatPeerId && String(userId) === String(window._activeChatPeerId)) updatePeerStatus(false, new Date());
     });
 
     socket.on('peerBanned', (data) => {
@@ -643,7 +610,6 @@ function initSocket() {
         addNotification('Artisan Restricted', 'The artisan you are chatting with has been restricted');
       }
     });
-
     socket.on('peerUnbanned', (data) => {
       if (String(data.peerUserId) === String(window._activeChatPeerId)) {
         hidePeerBanBanner();
@@ -651,184 +617,98 @@ function initSocket() {
       }
     });
 
-    socket.on('userOffline', ({ userId }) => {
-      if (window._activeChatPeerId && String(userId) === String(window._activeChatPeerId)) {
-        updatePeerStatus(false, new Date());
-      }
-    });
-
     socket.on('typing', ({ chatId }) => {
-      if (String(activeChatId) === String(chatId))
-        document.getElementById('typingIndicator').textContent = 'Artisan is typing...';
+      if (String(activeChatId) === String(chatId)) $('typingIndicator').textContent = 'Artisan is typing...';
     });
     socket.on('stopTyping', ({ chatId }) => {
-      if (String(activeChatId) === String(chatId))
-        document.getElementById('typingIndicator').textContent = '';
+      if (String(activeChatId) === String(chatId)) $('typingIndicator').textContent = '';
     });
 
-  socket.on('jobAccepted', ({ bookingId, chatId, artisanName, paymentDeadline, timerDuration }) => {
-  // Update active booking state
-  if (activeBooking && String(activeBooking._id) === String(bookingId)) {
-    activeBooking.status = 'accepted';
-    activeBooking.paymentDeadline = paymentDeadline;
-    activePaymentDeadline = paymentDeadline;
-    activePaymentStatus = 'unpaid';
-  }
+    socket.on('messagesRead', ({ chatId }) => {
+      if (String(activeChatId) !== String(chatId)) return;
+      document.querySelectorAll('.msg-row.sent .bubble-meta').forEach(el => {
+        if (el.dataset.seen === 'true') return;
+        el.dataset.seen = 'true';
+        el.textContent = el.textContent.replace(/\s*[·✓]*$/, '') + ' ✓✓';
+      });
+    });
 
-  const name = artisanName || 'Your artisan';
-  const mins = Math.floor((timerDuration || 1800) / 60);
-  addNotification('Job Accepted! 🎉',
-    `${name} accepted your job. Pay within ${mins} minutes to secure it.`, chatId);
-
-  // If we're already in this chat — start the timer immediately
-  if (String(activeChatId) === String(chatId)) {
-    if (paymentDeadline) startPaymentDeadline(paymentDeadline);
-    applyChatStateToUI();
-  } else {
-    // Store deadline so it shows when they open the chat
-    if (activeBooking) activeBooking.paymentDeadline = paymentDeadline;
-  }
-});
+    socket.on('jobAccepted', ({ bookingId, chatId, artisanName, paymentDeadline, timerDuration }) => {
+      if (activeBooking && String(activeBooking._id) === String(bookingId)) {
+        activeBooking.status = 'accepted';
+        activeBooking.paymentDeadline = paymentDeadline;
+        activePaymentDeadline = paymentDeadline;
+        activePaymentStatus = 'unpaid';
+      }
+      const mins = Math.floor((timerDuration || 1800) / 60);
+      addNotification('Job Accepted! 🎉', `${artisanName || 'Your artisan'} accepted your job. Pay within ${mins} minutes to secure it.`, chatId);
+      if (String(activeChatId) === String(chatId)) applyChatStateToUI();
+    });
 
     socket.on('execution:statusUpdate', ({ status, artisanName }) => {
       updateExecutionTimeline(status);
-      const labels = {
-        on_the_way: 'is on the way 🚗',
-        started: 'has started the job 🔧',
-        completed: 'has completed the job ✨'
-      };
+      const labels = { on_the_way: 'is on the way 🚗', started: 'has started the job 🔧', completed: 'has completed the job ✨' };
       addNotification('Job Update', `${artisanName || 'Your artisan'} ${labels[status] || status}`);
     });
-socket.on('messagesRead', ({ chatId }) => {
-  if (String(activeChatId) !== String(chatId)) return;
-  document.querySelectorAll('.msg-row.sent .bubble-meta').forEach(el => {
-    if (el.dataset.seen === 'true') return; // already marked, skip
-    el.dataset.seen = 'true';
-    el.textContent = el.textContent.replace(/\s*[·✓]*$/, '') + ' ✓✓';
-  });
-});
+
     socket.on('execution:photoAdded', ({ photoUrl, type }) => {
       addProofPhotoToGallery(photoUrl, type);
       addNotification('New proof photo', `Your artisan uploaded a ${type} photo`);
     });
 
-    socket.on('artisan:locationUpdate', ({ lat, lng }) => {
-      console.log('Artisan location:', lat, lng);
+    socket.on('artisan:locationUpdate', ({ lat, lng }) => console.log('Artisan location:', lat, lng));
+
+    // Top-up
+    socket.on('topUpRequested', ({ bookingId, topUpId, previousPrice, newPrice, amount, reason, artisanName }) => {
+      _activeTopUp = { bookingId, topUpId };
+      $('topUpArtisanName').textContent = artisanName || 'Your artisan';
+      $('topUpPrevPriceDisplay').textContent = `₦${Number(previousPrice).toLocaleString()}`;
+      $('topUpNewPriceDisplay').textContent = `₦${Number(newPrice).toLocaleString()}`;
+      $('topUpAmountDisplay').textContent = `₦${Number(amount).toLocaleString()}`;
+      $('topUpReasonDisplay').textContent = reason;
+      $('topUpApprovalModal').style.display = 'flex';
+      addNotification('💰 Price Update Requested', `${artisanName}: new price ₦${Number(newPrice).toLocaleString()}`, 'payment');
+    });
+    socket.on('topUpPaid', ({ amount }) => {
+      addNotification('Top-Up Paid ✅', `Additional ₦${Number(amount || 0).toLocaleString()} added to escrow`, 'success');
     });
 
-    let _activeTopUp = null;
-
-socket.on('topUpRequested', ({ bookingId, topUpId, previousPrice, newPrice, amount, reason, artisanName }) => {
-  _activeTopUp = { bookingId, topUpId };
-  document.getElementById('topUpArtisanName').textContent = artisanName || 'Your artisan';
-  document.getElementById('topUpPrevPriceDisplay').textContent = `₦${Number(previousPrice).toLocaleString()}`;
-  document.getElementById('topUpNewPriceDisplay').textContent = `₦${Number(newPrice).toLocaleString()}`;
-  document.getElementById('topUpAmountDisplay').textContent = `₦${Number(amount).toLocaleString()}`;
-  document.getElementById('topUpReasonDisplay').textContent = reason;
-  document.getElementById('topUpApprovalModal').style.display = 'flex';
-  addNotification('💰 Price Update Requested', `${artisanName}: new price ₦${Number(newPrice).toLocaleString()}`, 'payment');
-});
-
-socket.on('topUpPaid', ({ amount }) => {
-  addNotification('Top-Up Paid ✅', `Additional ₦${amount.toLocaleString()} added to escrow`, 'success');
-});
-
-document.getElementById('topUpApproveBtn').addEventListener('click', async () => {
-  if (!_activeTopUp) return;
-  try {
-    const response = await fetch(`${FIXA_CONFIG.API_URL}/api/bookings/${_activeTopUp.bookingId}/top-up/${_activeTopUp.topUpId}/approve`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+    // Price proposal
+    socket.on('priceProposalRequested', ({ bookingId, previousPrice, newPrice, reason, artisanName }) => {
+      if (String(activeBookingId) !== String(bookingId)) return;
+      $('proposalArtisanName').textContent = artisanName || 'Your artisan';
+      $('proposalPrevPrice').textContent = `₦${Number(previousPrice).toLocaleString()}`;
+      $('proposalNewPrice').textContent = `₦${Number(newPrice).toLocaleString()}`;
+      $('proposalReason').textContent = reason;
+      $('priceProposalBanner').style.display = 'flex';
+      addNotification('💬 New Price Proposed', `${artisanName}: ₦${Number(newPrice).toLocaleString()}`, bookingId);
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message);
 
-    // NEW: remember this top-up so we can verify it on return
-    localStorage.setItem('pendingTopUp', JSON.stringify({
-      bookingId: _activeTopUp.bookingId,
-      topUpId: _activeTopUp.topUpId,
-      reference: data.reference
-    }));
-
-    document.getElementById('topUpApprovalModal').style.display = 'none';
-    window.location.href = data.authorizationUrl;
-  } catch (err) {
-    if (window.FixaSystem) FixaSystem.showToast('Failed', err.message, 'warning');
-  }
-});
-
-document.getElementById('topUpRejectBtn').addEventListener('click', async () => {
-  if (!_activeTopUp) return;
-  try {
-    await fetch(FIXA_CONFIG.API.URL}/api/bookings/${_activeTopUp.bookingId}/top-up/${_activeTopUp.topUpId}/reject`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}` }
+    socket.on('bookingStatusUpdated', ({ status, artisanName, bookingId, artisanId }) => {
+      const msgs = {
+        accepted: `${artisanName || 'Your artisan'} accepted your booking`,
+        rejected: `${artisanName || 'Your artisan'} declined your booking`,
+        in_progress: 'Your job is in progress',
+        verifying: 'Job marked complete — please confirm',
+        completed: 'Your job is completed',
+        cancelled: 'Your booking was cancelled'
+      };
+      addNotification('Booking Update', msgs[status] || `Booking status: ${status}`);
+      if (status === 'completed' && bookingId && artisanId) openRatingModal({ bookingId, artisanId, artisanName });
     });
-    document.getElementById('topUpApprovalModal').style.display = 'none';
-    _activeTopUp = null;
-  } catch {}
-});
-socket.on('priceProposalRequested', ({ bookingId, previousPrice, newPrice, reason, artisanName }) => {
-  if (String(activeBookingId) !== String(bookingId)) return;
-  document.getElementById('proposalArtisanName').textContent = artisanName || 'Your artisan';
-  document.getElementById('proposalPrevPrice').textContent = `₦${previousPrice.toLocaleString()}`;
-  document.getElementById('proposalNewPrice').textContent = `₦${newPrice.toLocaleString()}`;
-  document.getElementById('proposalReason').textContent = reason;
-  document.getElementById('priceProposalBanner').style.display = 'flex';
-  addNotification('💬 New Price Proposed', `${artisanName}: ₦${newPrice.toLocaleString()}`, bookingId);
-});
-
-document.getElementById('proposalApproveBtn')?.addEventListener('click', async () => {
-  try {
-    const res = await fetch(`${BASE_URL}/api/bookings/${activeBookingId}/price-proposal/approve`, {
-      method: 'PUT',
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message);
-    activeBooking.estimatedPrice = data.estimatedPrice;
-    document.getElementById('priceProposalBanner').style.display = 'none';
-    applyChatStateToUI();
-    if (window.FixaSystem) FixaSystem.showToast('Price updated', `New price: ₦${data.estimatedPrice.toLocaleString()}`, 'success');
-  } catch (err) {
-    if (window.FixaSystem) FixaSystem.showToast('Failed', err.message, 'warning');
-  }
-});
-
-document.getElementById('proposalRejectBtn')?.addEventListener('click', async () => {
-  try {
-    await fetch(`${BASE_URL}/api/bookings/${activeBookingId}/price-proposal/reject`, {
-      method: 'PUT',
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    document.getElementById('priceProposalBanner').style.display = 'none';
-  } catch {}
-});
-socket.on('bookingStatusUpdated', ({ status, artisanName, bookingId, artisanId }) => {
-  const msgs = { /* unchanged */ };
-  addNotification('Booking Update', msgs[status] || `Booking status: ${status}`);
-  if (status === 'completed' && bookingId && artisanId) {
-    openRatingModal({ bookingId, artisanId, artisanName });
-  }
-});
 
     socket.on('bookingCancelled', async ({ bookingId, reason }) => {
       if (String(activeBookingId) === String(bookingId)) {
         addNotification('Booking Cancelled', reason || 'Your booking was cancelled', null);
-        activeBooking = null;
-        activeBookingId = null;
-        activePaymentStatus = 'unknown';
-        activePaymentDeadline = null;
-        activeChatStatus = 'intro';
-        if (window.ChatGuard) await window.ChatGuard.onChatOpen(activeChatId);
+        activeBooking = null; activeBookingId = null;
+        activePaymentStatus = 'unknown'; activePaymentDeadline = null; activeChatStatus = 'intro';
+        if (window.ChatGuard && activeChatId) await window.ChatGuard.onChatOpen(activeChatId);
         applyChatStateToUI();
       }
     });
 
     socket.on('paymentDeadlineSoon', ({ bookingId, minutesLeft }) => {
-      if (String(activeBookingId) === String(bookingId)) {
-        addNotification('⏰ Time Running Out', `${minutesLeft} minutes left to pay`, null);
-      }
+      if (String(activeBookingId) === String(bookingId)) addNotification('⏰ Time Running Out', `${minutesLeft} minutes left to pay`, null);
     });
 
     socket.on('paymentEscrowed', async ({ bookingId }) => {
@@ -842,72 +722,35 @@ socket.on('bookingStatusUpdated', ({ status, artisanName, bookingId, artisanId }
 
     socket.on('chatUpgraded', async ({ chatId, status }) => {
       if (String(activeChatId) !== String(chatId)) return;
-      if (status === 'booked') {
-        addNotification('Booking Confirmed 🎉', 'Chat is now upgraded. You can send photos and pay for the job.', null);
-      } else if (status === 'secured') {
-        addNotification('Escrow Active 🔒', 'Your payment is held safely. Voice & location are unlocked.', null);
-      }
+      if (status === 'booked') addNotification('Booking Confirmed 🎉', 'Chat is now upgraded. You can send photos and pay for the job.', null);
+      else if (status === 'secured') addNotification('Escrow Active 🔒', 'Your payment is held safely. Voice & location are unlocked.', null);
       await loadChatBookingAndPaymentStatus(activeChatId);
       if (window.ChatGuard) await window.ChatGuard.onChatOpen(activeChatId);
     });
 
-    socket.on('paymentReleased', ({ bookingId, payout }) => {
+    socket.on('paymentReleased', ({ payout }) => {
       addNotification('Funds Released 💸', `₦${payout?.toLocaleString() || ''} released to artisan.`, null);
     });
 
-    // ── DISPUTE EVENTS ──
-    socket.on('disputeOpened', ({ disputeId, bookingId }) => {
-      if (window.FixaSystem) {
-        window.FixaSystem.addNotification(
-          '⚠️ Dispute Filed',
-          'A dispute has been opened on your booking. Funds are frozen until Fixa reviews.',
-          'dispute'
-        );
-      }
-    });
+    // Disputes
+    socket.on('disputeOpened', () => window.FixaSystem?.addNotification('⚠️ Dispute Filed', 'A dispute has been opened on your booking. Funds are frozen until Fixa reviews.', 'dispute'));
+    socket.on('disputeResolved', () => window.FixaSystem?.addNotification('✅ Dispute Resolved', 'The dispute on your booking has been reviewed and resolved.', 'dispute'));
+    socket.on('disputeAcknowledged', () => window.FixaSystem?.addNotification('📋 Dispute Received', 'Your dispute has been received. The Fixa team will review within 24 hours.', 'dispute'));
 
-    socket.on('disputeResolved', ({ disputeId }) => {
-      if (window.FixaSystem) {
-        window.FixaSystem.addNotification(
-          '✅ Dispute Resolved',
-          'The dispute on your booking has been reviewed and resolved.',
-          'dispute'
-        );
-      }
-    });
-
-    socket.on('disputeAcknowledged', ({ disputeId, bookingId }) => {
-      if (window.FixaSystem) {
-        window.FixaSystem.addNotification(
-          '📋 Dispute Received',
-          'Your dispute has been received. The Fixa team will review within 24 hours.',
-          'dispute'
-        );
-      }
-    });
-
-    socket.on('notification', ({ title, body, chatId }) => {
-      addNotification(title, body, chatId);
-    });
-
+    socket.on('notification', ({ title, body, chatId }) => addNotification(title, body, chatId));
   } catch (e) {
     console.warn('[Socket] Init failed:', e);
   }
-}
-
-function safeEmit(event, data) {
-  if (socket && socket.connected) { socket.emit(event, data); return true; }
-  return false;
 }
 
 // ──────────────────────────────────────────
 // CHAT LIST
 // ──────────────────────────────────────────
 async function loadChatList() {
-  const container = document.getElementById('chatList');
+  const container = $('chatList');
   container.innerHTML = '<div class="empty-state"><p>Loading conversations...</p></div>';
   try {
-    const res = await fetch(`${MSG_API}/my-chats`, { headers: { Authorization: `Bearer ${token}` } });
+    const res = await fetch(`${MSG_API}/my-chats`, { headers: authH() });
     if (!res.ok) throw new Error('Failed');
     const chats = await res.json();
     renderChatList(Array.isArray(chats) ? chats : []);
@@ -917,7 +760,7 @@ async function loadChatList() {
 }
 
 function renderChatList(chats) {
-  const container = document.getElementById('chatList');
+  const container = $('chatList');
   chatListState.clear();
 
   if (!chats.length) {
@@ -926,8 +769,10 @@ function renderChatList(chats) {
     return;
   }
   container.innerHTML = '';
+  const frag = document.createDocumentFragment();
+
   chats.forEach(chat => {
-    const other = (chat.participants || []).find(p => normalizeId(p) !== user._id) || {};
+    const other = (chat.participants || []).find(p => normalizeId(p) !== String(user._id)) || {};
     const name = other.username || other.name || 'Artisan';
     const lastMsg = chat.latestMessage || (chat.messages?.slice(-1)[0]) || {};
     const lastText = lastMsg.text || lastMsg.content || 'Say hi 👋';
@@ -954,10 +799,8 @@ function renderChatList(chats) {
           <span class="chat-preview-text">${escHtml(lastText)}</span>
           ${unread ? `<span class="unread-badge">${unread}</span>` : ''}
         </div>
-      </div>
-    `;
+      </div>`;
     el.addEventListener('click', () => {
-      // Clear unread for this chat
       const state = chatListState.get(String(chatId));
       if (state) state.unread = 0;
       el.classList.remove('has-unread');
@@ -965,46 +808,15 @@ function renderChatList(chats) {
       updateTotalUnreadBadge();
       openChat(chatId, name, isSealed, timerLeft || 0);
     });
-    container.appendChild(el);
+    frag.appendChild(el);
   });
+
+  container.appendChild(frag);
   updateTotalUnreadBadge();
 }
 
-function updateExecutionTimeline(status) {
-  const timeline = document.getElementById('executionTimeline');
-  if (!timeline) return;
-  timeline.style.display = 'block';
-
-  const order = ['on_the_way', 'started', 'completed'];
-  const reachedIdx = order.indexOf(status);
-
-  document.querySelectorAll('.exec-step').forEach(stepEl => {
-    const stepIdx = order.indexOf(stepEl.dataset.step);
-    if (stepIdx <= reachedIdx) {
-      stepEl.style.color = '#00d4ff';
-      stepEl.style.fontWeight = '700';
-    } else {
-      stepEl.style.color = 'rgba(255,255,255,0.4)';
-      stepEl.style.fontWeight = '400';
-    }
-  });
-}
-
-function addProofPhotoToGallery(photoUrl, type) {
-  const gallery = document.getElementById('proofPhotoGallery');
-  if (!gallery) return;
-  gallery.style.display = 'flex';
-  const wrap = document.createElement('div');
-  wrap.style.cssText = 'flex-shrink:0;position:relative';
-  wrap.innerHTML = `
-    <img src="${photoUrl}" style="width:80px;height:80px;object-fit:cover;border-radius:8px;cursor:pointer" onclick="window.open('${photoUrl}','_blank')">
-    <div style="position:absolute;bottom:2px;left:2px;background:rgba(0,0,0,0.7);color:#fff;font-size:9px;padding:1px 5px;border-radius:4px">${type}</div>
-  `;
-  gallery.appendChild(wrap);
-}
-
 function updateChatPreview(chatId, message, unreadCount) {
-  let item = document.querySelector(`[data-chat-id="${chatId}"]`);
+  const item = document.querySelector(`.chat-item[data-chat-id="${chatId}"]`);
   const state = chatListState.get(String(chatId)) || { name: 'Artisan', unread: 0 };
 
   state.lastText = message.text || 'Media';
@@ -1012,10 +824,7 @@ function updateChatPreview(chatId, message, unreadCount) {
   state.unread = unreadCount != null ? unreadCount : (state.unread + 1);
   chatListState.set(String(chatId), state);
 
-  if (!item) {
-    loadChatList();
-    return;
-  }
+  if (!item) { loadChatList(); return; }
 
   const preview = item.querySelector('.chat-preview-text');
   if (preview) preview.textContent = state.lastText;
@@ -1034,68 +843,112 @@ function updateChatPreview(chatId, message, unreadCount) {
     item.classList.remove('has-unread');
   }
 
-  document.getElementById('chatList').prepend(item);
+  $('chatList').prepend(item);
   updateTotalUnreadBadge();
 }
 
 // ──────────────────────────────────────────
-// OPEN CHAT
+// EXECUTION TIMELINE / PROOF PHOTOS
+// ──────────────────────────────────────────
+function updateExecutionTimeline(status) {
+  const timeline = $('executionTimeline');
+  if (!timeline) return;
+  timeline.style.display = 'block';
+  const order = ['on_the_way', 'started', 'completed'];
+  const reachedIdx = order.indexOf(status);
+  document.querySelectorAll('.exec-step').forEach(stepEl => {
+    const reached = order.indexOf(stepEl.dataset.step) <= reachedIdx;
+    stepEl.style.color = reached ? '#00d4ff' : 'rgba(255,255,255,0.4)';
+    stepEl.style.fontWeight = reached ? '700' : '400';
+  });
+}
+
+function addProofPhotoToGallery(photoUrl, type) {
+  const gallery = $('proofPhotoGallery');
+  if (!gallery) return;
+  gallery.style.display = 'flex';
+  const url = fullMediaUrl(photoUrl);
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'flex-shrink:0;position:relative';
+  const img = document.createElement('img');
+  img.src = url;
+  img.loading = 'lazy';
+  img.style.cssText = 'width:80px;height:80px;object-fit:cover;border-radius:8px;cursor:pointer';
+  img.addEventListener('click', () => window.open(url, '_blank'));
+  const tag = document.createElement('div');
+  tag.style.cssText = 'position:absolute;bottom:2px;left:2px;background:rgba(0,0,0,0.7);color:#fff;font-size:9px;padding:1px 5px;border-radius:4px';
+  tag.textContent = type;
+  wrap.append(img, tag);
+  gallery.appendChild(wrap);
+}
+
+// ──────────────────────────────────────────
+// OPEN / CLOSE CHAT
 // ──────────────────────────────────────────
 async function openChat(chatId, peerName, isSealed = false, timerSecs = 0) {
   activeChatId = chatId;
   chatSealed = isSealed;
   activeBookingId = null;
+  activeBooking = null;
   activePaymentStatus = 'unknown';
+  resetMessageState();
 
-  document.getElementById('chatListView').style.display = 'none';
-  document.getElementById('chatConvView').style.display = 'flex';
-  document.getElementById('chatConvView').style.flexDirection = 'column';
+  $('chatListView').style.display = 'none';
+  const conv = $('chatConvView');
+  conv.style.display = 'flex';
+  conv.style.flexDirection = 'column';
 
-  document.getElementById('convName').textContent = peerName || 'Chat';
-  document.getElementById('convAvatar').textContent = (peerName || 'A')[0].toUpperCase();
+  $('convName').textContent = peerName || 'Chat';
+  $('convAvatar').textContent = (peerName || 'A')[0].toUpperCase();
 
   safeEmit('joinChat', chatId);
   clearTimedChat();
 
-  document.getElementById('sealedBanner').style.display = isSealed ? 'block' : 'none';
-  document.getElementById('chatFooter').style.display = isSealed || _isCurrentlyBanned ? 'none' : 'flex';
+  $('sealedBanner').style.display = isSealed ? 'block' : 'none';
+  $('chatFooter').style.display = (isSealed || _isCurrentlyBanned) ? 'none' : 'flex';
 
-  await loadChatBookingAndPaymentStatus(chatId);
+  const msgsEl = $('messages');
+  msgsEl.innerHTML = '<div class="empty-state"><p>Loading messages...</p></div>';
 
-  if (window.ChatGuard) {
+  // Run independent requests in parallel instead of one after another
+  const messagesPromise = fetch(`${MSG_API}/${encodeURIComponent(chatId)}`, { headers: authH() });
+  const phasePromise = loadChatBookingAndPaymentStatus(chatId);
+
+  const guardPromise = (async () => {
+    if (!window.ChatGuard) return;
     if (!window.ChatGuard._inited) {
       await window.ChatGuard.init(user._id, token);
       window.ChatGuard._inited = true;
     }
+    await phasePromise;
     await window.ChatGuard.onChatOpen(chatId);
-  }
+  })();
 
-  const msgsEl = document.getElementById('messages');
-  msgsEl.innerHTML = '<div class="empty-state"><p>Loading messages...</p></div>';
   try {
-    const res = await fetch(`${MSG_API}/${encodeURIComponent(chatId)}`, { headers: { Authorization: `Bearer ${token}` } });
+    const res = await messagesPromise;
     if (!res.ok) throw new Error('Failed');
     const msgs = await res.json();
+    if (String(activeChatId) !== String(chatId)) return; // user moved on
     msgsEl.innerHTML = '';
     (Array.isArray(msgs) ? msgs : []).forEach(appendMessage);
     msgsEl.scrollTop = msgsEl.scrollHeight;
   } catch {
     msgsEl.innerHTML = '<div class="empty-state"><p style="color:#ef4444">Could not load messages</p></div>';
   }
-  // Mark messages as read
-fetch(`${MSG_API}/${encodeURIComponent(chatId)}/read`, {
-  method: 'POST',
-  headers: { Authorization: `Bearer ${token}` }
-}).catch(() => {});
+
+  await Promise.allSettled([phasePromise, guardPromise]);
+
+  fetch(`${MSG_API}/${encodeURIComponent(chatId)}/read`, { method: 'POST', headers: authH() }).catch(() => {});
 }
+window.openChat = openChat;
 
 function closeChat() {
   if (activeChatId) safeEmit('leaveChat', activeChatId);
   activeChatId = null;
   clearTimedChat();
   hidePeerBanBanner();
-  document.getElementById('chatConvView').style.display = 'none';
-  document.getElementById('chatListView').style.display = 'flex';
+  $('chatConvView').style.display = 'none';
+  $('chatListView').style.display = 'flex';
 }
 
 // ──────────────────────────────────────────
@@ -1104,78 +957,51 @@ function closeChat() {
 function getEffectiveChatPhase() {
   if (!activeBookingId) return 'intro';
   if (activePaymentStatus === 'paid') return 'secured';
-  if (
-    activePaymentStatus === 'unpaid' &&
-    activePaymentDeadline &&
-    new Date(activePaymentDeadline) > new Date()
-  ) {
-    return 'booked';
-  }
+  if (activePaymentStatus === 'unpaid' && activePaymentDeadline && new Date(activePaymentDeadline) > new Date()) return 'booked';
   return 'intro';
 }
 
 function canOpenDispute() {
   if (!activeBooking) return false;
   const allowed = ['escrowed', 'verifying', 'completed', 'in_progress'];
-  if (!allowed.includes(activeBooking.status) && activeBooking.paymentStatus !== 'escrowed') {
-    return false;
-  }
+  if (!allowed.includes(activeBooking.status) && activeBooking.paymentStatus !== 'escrowed') return false;
   if (activeBooking.status === 'completed') {
     const completedAt = activeBooking.completedAt || activeBooking.updatedAt;
     if (!completedAt) return true;
-    const ageMs = Date.now() - new Date(completedAt).getTime();
-    if (ageMs > 7 * 24 * 60 * 60 * 1000) return false;
+    if (Date.now() - new Date(completedAt).getTime() > 7 * 24 * 60 * 60 * 1000) return false;
   }
   return true;
 }
 
+function setBtnState(btn, enabled, title) {
+  if (!btn) return;
+  btn.disabled = !enabled;
+  btn.style.opacity = enabled ? '1' : '0.35';
+  btn.style.cursor = enabled ? '' : 'not-allowed';
+  btn.title = title || '';
+}
+
 function applyChatStateToUI() {
   const phase = getEffectiveChatPhase();
-
-  const payBtn = document.getElementById('payNowBtn');
-  const disputeBtn = document.getElementById('disputeBtn');
-  const attachBtn = document.getElementById('attachBtn');
-  const voiceBtn = document.getElementById('voiceBtn');
+  const payBtn = $('payNowBtn');
+  const disputeBtn = $('disputeBtn');
+  const attachBtn = $('attachBtn');
+  const voiceBtn = $('voiceBtn');
 
   clearTimedChat();
 
   if (phase === 'intro') {
     if (payBtn) payBtn.style.display = 'none';
     if (disputeBtn) disputeBtn.style.display = 'none';
-    [attachBtn, voiceBtn].forEach(btn => {
-      if (!btn) return;
-      btn.disabled = true;
-      btn.style.opacity = '0.35';
-      btn.style.cursor = 'not-allowed';
-      btn.title = 'Book to unlock';
-    });
+    setBtnState(attachBtn, false, 'Book to unlock');
+    setBtnState(voiceBtn, false, 'Book to unlock');
     return;
   }
 
-  if (attachBtn) {
-    attachBtn.disabled = false;
-    attachBtn.style.opacity = '1';
-    attachBtn.style.cursor = '';
-    attachBtn.title = '';
-  }
+  setBtnState(attachBtn, true, '');
+  setBtnState(voiceBtn, phase === 'secured', phase === 'secured' ? '' : 'Pay escrow to unlock voice notes');
 
-  if (voiceBtn) {
-    if (phase === 'secured') {
-      voiceBtn.disabled = false;
-      voiceBtn.style.opacity = '1';
-      voiceBtn.style.cursor = '';
-      voiceBtn.title = '';
-    } else {
-      voiceBtn.disabled = true;
-      voiceBtn.style.opacity = '0.35';
-      voiceBtn.style.cursor = 'not-allowed';
-      voiceBtn.title = 'Pay escrow to unlock voice notes';
-    }
-  }
-
-  if (disputeBtn) {
-    disputeBtn.style.display = canOpenDispute() ? 'inline-block' : 'none';
-  }
+  if (disputeBtn) disputeBtn.style.display = canOpenDispute() ? 'inline-block' : 'none';
 
   if (payBtn) {
     if (phase === 'booked') {
@@ -1195,36 +1021,34 @@ function applyChatStateToUI() {
     }
   }
 
-  if (phase === 'booked' && activePaymentDeadline) {
-    startPaymentDeadline(activePaymentDeadline);
-  }
+  if (phase === 'booked' && activePaymentDeadline) startPaymentDeadline(activePaymentDeadline);
 }
 
 async function loadChatBookingAndPaymentStatus(chatId) {
   try {
-    const chatRes = await fetch(`${BASE_URL}/api/chats/${chatId}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+    const chatRes = await fetch(`${BASE_URL}/api/chats/${chatId}`, { headers: authH() });
     if (chatRes.ok) {
       const chat = await chatRes.json();
       activeBooking = chat?.booking || null;
-      if (activeBooking?.priceProposal?.status === 'pending') {
-  document.getElementById('proposalPrevPrice').textContent = `₦${activeBooking.priceProposal.previousPrice.toLocaleString()}`;
-  document.getElementById('proposalNewPrice').textContent = `₦${activeBooking.priceProposal.newPrice.toLocaleString()}`;
-  document.getElementById('proposalReason').textContent = activeBooking.priceProposal.reason;
-  document.getElementById('priceProposalBanner').style.display = 'flex';
-} else {
-  document.getElementById('priceProposalBanner').style.display = 'none';
-}
       activeBookingId = activeBooking?._id || (typeof activeBooking === 'string' ? activeBooking : null);
       activeChatStatus = chat?.status || 'intro';
       activePaymentDeadline = activeBooking?.paymentDeadline || null;
+
+      const prop = activeBooking?.priceProposal;
+      if (prop?.status === 'pending') {
+        $('proposalPrevPrice').textContent = `₦${Number(prop.previousPrice).toLocaleString()}`;
+        $('proposalNewPrice').textContent = `₦${Number(prop.newPrice).toLocaleString()}`;
+        $('proposalReason').textContent = prop.reason;
+        $('priceProposalBanner').style.display = 'flex';
+      } else {
+        $('priceProposalBanner').style.display = 'none';
+      }
 
       if (activeBooking?.executionStatus && activeBooking.executionStatus !== 'not_started') {
         updateExecutionTimeline(activeBooking.executionStatus);
       }
       if (activeBooking?.proofPhotos?.length) {
-        const gallery = document.getElementById('proofPhotoGallery');
+        const gallery = $('proofPhotoGallery');
         if (gallery) gallery.innerHTML = '';
         activeBooking.proofPhotos.forEach(p => addProofPhotoToGallery(p.url, p.type));
       }
@@ -1234,85 +1058,48 @@ async function loadChatBookingAndPaymentStatus(chatId) {
       updatePeerStatus(peer?.isOnline || false, peer?.lastSeen);
 
       if (peer?.isSuspended || peer?.chatBanned) {
-        showPeerBanBanner({
-          isSuspended: peer.isSuspended,
-          chatBanned: peer.chatBanned,
-          banExpiresAt: peer.banExpiresAt,
-          reason: peer.banReason
-        });
+        showPeerBanBanner({ isSuspended: peer.isSuspended, chatBanned: peer.chatBanned, banExpiresAt: peer.banExpiresAt, reason: peer.banReason });
       } else {
         hidePeerBanBanner();
       }
     }
 
-    const statusRes = await fetch(`${BASE_URL}/api/payments/status`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({bookingId: activeBookingId})
-    });
-    if (statusRes.ok) {
-      const s = await statusRes.json();
-      activePaymentStatus = s.paid ? 'paid' : 'unpaid';
-    }else{activePaymentStatus = 'unknown'; }
+    if (activeBookingId) {
+      const statusRes = await fetch(`${BASE_URL}/api/payments/status`, {
+        method: 'POST', headers: authH(true), body: JSON.stringify({ bookingId: activeBookingId })
+      });
+      if (statusRes.ok) {
+        const s = await statusRes.json();
+        activePaymentStatus = s.paid ? 'paid' : 'unpaid';
+      } else {
+        activePaymentStatus = 'unknown';
+      }
+    } else {
+      activePaymentStatus = 'unknown';
+    }
   } catch (err) {
     console.warn('[loadChatBookingAndPaymentStatus]', err);
   }
-// Start payment timer if booking accepted but unpaid
-if (
-  activeBooking?.status === 'accepted' &&
-  activePaymentDeadline &&
-  activePaymentStatus === 'unpaid' &&
-  new Date(activePaymentDeadline) > new Date()
-) {
-  startPaymentDeadline(activePaymentDeadline);
-}
-applyChatStateToUI();
+  applyChatStateToUI();
 }
 
 function updatePeerStatus(isOnline, lastSeen) {
-  const el = document.getElementById('convStatus');
+  const el = $('convStatus');
   if (!el) return;
-  if (isOnline) {
-    el.innerHTML = '🟢 Online';
-    el.style.color = '#22c55e';
-  } else if (lastSeen) {
-    el.innerHTML = `Last seen ${formatLastSeen(lastSeen)}`;
-    el.style.color = 'var(--text-muted)';
-  } else {
-    el.innerHTML = '⚫ Offline';
-    el.style.color = 'var(--text-muted)';
-  }
-}
-
-function formatLastSeen(d) {
-  const diff = Date.now() - new Date(d).getTime();
-  if (diff < 60000) return 'just now';
-  if (diff < 3600000) return `${Math.floor(diff/60000)} min ago`;
-  if (diff < 86400000) return `${Math.floor(diff/3600000)} h ago`;
-  return new Date(d).toLocaleDateString();
+  if (isOnline) { el.textContent = '🟢 Online'; el.style.color = '#22c55e'; }
+  else if (lastSeen) { el.textContent = `Last seen ${formatLastSeen(lastSeen)}`; el.style.color = 'var(--text-muted)'; }
+  else { el.textContent = '⚫ Offline'; el.style.color = 'var(--text-muted)'; }
 }
 
 async function initiatePayment() {
-  if (!activeChatId) {
-    if (window.FixaSystem) FixaSystem.showToast('Open a chat first', '', 'warning');
-    return;
-  }
-  if (!activeBookingId) {
-    if (window.FixaSystem) FixaSystem.showToast('No booking found for this chat', '', 'warning');
-    return;
-  }
-  if (activePaymentStatus === 'paid') {
-    if (window.FixaSystem) FixaSystem.showToast('Already paid', '', 'success');
-    return;
-  }
+  if (!activeChatId) return toast('Open a chat first', '', 'warning');
+  if (!activeBookingId) return toast('No booking found for this chat', '', 'warning');
+  if (activePaymentStatus === 'paid') return toast('Already paid', '', 'success');
 
   try {
-    if (window.FixaSystem) FixaSystem.showToast('Starting payment...', '', 'system');
-
+    toast('Starting payment...', '', 'system');
     const initRes = await fetch(`${BASE_URL}/api/payments`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ bookingId: activeBookingId })
+      method: 'POST', headers: authH(true), body: JSON.stringify({ bookingId: activeBookingId })
     });
     if (!initRes.ok) {
       const err = await initRes.json().catch(() => ({}));
@@ -1322,9 +1109,10 @@ async function initiatePayment() {
     window.location.href = authorizationUrl;
   } catch (err) {
     console.error('[initiatePayment]', err);
-    if (window.FixaSystem) FixaSystem.showToast('Payment failed', err.message, 'warning');
+    toast('Payment failed', err.message, 'warning');
   }
 }
+
 async function handlePaymentReturn() {
   const params = new URLSearchParams(window.location.search);
   const reference = params.get('reference') || params.get('trxref');
@@ -1336,20 +1124,12 @@ async function handlePaymentReturn() {
   if (pendingTopUp && pendingTopUp.reference === reference) {
     try {
       const vRes = await fetch(`${BASE_URL}/api/payments/verify-topup`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          bookingId: pendingTopUp.bookingId,
-          topUpId: pendingTopUp.topUpId,
-          reference
-        })
+        method: 'POST', headers: authH(true),
+        body: JSON.stringify({ bookingId: pendingTopUp.bookingId, topUpId: pendingTopUp.topUpId, reference })
       });
       const v = await vRes.json();
-      if (v.status === 'paid') {
-        if (window.FixaSystem) FixaSystem.showToast('Top-up paid! 🎉', `₦${v.amount?.toLocaleString() || ''} added to escrow`, 'success');
-      } else {
-        if (window.FixaSystem) FixaSystem.showToast('Payment pending', 'We are still verifying — refresh in a moment', 'warning');
-      }
+      if (v.status === 'paid') toast('Top-up paid! 🎉', `₦${v.amount?.toLocaleString() || ''} added to escrow`, 'success');
+      else toast('Payment pending', 'We are still verifying — refresh in a moment', 'warning');
     } catch (err) {
       console.error('[handlePaymentReturn:topup]', err);
     } finally {
@@ -1359,25 +1139,19 @@ async function handlePaymentReturn() {
     return;
   }
 
-  // ── Regular booking payment (including a proposed-price payment — same endpoint, server already charges the correct amount) ──
   try {
     const vRes = await fetch(`${BASE_URL}/api/payments/verify`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ reference })
+      method: 'POST', headers: authH(true), body: JSON.stringify({ reference })
     });
     const v = await vRes.json();
-
     if (v.status === 'paid') {
-      if (window.FixaSystem) {
-        FixaSystem.showToast('Payment confirmed! 🎉', `₦${v.amount?.toLocaleString() || ''} held in escrow`, 'success');
-      }
+      toast('Payment confirmed! 🎉', `₦${v.amount?.toLocaleString() || ''} held in escrow`, 'success');
       if (activeChatId) {
         if (window.ChatGuard) await window.ChatGuard.onChatOpen(activeChatId);
         await loadChatBookingAndPaymentStatus(activeChatId);
       }
     } else {
-      if (window.FixaSystem) FixaSystem.showToast('Payment pending', 'We are still verifying — refresh in a moment', 'warning');
+      toast('Payment pending', 'We are still verifying — refresh in a moment', 'warning');
     }
   } catch (err) {
     console.error('[handlePaymentReturn]', err);
@@ -1385,53 +1159,42 @@ async function handlePaymentReturn() {
     window.history.replaceState({}, '', window.location.pathname);
   }
 }
+
 async function rebook(artisanId, formData) {
   try {
-    const res = await fetch(`${BASE_URL}/api/bookings`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(formData)
-    });
+    const res = await fetch(`${BASE_URL}/api/bookings`, { method: 'POST', headers: authH(true), body: JSON.stringify(formData) });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message);
 
-    // ✅ FULLY RESET frontend booking state
     activeBooking = {
       _id: data.booking._id,
       bookingId: data.booking.bookingId,
       status: 'pending',
-      paymentStatus: 'unpaid',     // ← critical, was carrying over
+      paymentStatus: 'unpaid',
       paymentDeadline: null,
       disputeStatus: null,
       executionStatus: 'not_started',
       estimatedPrice: data.booking.estimatedPrice
     };
+    activeBookingId = data.booking._id;
+    activePaymentStatus = 'unknown';
     activeChatId = data.chatId;
-
-    // Re-render the chat UI based on fresh state
-    applyChatStateToUI();          // your existing function
-
-    // Hide the rating modal if it was open from last booking
-    document.getElementById('fixaRatingModal')?.classList.remove('open');
-    // Clear any "Paid ✓" badges from last booking
-    document.getElementById('payBtn')?.classList.remove('paid');
-
-    if (window.FixaSystem) {
-      FixaSystem.showToast('Booking sent', 'Waiting for artisan to accept', 'job');
-    }
+    applyChatStateToUI();
+    toast('Booking sent', 'Waiting for artisan to accept', 'job');
   } catch (err) {
     console.error('[rebook]', err);
   }
 }
+
 // ──────────────────────────────────────────
-// TIMED CHAT
+// PAYMENT TIMER
 // ──────────────────────────────────────────
 function startPaymentDeadline(deadlineISO) {
   if (!deadlineISO) return;
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; } // avoid duplicate timers
   const deadline = new Date(deadlineISO);
-
-  document.getElementById('timedBanner').style.display = 'flex';
-  const display = document.getElementById('timerDisplay');
+  const display = $('timerDisplay');
+  $('timedBanner').style.display = 'flex';
   const label = document.querySelector('.timer-label');
   if (label) label.textContent = 'Pay within this window or the booking will expire';
 
@@ -1439,9 +1202,8 @@ function startPaymentDeadline(deadlineISO) {
     const remaining = Math.max(0, deadline - new Date());
     const mins = Math.floor(remaining / 60000);
     const secs = Math.floor((remaining % 60000) / 1000);
-    display.textContent = `${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+    display.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
     if (remaining <= 300000) display.style.color = '#ff3b5c';
-
     if (remaining <= 0) {
       clearInterval(timerInterval);
       timerInterval = null;
@@ -1454,38 +1216,42 @@ function startPaymentDeadline(deadlineISO) {
 
 function clearTimedChat() {
   if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
-  document.getElementById('timedBanner').style.display = 'none';
-  const display = document.getElementById('timerDisplay');
-  display.style.color = 'var(--gold)';
-  display.classList.remove('timer-expired');
+  const banner = $('timedBanner');
+  if (banner) banner.style.display = 'none';
+  const display = $('timerDisplay');
+  if (display) { display.style.color = 'var(--gold)'; display.classList.remove('timer-expired'); }
 }
 
 // ──────────────────────────────────────────
-// RENDER MESSAGE
+// RENDER MESSAGE (single, merged version)
 // ──────────────────────────────────────────
+let lastRenderedDateStr = null;
+
+function resetMessageState() {
+  lastRenderedDateStr = null;
+}
+
 function appendMessage(m) {
   if (!m) return;
-  const msgsEl = document.getElementById('messages');
+  const msgsEl = $('messages');
   const msgId = m._id || m.id;
-  if (msgId && msgsEl.querySelector(`[data-msg-id="${msgId}"]`)) {
-    msgsEl.querySelector(`[data-msg-id="${msgId}"]`).remove();
-  }
+
+  // Skip if a real message with this id is already rendered
+  if (msgId && msgsEl.querySelector(`[data-msg-id="${msgId}"]`)) return;
 
   const isMe = computeIsMe(m);
   const msgDate = new Date(m.createdAt || Date.now());
   const dateStr = msgDate.toDateString();
-  const lastSep = msgsEl.querySelector('.date-sep:last-of-type');
-  const lastSepDate = lastSep?.dataset.date;
 
-  if (!lastSep || lastSepDate !== dateStr) {
-    const sepFollowedByMsg = lastSep && lastSep.nextElementSibling?.classList?.contains('msg-row');
-    if (!lastSep || sepFollowedByMsg) {
-      const sep = document.createElement('div');
-      sep.className = 'date-sep';
-      sep.dataset.date = dateStr;
-      sep.innerHTML = `<span>${dateStr === new Date().toDateString() ? 'Today' : msgDate.toLocaleDateString()}</span>`;
-      msgsEl.appendChild(sep);
-    }
+  if (dateStr !== lastRenderedDateStr) {
+    const sep = document.createElement('div');
+    sep.className = 'date-sep';
+    sep.dataset.date = dateStr;
+    const span = document.createElement('span');
+    span.textContent = dateStr === new Date().toDateString() ? 'Today' : msgDate.toLocaleDateString();
+    sep.appendChild(span);
+    msgsEl.appendChild(sep);
+    lastRenderedDateStr = dateStr;
   }
 
   const row = document.createElement('div');
@@ -1496,10 +1262,8 @@ function appendMessage(m) {
 
   const mediaSrc = m.voiceNote || m.image || m.mediaUrl;
   if (mediaSrc) {
-    const isAudio = String(mediaSrc).toLowerCase().match(/\.(webm|mp3|wav|ogg)$/i);
-    const fullSrc = String(mediaSrc).startsWith('blob:') || String(mediaSrc).startsWith('http')
-      ? mediaSrc
-      : `${BASE_URL}${String(mediaSrc).startsWith('/') ? '' : '/'}${mediaSrc}`;
+    const isAudio = /\.(webm|mp3|wav|ogg)$/i.test(String(mediaSrc));
+    const fullSrc = fullMediaUrl(mediaSrc);
     if (m.voiceNote || isAudio) {
       const audio = document.createElement('audio');
       audio.controls = true; audio.src = fullSrc; audio.preload = 'metadata';
@@ -1519,37 +1283,56 @@ function appendMessage(m) {
     bubble.appendChild(t);
   }
 
+  const seen = !!(m.seenAt || m.seen);
+  const delivered = !!(m.deliveredAt || m.delivered);
   const meta = document.createElement('div');
   meta.className = 'bubble-meta';
+  meta.dataset.seen = String(seen);
   meta.textContent = formatTime(new Date(m.createdAt || Date.now()));
-  if (isMe) meta.textContent += m.seen ? ' ✓✓' : m.delivered ? ' ✓' : ' ·';
+  if (isMe) meta.textContent += seen ? ' ✓✓' : delivered ? ' ✓' : ' ·';
   bubble.appendChild(meta);
 
   row.appendChild(bubble);
   msgsEl.appendChild(row);
+
   const nearBottom = (msgsEl.scrollHeight - msgsEl.clientHeight - msgsEl.scrollTop) < 120;
   if (nearBottom || isMe) msgsEl.scrollTop = msgsEl.scrollHeight;
+}
+
+function replaceOptimistic(localId, realMsg) {
+  document.querySelector(`[data-msg-id="${localId}"]`)?.remove();
+  appendMessage(realMsg);
 }
 
 // ──────────────────────────────────────────
 // SEND TEXT
 // ──────────────────────────────────────────
-async function sendTextMessage() {
-  if (_isCurrentlyBanned) {
-    if (window.FixaSystem) FixaSystem.showToast('Cannot send', 'Your messaging is currently restricted', 'warning');
-    return;
+function handleBanFromError(err, localId) {
+  if (err.code === 'CHAT_BANNED' || err.code === 'ACCOUNT_SUSPENDED') {
+    _isCurrentlyBanned = true;
+    showBanOverlay({
+      banType: err.code === 'ACCOUNT_SUSPENDED' ? 'full' : 'chat',
+      chatBanned: err.code === 'CHAT_BANNED',
+      isSuspended: err.code === 'ACCOUNT_SUSPENDED',
+      banExpiresAt: err.banExpiresAt,
+      reason: err.reason
+    });
+    document.querySelector(`[data-msg-id="${localId}"]`)?.remove();
+    return true;
   }
+  return false;
+}
+
+async function sendTextMessage() {
+  if (_isCurrentlyBanned) return toast('Cannot send', 'Your messaging is currently restricted', 'warning');
   if (chatSealed) return;
-  const input = document.getElementById('msgInput');
+  const input = $('msgInput');
   const text = input.value.trim();
   if (!text || !activeChatId) return;
 
   if (window.ChatGuard) {
     const check = await window.ChatGuard.checkText(text);
-    if (check.blocked) {
-      window.ChatGuard.showBlockedToast(check.reason);
-      return;
-    }
+    if (check.blocked) { window.ChatGuard.showBlockedToast(check.reason); return; }
   }
 
   input.value = '';
@@ -1558,37 +1341,18 @@ async function sendTextMessage() {
 
   try {
     const res = await fetch(`${MSG_API}/${encodeURIComponent(activeChatId)}/messages`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text })
+      method: 'POST', headers: authH(true), body: JSON.stringify({ text })
     });
-
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      if (err.code === 'CHAT_BANNED' || err.code === 'ACCOUNT_SUSPENDED') {
-        _isCurrentlyBanned = true;
-        showBanOverlay({
-          banType: err.code === 'ACCOUNT_SUSPENDED' ? 'full' : 'chat',
-          chatBanned: err.code === 'CHAT_BANNED',
-          isSuspended: err.code === 'ACCOUNT_SUSPENDED',
-          banExpiresAt: err.banExpiresAt,
-          reason: err.reason
-        });
-        document.querySelector(`[data-msg-id="${localId}"]`)?.remove();
-        return;
-      }
+      if (handleBanFromError(err, localId)) return;
       throw new Error(err.message || 'Failed');
     }
-
     const data = await res.json();
-    const real = data.message || data;
-    document.querySelector(`[data-msg-id="${localId}"]`)?.remove();
-    appendMessage(real);
+    replaceOptimistic(localId, data.message || data);
   } catch (err) {
-    if (err.message?.includes('CHAT_BANNED') || err.message?.includes('SUSPENDED')) {
-      await checkBanStatusOnLoad();
-    }
     document.querySelector(`[data-msg-id="${localId}"]`)?.remove();
+    toast('Failed to send', '', 'warning');
   }
 }
 
@@ -1596,18 +1360,12 @@ async function sendTextMessage() {
 // SEND MEDIA
 // ──────────────────────────────────────────
 async function sendMedia(file, isVoice = false) {
-  if (_isCurrentlyBanned) {
-    if (window.FixaSystem) FixaSystem.showToast('Cannot send', 'Your messaging is currently restricted', 'warning');
-    return;
-  }
+  if (_isCurrentlyBanned) return toast('Cannot send', 'Your messaging is currently restricted', 'warning');
   if (!file || !activeChatId || chatSealed) return;
 
   if (!isVoice && window.ChatGuard) {
     const check = await window.ChatGuard.checkImage(file);
-    if (check.blocked) {
-      window.ChatGuard.showBlockedToast(check.reason);
-      return;
-    }
+    if (check.blocked) { window.ChatGuard.showBlockedToast(check.reason); return; }
   }
 
   const blobUrl = URL.createObjectURL(file);
@@ -1623,37 +1381,22 @@ async function sendMedia(file, isVoice = false) {
 
   try {
     const res = await fetch(`${MSG_API}/${encodeURIComponent(activeChatId)}/media`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
-      body: fd
+      method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: fd
     });
-
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      if (err.code === 'CHAT_BANNED' || err.code === 'ACCOUNT_SUSPENDED') {
-        _isCurrentlyBanned = true;
-        showBanOverlay({
-          banType: err.code === 'ACCOUNT_SUSPENDED' ? 'full' : 'chat',
-          chatBanned: err.code === 'CHAT_BANNED',
-          isSuspended: err.code === 'ACCOUNT_SUSPENDED',
-          banExpiresAt: err.banExpiresAt,
-          reason: err.reason
-        });
-        document.querySelector(`[data-msg-id="${localId}"]`)?.remove();
-        URL.revokeObjectURL(blobUrl);
-        return;
-      }
+      URL.revokeObjectURL(blobUrl);
+      if (handleBanFromError(err, localId)) return;
       throw new Error(`Upload ${res.status}`);
     }
-
     const real = await res.json();
     URL.revokeObjectURL(blobUrl);
-    document.querySelector(`[data-msg-id="${localId}"]`)?.remove();
-    appendMessage(real.message || real);
+    replaceOptimistic(localId, real.message || real);
   } catch (err) {
     console.error('sendMedia error:', err);
     document.querySelector(`[data-msg-id="${localId}"]`)?.remove();
     URL.revokeObjectURL(blobUrl);
+    toast('Failed to send media', '', 'warning');
   }
 }
 
@@ -1661,17 +1404,14 @@ function handleTyping() {
   if (!activeChatId) return;
   if (!isTyping) { isTyping = true; safeEmit('typing', { chatId: activeChatId }); }
   clearTimeout(typingTimer);
-  typingTimer = setTimeout(() => {
-    isTyping = false; safeEmit('stopTyping', { chatId: activeChatId });
-  }, 2500);
+  typingTimer = setTimeout(() => { isTyping = false; safeEmit('stopTyping', { chatId: activeChatId }); }, 2500);
 }
 
 // ──────────────────────────────────────────
 // VOICE
 // ──────────────────────────────────────────
 async function startVoiceRecording() {
-  if (_isCurrentlyBanned) return;
-  if (!activeChatId) return;
+  if (_isCurrentlyBanned || !activeChatId) return;
   if (window.ChatGuard && !window.ChatGuard.isFeatureUnlocked('voice')) {
     window.ChatGuard.showBlockedToast('Voice notes unlock after escrow payment');
     return;
@@ -1684,7 +1424,7 @@ async function startVoiceRecording() {
     mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
     mediaRecorder.onstop = async () => {
       clearInterval(recordingInterval);
-      document.getElementById('voiceTimer').textContent = '00:00';
+      $('voiceTimer').textContent = '00:00';
       stream.getTracks().forEach(t => t.stop());
       const blob = new Blob(audioChunks, { type: mime });
       if (blob.size < 500) return;
@@ -1693,125 +1433,102 @@ async function startVoiceRecording() {
     };
     mediaRecorder.start(250);
     recordStart = Date.now();
-    document.getElementById('voiceUI').classList.add('active');
+    $('voiceUI').classList.add('active');
     recordingInterval = setInterval(() => {
       const s = Math.floor((Date.now() - recordStart) / 1000);
-      document.getElementById('voiceTimer').textContent =
-        `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+      $('voiceTimer').textContent = `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
       if (Date.now() - recordStart > 120000) stopVoiceRecording();
     }, 250);
-  } catch (e) { console.error('Mic error:', e); }
+  } catch (e) {
+    console.error('Mic error:', e);
+    toast('Microphone unavailable', 'Allow microphone access to send voice notes', 'warning');
+  }
 }
 
 function stopVoiceRecording() {
   if (mediaRecorder?.state === 'recording') mediaRecorder.stop();
-  document.getElementById('voiceUI').classList.remove('active');
+  $('voiceUI').classList.remove('active');
 }
 
 function cancelVoiceRecording() {
   audioChunks = [];
   if (mediaRecorder) {
     mediaRecorder.ondataavailable = null;
-    mediaRecorder.onstop = null;
+    mediaRecorder.onstop = () => {
+      clearInterval(recordingInterval);
+      mediaRecorder.stream?.getTracks().forEach(t => t.stop());
+    };
     if (mediaRecorder.state === 'recording') mediaRecorder.stop();
   }
-  document.getElementById('voiceUI').classList.remove('active');
+  $('voiceUI').classList.remove('active');
 }
 
 // ──────────────────────────────────────────
-// PEER BAN BANNER (artisan banned)
+// PEER BAN BANNER
 // ──────────────────────────────────────────
 function showPeerBanBanner(data) {
-  const banner = document.getElementById('peerBanBanner');
+  const banner = $('peerBanBanner');
   if (!banner) return;
-
-  const isFullSuspension = data.isSuspended;
-  document.getElementById('peerBanTitle').textContent = isFullSuspension
-    ? '🚫 Artisan account suspended'
-    : '⚠️ Artisan messaging restricted';
-  document.getElementById('peerBanReason').textContent = data.reason ||
-    (isFullSuspension
-      ? 'This artisan has been suspended. Your booking and any escrow funds are protected — Fixa support will reach out.'
-      : 'This artisan has been temporarily restricted from messaging. You can still wait for them or contact support.');
-
+  const full = data.isSuspended;
+  $('peerBanTitle').textContent = full ? '🚫 Artisan account suspended' : '⚠️ Artisan messaging restricted';
+  $('peerBanReason').textContent = data.reason || (full
+    ? 'This artisan has been suspended. Your booking and any escrow funds are protected — Fixa support will reach out.'
+    : 'This artisan has been temporarily restricted from messaging. You can still wait for them or contact support.');
   banner.style.display = 'block';
-
-  if (data.banExpiresAt) {
-    startPeerBanCountdown(new Date(data.banExpiresAt));
-  } else {
-    document.getElementById('peerBanCountdown').innerHTML =
-      '<span style="font-size:11px;color:#ef4444;font-weight:600">Indefinite ban</span>';
-  }
+  if (data.banExpiresAt) startPeerBanCountdown(new Date(data.banExpiresAt));
+  else $('peerBanCountdown').innerHTML = '<span style="font-size:11px;color:#ef4444;font-weight:600">Indefinite ban</span>';
 }
 
 function hidePeerBanBanner() {
-  const banner = document.getElementById('peerBanBanner');
+  const banner = $('peerBanBanner');
   if (banner) banner.style.display = 'none';
-  if (peerBanCountdownInterval) {
-    clearInterval(peerBanCountdownInterval);
-    peerBanCountdownInterval = null;
-  }
+  if (peerBanCountdownInterval) { clearInterval(peerBanCountdownInterval); peerBanCountdownInterval = null; }
 }
 
 function startPeerBanCountdown(unbanDate) {
-  const container = document.getElementById('peerBanCountdown');
+  const container = $('peerBanCountdown');
   if (!container) return;
   if (peerBanCountdownInterval) clearInterval(peerBanCountdownInterval);
-
   function tick() {
     const diff = unbanDate - new Date();
     if (diff <= 0) {
       clearInterval(peerBanCountdownInterval);
       peerBanCountdownInterval = null;
       container.innerHTML = '<span style="font-size:11px;color:#22c55e;font-weight:600">Ban expired ✓</span>';
-      setTimeout(() => hidePeerBanBanner(), 5000);
+      setTimeout(hidePeerBanBanner, 5000);
       return;
     }
-    const h = Math.floor(diff / 3600000);
-    const m = Math.floor((diff % 3600000) / 60000);
-    const s = Math.floor((diff % 60000) / 1000);
+    const h = Math.floor(diff / 3600000), m = Math.floor((diff % 3600000) / 60000), s = Math.floor((diff % 60000) / 1000);
     container.innerHTML = `
       <span style="font-size:10px;color:rgba(255,255,255,0.5);font-weight:600;text-transform:uppercase;letter-spacing:0.5px">Unbans in:</span>
-      <span style="font-size:12px;color:#ef4444;font-weight:700;font-family:monospace">${String(h).padStart(2,'0')}h ${String(m).padStart(2,'0')}m ${String(s).padStart(2,'0')}s</span>
-    `;
+      <span style="font-size:12px;color:#ef4444;font-weight:700;font-family:monospace">${String(h).padStart(2, '0')}h ${String(m).padStart(2, '0')}m ${String(s).padStart(2, '0')}s</span>`;
   }
   tick();
   peerBanCountdownInterval = setInterval(tick, 1000);
 }
 
 // ──────────────────────────────────────────
-// BAN OVERLAY (self banned)
+// BAN OVERLAY (self)
 // ──────────────────────────────────────────
 function showBanOverlay(data) {
-  const overlay = document.getElementById('banOverlay');
-  if (!overlay) {
-    console.error('[Ban] #banOverlay missing');
-    return;
-  }
+  const overlay = $('banOverlay');
+  if (!overlay) return console.error('[Ban] #banOverlay missing');
 
   const isChatOnly = data?.banType === 'chat' || (data?.chatBanned && !data?.isSuspended);
-  document.getElementById('banTitle').textContent = isChatOnly
-    ? '⚠️ Messaging Temporarily Restricted'
-    : '🚫 Account Suspended';
-  document.getElementById('banReason').textContent = data?.reason ||
-    (isChatOnly
-      ? 'You have been temporarily restricted from messaging due to policy violations.'
-      : 'Your account has been suspended by Fixa administration.');
-
+  $('banTitle').textContent = isChatOnly ? '⚠️ Messaging Temporarily Restricted' : '🚫 Account Suspended';
+  $('banReason').textContent = data?.reason || (isChatOnly
+    ? 'You have been temporarily restricted from messaging due to policy violations.'
+    : 'Your account has been suspended by Fixa administration.');
   overlay.style.display = 'flex';
 
-  const chatFooter = document.getElementById('chatFooter');
+  const chatFooter = $('chatFooter');
   if (chatFooter) chatFooter.style.display = 'none';
 
-  const card = document.getElementById('banCountdownCard');
-  if (data?.banExpiresAt && card) {
-    card.style.display = 'block';
-    startBanCountdown(new Date(data.banExpiresAt));
-  } else if (card) {
-    card.style.display = 'none';
-  }
+  const card = $('banCountdownCard');
+  if (data?.banExpiresAt && card) { card.style.display = 'block'; startBanCountdown(new Date(data.banExpiresAt)); }
+  else if (card) card.style.display = 'none';
 
-  const logoutBtn = document.getElementById('banLogoutBtn');
+  const logoutBtn = $('banLogoutBtn');
   if (logoutBtn) {
     if (isChatOnly) {
       logoutBtn.textContent = 'Continue browsing Fixa';
@@ -1824,49 +1541,35 @@ function showBanOverlay(data) {
       logoutBtn.style.background = 'rgba(255,59,92,0.15)';
       logoutBtn.style.color = '#ff3b5c';
       logoutBtn.style.borderColor = 'rgba(255,59,92,0.3)';
-      logoutBtn.onclick = () => {
-        localStorage.clear();
-        window.location.href = 'SignIn.html';
-      };
+      logoutBtn.onclick = logout;
     }
   }
 }
 
 function hideBanOverlay() {
-  const overlay = document.getElementById('banOverlay');
+  const overlay = $('banOverlay');
   if (overlay) overlay.style.display = 'none';
-  if (banCountdownInterval) {
-    clearInterval(banCountdownInterval);
-    banCountdownInterval = null;
-  }
-  const chatFooter = document.getElementById('chatFooter');
+  if (banCountdownInterval) { clearInterval(banCountdownInterval); banCountdownInterval = null; }
+  const chatFooter = $('chatFooter');
   if (chatFooter && activeChatId && !chatSealed) chatFooter.style.display = 'flex';
 }
 
 function startBanCountdown(unbanDate) {
   if (banCountdownInterval) clearInterval(banCountdownInterval);
-
+  const set = (id, v) => { const el = $(id); if (el) el.textContent = v; };
   function tick() {
     const diff = unbanDate - new Date();
     if (diff <= 0) {
       clearInterval(banCountdownInterval);
       banCountdownInterval = null;
-      ['banDays','banHours','banMins','banSecs'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.textContent = '00';
-      });
+      ['banDays', 'banHours', 'banMins', 'banSecs'].forEach(id => set(id, '00'));
       checkUnbanStatus();
       return;
     }
-    const d = Math.floor(diff / 86400000);
-    const h = Math.floor((diff % 86400000) / 3600000);
-    const m = Math.floor((diff % 3600000) / 60000);
-    const s = Math.floor((diff % 60000) / 1000);
-    const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-    set('banDays', String(d).padStart(2,'0'));
-    set('banHours', String(h).padStart(2,'0'));
-    set('banMins', String(m).padStart(2,'0'));
-    set('banSecs', String(s).padStart(2,'0'));
+    set('banDays', String(Math.floor(diff / 86400000)).padStart(2, '0'));
+    set('banHours', String(Math.floor((diff % 86400000) / 3600000)).padStart(2, '0'));
+    set('banMins', String(Math.floor((diff % 3600000) / 60000)).padStart(2, '0'));
+    set('banSecs', String(Math.floor((diff % 60000) / 1000)).padStart(2, '0'));
   }
   tick();
   banCountdownInterval = setInterval(tick, 1000);
@@ -1874,9 +1577,7 @@ function startBanCountdown(unbanDate) {
 
 async function checkUnbanStatus() {
   try {
-    const res = await fetch(`${BASE_URL}/api/users/me/status`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+    const res = await fetch(`${BASE_URL}/api/users/me/status`, { headers: authH() });
     if (!res.ok) return;
     const data = await res.json();
     if (!data.isSuspended && !data.chatBanned) {
@@ -1889,19 +1590,15 @@ async function checkUnbanStatus() {
 
 async function checkBanStatusOnLoad() {
   try {
-    const res = await fetch(`${BASE_URL}/api/users/me/status`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+    const res = await fetch(`${BASE_URL}/api/users/me/status`, { headers: authH() });
     if (!res.ok) return;
     const data = await res.json();
     _isCurrentlyBanned = !!(data.isSuspended || data.chatBanned);
     if (_isCurrentlyBanned) {
       showBanOverlay({
-        reason: data.reason,
-        banExpiresAt: data.banExpiresAt,
+        reason: data.reason, banExpiresAt: data.banExpiresAt,
         banType: data.isSuspended ? 'full' : 'chat',
-        chatBanned: data.chatBanned,
-        isSuspended: data.isSuspended
+        chatBanned: data.chatBanned, isSuspended: data.isSuspended
       });
     } else {
       hideBanOverlay();
@@ -1909,34 +1606,30 @@ async function checkBanStatusOnLoad() {
   } catch (e) { console.warn('Ban check unavailable:', e.message); }
 }
 
+function logout() {
+  localStorage.clear();
+  window.location.href = 'signin.html';
+}
+
 // ──────────────────────────────────────────
-// UTILS
+// RATING MODAL (was missing before)
 // ──────────────────────────────────────────
-function normalizeId(v) {
-  if (!v) return '';
-  if (typeof v === 'object') return String(v._id || v.id || '');
-  return String(v);
+function paintStars() {
+  document.querySelectorAll('#starRow .star').forEach(s => {
+    s.style.color = Number(s.dataset.val) <= _selectedRating ? '#ffd700' : '#4a5568';
+  });
 }
 
-function computeIsMe(m) {
-  if (m.outgoing || m.isMine || m.isLocal) return true;
-  const senderId = normalizeId(m.senderId ?? m.sender ?? m.from ?? '');
-  return senderId && senderId === String(user._id);
+function openRatingModal({ bookingId, artisanId, artisanName }) {
+  if (!bookingId || !artisanId) return;
+  _ratingContext = { bookingId, artisanId: normalizeId(artisanId) };
+  _selectedRating = 0;
+  paintStars();
+  const c = $('ratingComment'); if (c) c.value = '';
+  const n = $('ratingArtisanName'); if (n) n.textContent = artisanName || 'your artisan';
+  $('fixaRatingModal').style.display = 'flex';
 }
-
-function escHtml(s) {
-  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-function formatTime(d) {
-  try {
-    const dt = d instanceof Date ? d : new Date(d);
-    const now = new Date();
-    if (dt.toDateString() === now.toDateString())
-      return dt.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
-    return dt.toLocaleDateString([], { month:'short', day:'numeric' });
-  } catch { return ''; }
-}
+window.openRatingModal = openRatingModal;
 
 // ──────────────────────────────────────────
 // BOOKING HISTORY
@@ -1944,35 +1637,35 @@ function formatTime(d) {
 let _histJobs = [];
 let _histFilter = 'all';
 
-// pending/accepted/verifying/etc. all count as "ongoing" for the tab filter
-function histStatusGroup(status){
+function histStatusGroup(status) {
   const s = String(status || '').toLowerCase();
   if (s === 'completed') return 'completed';
   if (s === 'rejected' || s === 'cancelled') return 'cancelled';
   return 'ongoing';
 }
 
-async function loadHistory(){
-  const list = document.getElementById('customerList');
+function avatarUrl(pic) {
+  if (!pic) return `${BASE_URL}/uploads/default-avatar.png`;
+  return String(pic).startsWith('http') ? pic : `${BASE_URL}/${pic}`;
+}
+
+async function loadHistory() {
+  const list = $('customerList');
   list.innerHTML = '<div class="empty-state">Loading your history...</div>';
-  try{
-    const res = await fetch(`${BASE_URL}/api/bookings`, {
-      headers:{ Authorization:`Bearer ${token}` }
-    });
-    if (res.status === 401){ window.location.href = 'SignIn.html'; return; }
+  try {
+    const res = await fetch(`${BASE_URL}/api/bookings`, { headers: authH() });
+    if (res.status === 401) { logout(); return; }
     const data = await res.json();
-    if (!Array.isArray(data)){
+    if (!Array.isArray(data)) {
       list.innerHTML = '<div class="empty-state">No bookings found yet.</div>';
       return;
     }
     _histJobs = data.map(j => ({
       id: j._id,
       chatId: j.chatId || null,
-        artisanId: j.artisanId?._id || j.artisanId || null,   // ← add this line
+      artisanId: j.artisanId?._id || j.artisanId || null,
       artisanName: j.artisanId?.name || j.artisanId?.user?.username || 'Assigning artisan…',
-      artisanPic: j.artisanId?.profilePic
-        ? (String(j.artisanId.profilePic).startsWith('http') ? j.artisanId.profilePic : `${BASE_URL}/${j.artisanId.profilePic}`)
-        : `${BASE_URL}/uploads/default-avatar.png`,
+      artisanPic: avatarUrl(j.artisanId?.profilePic),
       service: j.category?.name || j.category || 'General service',
       rawStatus: j.status || 'pending',
       group: histStatusGroup(j.status),
@@ -1980,21 +1673,18 @@ async function loadHistory(){
       date: j.createdAt ? new Date(j.createdAt).toLocaleDateString() : '—'
     }));
     renderCustomer(_histFilter);
-  }catch(err){
+  } catch (err) {
     console.error('[loadHistory]', err);
     list.innerHTML = '<div class="empty-state">⚠️ Failed to load history.</div>';
   }
 }
 
-function renderCustomer(filter){
+function renderCustomer(filter) {
   _histFilter = filter;
-  const list = document.getElementById('customerList');
+  const list = $('customerList');
   const jobs = _histJobs.filter(j => filter === 'all' || j.group === filter);
 
-  if (!jobs.length){
-    list.innerHTML = '<div class="empty-state">No bookings found.</div>';
-    return;
-  }
+  if (!jobs.length) { list.innerHTML = '<div class="empty-state">No bookings found.</div>'; return; }
 
   list.innerHTML = jobs.map(job => {
     const action = job.rawStatus.toLowerCase() === 'verifying'
@@ -2006,7 +1696,7 @@ function renderCustomer(filter){
     return `
       <div class="card ${job.group}">
         <div style="display:flex;gap:12px">
-          <img src="${job.artisanPic}" onerror="this.src='${BASE_URL}/uploads/default-avatar.png'" style="width:50px;height:50px;border-radius:50%;object-fit:cover"/>
+          <img src="${escHtml(job.artisanPic)}" loading="lazy" onerror="this.onerror=null;this.src='${BASE_URL}/uploads/default-avatar.png'" style="width:50px;height:50px;border-radius:50%;object-fit:cover"/>
           <div style="flex:1;min-width:0">
             <div class="card-header">
               <h4>${escHtml(job.service)}</h4>
@@ -2015,73 +1705,58 @@ function renderCustomer(filter){
             <div class="details">
               <div>Artisan: ${escHtml(job.artisanName)}</div>
               <div style="font-size:12px;margin-top:4px">Date: ${escHtml(job.date)}</div>
-              <div class="price">${job.price}</div>
+              <div class="price">${escHtml(job.price)}</div>
             </div>
-            <div class="btns">
-              ${msgBtn}
-              ${action}
-            </div>
+            <div class="btns">${msgBtn}${action}</div>
           </div>
         </div>
       </div>`;
   }).join('');
 }
 
-function filterCustomer(type, e){
+function filterCustomer(type, e) {
   document.querySelectorAll('#customerTabs .tab').forEach(t => t.classList.remove('active'));
   if (e?.target) e.target.classList.add('active');
   renderCustomer(type);
 }
 
-function openHistoryChat(btn){
+function openHistoryChat(btn) {
   const chatId = btn.getAttribute('data-chat');
   const name = btn.getAttribute('data-name');
   switchPage('messages');
-  setTimeout(() => openChat(chatId, name, false, 0), 300);
+  openChat(chatId, name, false, 0);
 }
 
-async function confirmCompletion(bookingId){
+async function confirmCompletion(bookingId) {
   if (!confirm('Confirm that this job is completed?')) return;
-  try{
-    const res = await fetch(`${BASE_URL}/api/bookings/${bookingId}/confirm`, {
-      method:'PUT',
-      headers:{ Authorization:`Bearer ${token}` }
-    });
+  try {
+    const res = await fetch(`${BASE_URL}/api/bookings/${bookingId}/confirm`, { method: 'PUT', headers: authH() });
     if (!res.ok) throw new Error('Failed');
     if (window.FixaSystem) FixaSystem.showToast('Job confirmed ✅', '', 'success'); else alert('Job confirmed ✅');
-
     const job = _histJobs.find(j => j.id === bookingId);
-    if (job) {
-      openRatingModal({ bookingId: job.id, artisanId: job.artisanId, artisanName: job.artisanName });
-    }
+    if (job) openRatingModal({ bookingId: job.id, artisanId: job.artisanId, artisanName: job.artisanName });
     loadHistory();
-  }catch(err){
+  } catch (err) {
     if (window.FixaSystem) FixaSystem.showToast('Error confirming job', '', 'warning'); else alert('Error confirming job ❌');
   }
 }
-async function viewDetails(id){
-  try{
-    const res = await fetch(`${BASE_URL}/api/bookings/${id}`, {
-      headers:{ Authorization:`Bearer ${token}` }
-    });
+
+async function viewDetails(id) {
+  try {
+    const res = await fetch(`${BASE_URL}/api/bookings/${id}`, { headers: authH() });
     const job = await res.json();
-    const pic = job.artisanId?.profilePic;
-    const imageUrl = !pic
-      ? `${BASE_URL}/uploads/default-avatar.png`
-      : (String(pic).startsWith('http') ? pic : `${BASE_URL}/${pic}`);
+    const imageUrl = avatarUrl(job.artisanId?.profilePic);
     const name = job.artisanId?.name || job.artisanId?.user?.username || 'Assigning artisan…';
     const group = histStatusGroup(job.status);
-    const rateBtn = job.group === 'completed'
-  ? `<button class="btn-outline" onclick='openRatingModal({bookingId:"${job.id}", artisanId:"${job.artisanId}", artisanName:"${escHtml(job.artisanName)}"})'>⭐ Rate</button>`
-  : '';
+    const canRate = group === 'completed';
 
-    document.getElementById('histModalContent').innerHTML = `
+    $('histModalContent').innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #1a3a5a;padding-bottom:1rem;margin-bottom:15px">
         <h3 style="margin:0;color:var(--gold)">Job Details</h3>
         <span onclick="closeHistModal()" style="cursor:pointer;font-size:24px;color:var(--text-muted)">&times;</span>
       </div>
       <div style="text-align:center;margin-bottom:15px">
-        <img src="${imageUrl}" onerror="this.src='${BASE_URL}/uploads/default-avatar.png'" style="width:60px;height:60px;border-radius:50%;border:2px solid var(--gold);object-fit:cover">
+        <img src="${escHtml(imageUrl)}" onerror="this.onerror=null;this.src='${BASE_URL}/uploads/default-avatar.png'" style="width:60px;height:60px;border-radius:50%;border:2px solid var(--gold);object-fit:cover">
         <p style="margin:5px 0;font-weight:bold">${escHtml(name)}</p>
       </div>
       <p><b>Service:</b> ${escHtml(job.category?.name || job.category || 'General service')}</p>
@@ -2090,137 +1765,166 @@ async function viewDetails(id){
       <p><b>Price:</b> ${job.estimatedPrice ? '₦' + Number(job.estimatedPrice).toLocaleString() : 'TBD'}</p>
       <p><b>Address:</b> ${escHtml(job.address || '—')}</p>
       <p><b>Date:</b> ${job.createdAt ? new Date(job.createdAt).toLocaleString() : '—'}</p>
+      ${canRate ? '<button type="button" class="btn-outline" id="histRateBtn" style="width:100%;margin-top:12px">⭐ Rate this artisan</button>' : ''}
     `;
-    document.getElementById('histModal').classList.add('open');
-  }catch(err){
+    $('histRateBtn')?.addEventListener('click', () => {
+      closeHistModal();
+      openRatingModal({ bookingId: job._id, artisanId: job.artisanId?._id || job.artisanId, artisanName: name });
+    });
+    $('histModal').classList.add('open');
+  } catch (err) {
     if (window.FixaSystem) FixaSystem.showToast('Failed to load details', '', 'warning'); else alert('Failed to load details');
   }
 }
 
-function closeHistModal(){ document.getElementById('histModal').classList.remove('open'); }
+function closeHistModal() { $('histModal').classList.remove('open'); }
 
 // ──────────────────────────────────────────
 // INIT
 // ──────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
+  if (!user || !token) return;
+
+  // Profile header
+  $('usernameDisplay').textContent = user.username || 'User';
+  $('profileName').textContent = user.username || 'User';
+  $('profileEmail').textContent = user.email || '';
+  $('profileInitial').textContent = (user.username || 'U')[0].toUpperCase();
+
   initSocket();
-
-  if (window.FixaSystem) {
-    window.FixaSystem.init(socket, user, token, BASE_URL, 'customer');
-  }
-
-  document.getElementById('banLogoutBtn')?.addEventListener('click', () => {
-    localStorage.clear();
-    window.location.href = 'SignIn.html';
-  });
-
+  if (window.FixaSystem) window.FixaSystem.init(socket, user, token, BASE_URL, 'customer');
   checkBanStatusOnLoad();
 
-  // Bottom nav
-  document.querySelectorAll('.nav-item').forEach(item => {
-    item.addEventListener('click', () => switchPage(item.dataset.page));
-  });
-  document.getElementById('histModal')?.addEventListener('click', e => {
-    if (e.target.id === 'histModal') closeHistModal();
-  });
+  // Nav
+  document.querySelectorAll('.nav-item').forEach(item => item.addEventListener('click', () => switchPage(item.dataset.page)));
+  $('histModal')?.addEventListener('click', e => { if (e.target.id === 'histModal') closeHistModal(); });
 
   // Chat controls
-  document.getElementById('backBtn').addEventListener('click', closeChat);
-  document.getElementById('sendBtn').addEventListener('click', sendTextMessage);
-  document.getElementById('msgInput').addEventListener('keydown', e => {
+  $('backBtn').addEventListener('click', closeChat);
+  $('sendBtn').addEventListener('click', sendTextMessage);
+  $('msgInput').addEventListener('keydown', e => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendTextMessage(); }
   });
-  document.getElementById('msgInput').addEventListener('input', handleTyping);
+  $('msgInput').addEventListener('input', handleTyping);
 
-  document.getElementById('attachBtn').addEventListener('click', e => {
-    e.preventDefault(); document.getElementById('mediaInput').click();
-  });
-  document.getElementById('mediaInput').addEventListener('change', function(e) {
+  $('attachBtn').addEventListener('click', e => { e.preventDefault(); $('mediaInput').click(); });
+  $('mediaInput').addEventListener('change', function (e) {
     e.preventDefault();
     const file = this.files[0];
     if (file) sendMedia(file, false);
     this.value = '';
   });
 
-  document.getElementById('voiceBtn').addEventListener('click', e => {
+  $('voiceBtn').addEventListener('click', e => {
     e.preventDefault();
-    if (mediaRecorder?.state === 'recording') stopVoiceRecording();
-    else startVoiceRecording();
+    if (mediaRecorder?.state === 'recording') stopVoiceRecording(); else startVoiceRecording();
   });
-  document.getElementById('voiceStopBtn').addEventListener('click', stopVoiceRecording);
-  document.getElementById('voiceCancelBtn').addEventListener('click', cancelVoiceRecording);
+  $('voiceStopBtn').addEventListener('click', stopVoiceRecording);
+  $('voiceCancelBtn').addEventListener('click', cancelVoiceRecording);
 
-  document.getElementById('rebookBtn').addEventListener('click', () => {
-    window.location.href = 'index.html';
+  $('rebookBtn').addEventListener('click', () => { window.location.href = 'index.html'; });
+  $('logoutBtn').addEventListener('click', logout);
+  $('banLogoutBtn')?.addEventListener('click', logout);
+
+  $('payNowBtn')?.addEventListener('click', e => { e.preventDefault(); initiatePayment(); });
+  $('disputeBtn')?.addEventListener('click', e => {
+    e.preventDefault();
+    if (!activeBookingId) return toast('Open a booking chat first', '', 'warning');
+    if (window.FixaSystem) FixaSystem.openDispute(activeBookingId);
   });
 
-  document.getElementById('logoutBtn').addEventListener('click', () => {
-    localStorage.clear();
-    window.location.href = 'SignIn.html';
+  // Top-up approve / reject
+  $('topUpApproveBtn')?.addEventListener('click', async () => {
+    if (!_activeTopUp) return;
+    try {
+      const res = await fetch(`${BASE_URL}/api/bookings/${_activeTopUp.bookingId}/top-up/${_activeTopUp.topUpId}/approve`, {
+        method: 'POST', headers: authH(true)
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+      localStorage.setItem('pendingTopUp', JSON.stringify({
+        bookingId: _activeTopUp.bookingId, topUpId: _activeTopUp.topUpId, reference: data.reference
+      }));
+      $('topUpApprovalModal').style.display = 'none';
+      window.location.href = data.authorizationUrl;
+    } catch (err) {
+      toast('Failed', err.message, 'warning');
+    }
+  });
+
+  $('topUpRejectBtn')?.addEventListener('click', async () => {
+    if (!_activeTopUp) return;
+    try {
+      await fetch(`${BASE_URL}/api/bookings/${_activeTopUp.bookingId}/top-up/${_activeTopUp.topUpId}/reject`, {
+        method: 'POST', headers: authH()
+      });
+    } catch {}
+    $('topUpApprovalModal').style.display = 'none';
+    _activeTopUp = null;
+  });
+
+  // Price proposal approve / reject
+  $('proposalApproveBtn')?.addEventListener('click', async () => {
+    try {
+      const res = await fetch(`${BASE_URL}/api/bookings/${activeBookingId}/price-proposal/approve`, { method: 'PUT', headers: authH() });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+      if (activeBooking) activeBooking.estimatedPrice = data.estimatedPrice;
+      $('priceProposalBanner').style.display = 'none';
+      applyChatStateToUI();
+      toast('Price updated', `New price: ₦${Number(data.estimatedPrice).toLocaleString()}`, 'success');
+    } catch (err) {
+      toast('Failed', err.message, 'warning');
+    }
+  });
+
+  $('proposalRejectBtn')?.addEventListener('click', async () => {
+    try {
+      await fetch(`${BASE_URL}/api/bookings/${activeBookingId}/price-proposal/reject`, { method: 'PUT', headers: authH() });
+    } catch {}
+    $('priceProposalBanner').style.display = 'none';
+  });
+
+  // Rating modal
+  document.querySelectorAll('#starRow .star').forEach(star => {
+    star.addEventListener('click', () => { _selectedRating = Number(star.dataset.val); paintStars(); });
+  });
+
+  $('ratingSkipBtn')?.addEventListener('click', () => {
+    $('fixaRatingModal').style.display = 'none';
+    _ratingContext = null;
+  });
+
+  $('ratingSubmitBtn')?.addEventListener('click', async () => {
+    if (!_ratingContext) return;
+    if (!_selectedRating) return toast('Pick a star rating first', '', 'warning');
+    try {
+      const res = await fetch(`${BASE_URL}/api/reviews`, {
+        method: 'POST', headers: authH(true),
+        body: JSON.stringify({
+          artisanId: _ratingContext.artisanId,
+          bookingId: _ratingContext.bookingId,
+          rating: _selectedRating,
+          comment: $('ratingComment').value.trim()
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to submit review');
+      $('fixaRatingModal').style.display = 'none';
+      _ratingContext = null;
+      toast('Thanks for your feedback! ⭐', '', 'success');
+    } catch (err) {
+      toast('Failed', err.message, 'warning');
+    }
   });
 
   if ('Notification' in window && Notification.permission === 'default') {
     Notification.requestPermission().catch(() => {});
   }
 
-  document.getElementById('payNowBtn')?.addEventListener('click', e => {
-    e.preventDefault();
-    initiatePayment();
-  });
-
-  document.getElementById('disputeBtn')?.addEventListener('click', e => {
-    e.preventDefault();
-    if (!activeBookingId) {
-      if (window.FixaSystem) FixaSystem.showToast('Open a booking chat first', '', 'warning');
-      return;
-    }
-    if (window.FixaSystem) FixaSystem.openDispute(activeBookingId);
-  });
-
   handlePaymentReturn();
 
-
-document.querySelectorAll('#starRow .star').forEach(star => {
-  star.addEventListener('click', () => {
-    _selectedRating = Number(star.dataset.val);
-    document.querySelectorAll('#starRow .star').forEach(s => {
-      s.style.color = Number(s.dataset.val) <= _selectedRating ? '#ffd700' : '#4a5568';
-    });
-  });
-});
-
-document.getElementById('ratingSkipBtn')?.addEventListener('click', () => {
-  document.getElementById('fixaRatingModal').style.display = 'none';
-  _ratingContext = null;
-});
-
-document.getElementById('ratingSubmitBtn')?.addEventListener('click', async () => {
-  if (!_ratingContext) return;
-  if (!_selectedRating) {
-    if (window.FixaSystem) FixaSystem.showToast('Pick a star rating first', '', 'warning');
-    return;
-  }
-  try {
-    const res = await fetch(`${BASE_URL}/api/reviews`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        artisanId: _ratingContext.artisanId,
-        bookingId: _ratingContext.bookingId,
-        rating: _selectedRating,
-        comment: document.getElementById('ratingComment').value.trim()
-      })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || 'Failed to submit review');
-    document.getElementById('fixaRatingModal').style.display = 'none';
-    _ratingContext = null;
-    if (window.FixaSystem) FixaSystem.showToast('Thanks for your feedback! ⭐', '', 'success');
-  } catch (err) {
-    if (window.FixaSystem) FixaSystem.showToast('Failed', err.message, 'warning');
-  }
-});
-  // Pending chat from URL
+  // Open a pending chat from URL
   const urlParams = new URLSearchParams(window.location.search);
   if (urlParams.get('openMessages') === 'true') {
     switchPage('messages');
@@ -2228,8 +1932,8 @@ document.getElementById('ratingSubmitBtn')?.addEventListener('click', async () =
     if (chatData) {
       try {
         const d = JSON.parse(chatData);
-        setTimeout(() => openChat(d.chatId, d.name, false, d.timerSecs || 0), 600);
         localStorage.removeItem('openChatWith');
+        openChat(d.chatId, d.name, false, d.timerSecs || 0);
       } catch {}
     }
   }
