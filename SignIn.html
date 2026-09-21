@@ -415,7 +415,7 @@ signinForm.addEventListener('submit', async (e) => {
 
 // Always store the full user object and token for general use
 localStorage.setItem('token', data.token);
-localStorage.setItem('user', JSON.stringify(data.user));
+localStorage.setItem('user', JSON.stringify(data.user._id || data.user.id));
 
 // Check the user's role and store their ID in the appropriate key
 if (data.user.role === "customer") {
