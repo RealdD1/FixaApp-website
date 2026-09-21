@@ -1,0 +1,110 @@
+/* ============================================================
+   Fixa theme.css — light/dark palette.
+   Link this AFTER any page-specific <style> or <link>, so it wins the cascade.
+   Toggle is driven by data-theme="light" | "dark" on <html> (set by theme.js).
+   ============================================================ */
+
+:root{
+  --gold:#ffd700;
+  --gold-dark:#e6b800;
+  --danger:#ff3b5c;
+  --success:#22c55e;
+}
+
+/* ---------- DARK (default — matches your current design) ---------- */
+:root, [data-theme="dark"]{
+  --bg-dark:#00172b;
+  --bg-body:#00172b;
+  --bg-card:rgba(255,255,255,.06);
+  --bg-glass:rgba(255,255,255,.08);
+  --bg-input:#ffe4b5;
+  --text-main:#ffffff;
+  --text-muted:#b0b8c9;
+  --border-soft:rgba(255,255,255,.08);
+  --border-gold:rgba(255,215,0,.15);
+}
+
+/* ---------- LIGHT ---------- */
+[data-theme="light"]{
+  --bg-dark:#f4f6fa;
+  --bg-body:#f4f6fa;
+  --bg-card:#ffffff;
+  --bg-glass:rgba(255,255,255,.85);
+  --bg-input:#fff3d6;
+  --text-main:#0a2b36;
+  --text-muted:#5b6b7a;
+  --border-soft:rgba(0,0,0,.08);
+  --border-gold:rgba(200,150,0,.25);
+}
+
+/* ---------- Generic, variable-driven surfaces (works automatically on
+   pages already using var(--bg-dark) etc., e.g. customer home page) ---- */
+[data-theme="light"] body{ background:var(--bg-body); color:var(--text-main); }
+[data-theme="light"] .glass{ background:var(--bg-glass); }
+
+/* ---------- Hard-coded-color pages (SignIn / Signup / Artisan
+   dashboard / Select Service) — patched directly since those pages
+   don't use CSS variables yet. Safe to delete once you migrate those
+   pages to var(--bg-dark) etc. like the customer home page already does. */
+[data-theme="light"] body,
+[data-theme="light"] html{
+  background:#f4f6fa !important;
+  color:#0a2b36 !important;
+}
+
+[data-theme="light"] .form-card,
+[data-theme="light"] .history-modal-box,
+[data-theme="light"] .hist-modal-box,
+[data-theme="light"] #jobList .card,
+[data-theme="light"] #historyPage .card,
+[data-theme="light"] .account-card,
+[data-theme="light"] .artisan-card,
+[data-theme="light"] .icon-square,
+[data-theme="light"] .service-item .icon-square,
+[data-theme="light"] .category-item,
+[data-theme="light"] .search-box,
+[data-theme="light"] .wallet-card,
+[data-theme="light"] .profile-card,
+[data-theme="light"] .home-header,
+[data-theme="light"] .msg-header,
+[data-theme="light"] .chat-list-header,
+[data-theme="light"] #chatListView,
+[data-theme="light"] .bottom-nav,
+[data-theme="light"] .dashboard-summary-card{
+  background:#ffffff !important;
+  border-color:rgba(0,0,0,.08) !important;
+  color:#0a2b36 !important;
+  box-shadow:0 4px 14px rgba(0,0,0,.06) !important;
+}
+
+[data-theme="light"] .chat-item:hover,
+[data-theme="light"] .account-card:hover{ background:#f0f2f6 !important; }
+
+[data-theme="light"] input,
+[data-theme="light"] textarea,
+[data-theme="light"] select{
+  background:#f0f2f6 !important;
+  color:#0a2b36 !important;
+  border:1px solid rgba(0,0,0,.12) !important;
+}
+[data-theme="light"] input::placeholder,
+[data-theme="light"] textarea::placeholder{ color:#8a97a6 !important; }
+
+[data-theme="light"] .msg-row.recv .bubble{ background:#eef1f5 !important; color:#0a2b36 !important; }
+[data-theme="light"] .chat-preview,
+[data-theme="light"] .chat-preview-text,
+[data-theme="light"] #convStatus,
+[data-theme="light"] .details,
+[data-theme="light"] p,
+[data-theme="light"] span:not(.material-icons){ color:inherit; }
+
+[data-theme="light"] .signup-link, [data-theme="light"] .forgot-password-link,
+[data-theme="light"] .signin-link{ color:#0a2b36 !important; }
+
+[data-theme="light"] .tab{ background:#e7ebf1 !important; color:#5b6b7a !important; }
+[data-theme="light"] .tab.active{ background:var(--gold) !important; color:#000 !important; }
+
+/* Keep gold accents, logout/danger colors and the gold logo text identical in both themes */
+[data-theme="light"] .logo-text,
+[data-theme="light"] .logo,
+[data-theme="light"] .section-title a{ color:#c99b00 !important; }
