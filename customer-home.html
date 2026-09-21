@@ -4,6 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Fixa | Home</title>
+  <script src="config.js"></script>
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
   <script src="http://localhost:5000/socket.io/socket.io.js"></script>
@@ -735,7 +736,7 @@ socket.on('topUpPaid', ({ amount }) => {
 document.getElementById('topUpApproveBtn').addEventListener('click', async () => {
   if (!_activeTopUp) return;
   try {
-    const res = await fetch(`${BASE_URL}/api/bookings/${_activeTopUp.bookingId}/top-up/${_activeTopUp.topUpId}/approve`, {
+    const response = await fetch(`${FIXA_CONFIG.API_URL}/api/bookings/${_activeTopUp.bookingId}/top-up/${_activeTopUp.topUpId}/approve`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
     });
@@ -759,7 +760,7 @@ document.getElementById('topUpApproveBtn').addEventListener('click', async () =>
 document.getElementById('topUpRejectBtn').addEventListener('click', async () => {
   if (!_activeTopUp) return;
   try {
-    await fetch(`${BASE_URL}/api/bookings/${_activeTopUp.bookingId}/top-up/${_activeTopUp.topUpId}/reject`, {
+    await fetch(FIXA_CONFIG.API.URL}/api/bookings/${_activeTopUp.bookingId}/top-up/${_activeTopUp.topUpId}/reject`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` }
     });
