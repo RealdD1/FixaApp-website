@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Artisan Profile</title>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+  <style>
+    body {
+      background-color: #00172B;
+      color: white;
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+    .container {
+      max-width: 500px;
+      width: 100%;
+    }
+    .card, .form-section {
+      background: #003049;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+      margin-top: 20px;
+      position: relative;
+    }
+    .card h2, .form-section h2 {
+      color: gold;
+      text-align: center;
+      margin-top: 0;
+    }
+    .card p strong {
+      color: gold;
+    }
+    .btn {
+      background-color: gold;
+      color: #00172B;
+      font-weight: bold;
+      padding: 10px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      width: 100%;
+      margin-top: 15px;
+    }
+    .btn:hover {
+      background-color: #e6b800;
+    }
+    input, textarea {
+      width: 100%;
+      padding: 10px;
+      border-radius: 5px;
+      border: none;
+      font-size: 16px;
+      background-color: #004663;
+      color: white;
+      margin-bottom: 15px;
+    }
+    textarea {
+      resize: vertical;
+    }
+    .form-section {
+      display: none;
+    }
+    .notification {
+      display: none;
+      padding: 15px;
+      border-radius: 8px;
+      text-align: center;
+      margin: 20px auto;
+      font-weight: bold;
+      max-width: 500px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    }
+    .notification.success {
+      background-color: gold;
+      color: #00172B;
+    }
+    .notification.error {
+      background-color: #e74c3c;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div id="notificationArea" class="notification"></div>
+
+  <div id="profileCard" class="card">
+    <h2>My Profile</h2>
+    <p><strong>Name:</strong> <span id="nameDisplay"></span></p>
+    <p><strong>Phone:</strong> <span id="phoneDisplay"></span></p>
+    <p><strong>Bio:</strong> <span id="bioDisplay"></span></p>
+    <p><strong>Live Location:</strong> <span id="locationDisplay"></span></p>
+    <button class="btn" id="editBtn">Edit Profile</button>
+  </div>
+
+  <div id="formSection" class="form-section">
+    <h2>Edit Profile</h2>
+    <form id="artisanForm">
+      <input type="text" id="name" placeholder="Full Name" required />
+      <input type="text" id="phone" placeholder="Phone Number" required />
+      <textarea id="bio" placeholder="Short Bio"></textarea>
+      <button class="btn" type="submit">Save Info</button>
+      <button class="btn" type="button" id="cancelBtn">Cancel</button>
+    </form>
+  </div>
+</div>
+
+<script>
+const token = localStorage.getItem("token");
+const API_BASE = "http://localhost:5000/api/artisans";
+
+// UI Elements
+const profileCard = document.getElementById("profileCard");
+const formSection = document.getElementById("formSection");
+const editBtn = document.getElementById("editBtn");
+const cancelBtn = document.getElementById("cancelBtn");
+const artisanForm = document.getElementById("artisanForm");
+const notificationArea = document.getElementById("notificationArea");
+
+// Display Elements
+const nameDisplay = document.getElementById("nameDisplay");
+const phoneDisplay = document.getElementById("phoneDisplay");
+const bioDisplay = document.getElementById("bioDisplay");
+const locationDisplay = document.getElementById("locationDisplay");
+
+// Input Elements
+const nameInput = document.getElementById("name");
+const phoneInput = document.getElementById("phone");
+const bioInput = document.getElementById("bio");
+
+// --- Notification Function ---
+function showNotification(message, type) {
+  notificationArea.textContent = message;
+  notificationArea.className = `notification ${type}`;
+  notificationArea.style.display = "block";
+  setTimeout(() => {
+    notificationArea.style.display = "none";
+  }, 3000);
+}
+
+// --- Live location update ---
+function startLiveLocation() {
+  if (!navigator.geolocation) {
+    locationDisplay.textContent = "Geolocation not supported.";
+    return;
+  }
+  navigator.geolocation.watchPosition(async pos => {
+    const lat = pos.coords.latitude;
+    const lng = pos.coords.longitude;
+    locationDisplay.textContent = `${lat}, ${lng}`;
+    try {
+      await fetch(`${API_BASE}/location`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify({ coordinates: [lng, lat] })
+      });
+    } catch (err) {
+      console.error("Location update failed:", err);
+    }
+  }, err => {
+    console.error("Geolocation error:", err);
+  }, { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 });
+}
+
+// --- Load and Display Profile ---
+async function loadAndDisplayProfile() {
+  try {
+    const res = await fetch(`${API_BASE}/me`, {
+      headers: { "Authorization": `Bearer ${token}` }
+    });
+    
+    // Check if profile exists, if not, create it
+    if (res.status === 404) {
+      const createRes = await fetch(`${API_BASE}/register`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}` },
+      });
+      const artisan = await createRes.json();
+      updateUI(artisan);
+    } else {
+      const artisan = await res.json();
+      updateUI(artisan);
+    }
+  } catch (err) {
+    console.error("Failed to load/create profile:", err);
+    showNotification("Failed to load profile.", "error");
+  }
+}
+
+// Update UI with new data
+function updateUI(data) {
+  nameInput.value = data.name || "";
+  phoneInput.value = data.phone || "";
+  bioInput.value = data.bio || "";
+  nameDisplay.textContent = data.name || "N/A";
+  phoneDisplay.textContent = data.phone || "N/A";
+  bioDisplay.textContent = data.bio || "N/A";
+  if (data.location && data.location.coordinates) {
+    locationDisplay.textContent = `${data.location.coordinates[1]}, ${data.location.coordinates[0]}`;
+  }
+}
+
+// --- Event Listeners ---
+editBtn.addEventListener("click", () => {
+  profileCard.style.display = "none";
+  formSection.style.display = "block";
+});
+
+cancelBtn.addEventListener("click", () => {
+  formSection.style.display = "none";
+  profileCard.style.display = "block";
+});
+
+artisanForm.addEventListener("submit", async e => {
+  e.preventDefault();
+  const body = {
+    name: nameInput.value,
+    phone: phoneInput.value,
+    bio: bioInput.value
+  };
+  try {
+    const res = await fetch(`${API_BASE}/me`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) {
+      const errorData = await res.json();
+      throw new Error(errorData.message || "Failed to update profile.");
+    }
+    const artisan = await res.json();
+    updateUI(artisan);
+    profileCard.style.display = "block";
+    formSection.style.display = "none";
+    showNotification("Profile updated successfully!", "success");
+  } catch (err) {
+    console.error("Save failed:", err);
+    showNotification(err.message || "Failed to save profile.", "error");
+  }
+});
+
+// --- Initialization ---
+document.addEventListener("DOMContentLoaded", () => {
+  if (!token) {
+    window.location.href = "SignIn.html";
+    return;
+  }
+  loadAndDisplayProfile();
+  startLiveLocation();
+});
+</script>
+
+</body>
+</html>
