@@ -1,9 +1,8 @@
 // Fixa service worker — app-shell caching + offline fallback.
 // Bump this on every deploy so old caches get cleared.
-const CACHE_VERSION = 'fixa-v1';
+const CACHE_VERSION = 'fixa-v2'; // any change works — timestamp or build hash is even better
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
-const CACHE_VERSION = 'fixa-v2'; // any change works — timestamp or build hash is even better
 
 // Best-effort precache. Missing files are skipped instead of failing install,
 // so add/remove pages here as your site grows.
@@ -18,7 +17,7 @@ const SHELL_FILES = [
   '/responsive.css',
   '/theme.js',
   '/pwa.js',
-  '/config.js' 
+  '/config.js'
 ];
 
 self.addEventListener('install', (event) => {
