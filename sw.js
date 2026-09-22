@@ -3,6 +3,7 @@
 const CACHE_VERSION = 'fixa-v1';
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
+const CACHE_VERSION = 'fixa-v2'; // any change works — timestamp or build hash is even better
 
 // Best-effort precache. Missing files are skipped instead of failing install,
 // so add/remove pages here as your site grows.
