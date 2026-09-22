@@ -16,7 +16,8 @@ const SHELL_FILES = [
   '/theme.css',
   '/responsive.css',
   '/theme.js',
-  '/pwa.js'
+  '/pwa.js',
+  '/config.js' 
 ];
 
 self.addEventListener('install', (event) => {
