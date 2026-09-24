@@ -2,7 +2,18 @@
 (function () {
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js').catch((err) =>
+      navigator.serviceWorker.register('/sw.js').then((registration) => {
+        // Check for a new sw.js on every page load, instead of waiting up to 24h.
+        registration.update();
+
+        // When a new worker takes control, reload once so the user gets fresh files.
+        let refreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (refreshing) return;
+          refreshing = true;
+          window.location.reload();
+        });
+      }).catch((err) =>
         console.warn('[PWA] Service worker registration failed:', err)
       );
     });
