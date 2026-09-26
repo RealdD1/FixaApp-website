@@ -146,7 +146,7 @@ async function setRole(role) {
 
   try {
     // 1️⃣ Set role on user
-    const res = await fetch("http://localhost:5000/api/users/set-role", {
+    const res = await fetch(`${FIXA_CONFIG.API_URL}/api/users/set-role`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -164,7 +164,7 @@ async function setRole(role) {
 
     // 3️⃣ If artisan, auto-create profile
     if (role === "artisan") {
-      const artisanRes = await fetch("http://localhost:5000/api/artisans/register", {
+const artisanRes = await fetch(`${FIXA_CONFIG.API_URL}/api/artisans/register`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
