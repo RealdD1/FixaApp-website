@@ -21,7 +21,7 @@ const SHELL_FILES = [
   '/responsive.css',
   '/theme.js',
   '/pwa.js',
-  '/fixa-logo.png'
+  '/icon-192.png'
 ];
 
 
