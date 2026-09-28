@@ -1,106 +1,137 @@
-// Fixa PWA bootstrap
-//   1. registers the service worker (sw.js)
-//   2. checks for a new version on load, when the tab becomes visible again, and every 30 minutes
-//   3. shows a small "Update" banner when a new version has arrived (never reloads by itself,
-//      so nobody loses a half-typed message or a payment in progress)
-//   4. shows an "Install App" button where the browser supports it
-(function () {
-  'use strict';
+// Fixa service worker (v4)
+//
+// HOW UPDATES REACH YOUR USERS
+//   * Your own pages, scripts and styles are fetched NETWORK-FIRST. Whenever the visitor is
+//     online, a normal refresh shows the newest deploy. No hard refresh, no waiting.
+//   * The cache is only a fallback: it is used when the visitor is offline, or when the network
+//     takes longer than NETWORK_TIMEOUT_MS (slow mobile data), so pages still open quickly.
+//   * Other sites (Google sign-in, Paystack, CDN scripts, your API on api.fixaapp.net) are never
+//     touched by this file.
+//
+// You do NOT need to bump CACHE_VERSION for normal deploys. Change it only when you want to
+// wipe every visitor's cache.
 
-  // Safe even if a page includes this script twice
-  if (window.__fixaPwaLoaded) return;
-  window.__fixaPwaLoaded = true;
+const CACHE_VERSION = 'fixa-v4';
+const SHELL_CACHE = `${CACHE_VERSION}-shell`;
+const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
+const OFFLINE_URL = '/offline.html';
 
-  function onBodyReady(fn) {
-    if (document.body) fn();
-    else document.addEventListener('DOMContentLoaded', fn);
-  }
+// After this long without an answer from the network, show the cached copy (if there is one)
+// while the network keeps loading in the background. Raise it for "always latest", lower it for "faster".
+const NETWORK_TIMEOUT_MS = 3500;
 
-  // ── 1 + 2 + 3: service worker + update banner ─────────────────────────────
-  function showUpdateBanner() {
-    onBodyReady(function () {
-      if (document.getElementById('fixaUpdateBanner')) return;
+// Caches left behind by older Fixa workers (fixa-v0 ... fixa-v3)
+const LEGACY_CACHE = /^fixa-v[0-3](-|$)/;
 
-      var bar = document.createElement('div');
-      bar.id = 'fixaUpdateBanner';
-      bar.setAttribute('role', 'status');
-      bar.style.cssText =
-        'position:fixed;left:12px;right:12px;bottom:calc(96px + env(safe-area-inset-bottom,0px));' +
-        'z-index:6000;display:flex;align-items:center;justify-content:space-between;gap:12px;' +
-        'background:#0a1f33;color:#fff;border:1px solid rgba(255,215,0,.45);border-radius:14px;' +
-        'padding:12px 14px;font:600 13px/1.3 system-ui,Arial,sans-serif;box-shadow:0 10px 30px rgba(0,0,0,.45)';
+// Small precache so the offline page and core assets exist from the first visit
+const SHELL_FILES = [
+  '/offline.html',
+  '/manifest.json',
+  '/config.js',
+  '/theme.css',
+  '/responsive.css',
+  '/theme.js',
+  '/pwa.js',
+  '/fixa-logo.png'
+];
 
-      var msg = document.createElement('span');
-      msg.textContent = 'A new version of Fixa is ready.';
+self.addEventListener('install', (event) => {
+  self.skipWaiting(); // take over as soon as installed, don't wait for every tab to close
+  event.waitUntil(
+    caches.open(SHELL_CACHE).then((cache) =>
+      // 'reload' bypasses the browser's HTTP cache. GitHub Pages tells browsers to keep files 10 minutes.
+      Promise.allSettled(SHELL_FILES.map((url) => cache.add(new Request(url, { cache: 'reload' }))))
+    )
+  );
+});
 
-      var btn = document.createElement('button');
-      btn.type = 'button';
-      btn.textContent = 'Update';
-      btn.style.cssText =
-        'background:#ffd700;color:#001;border:none;border-radius:999px;padding:8px 16px;' +
-        'font-weight:800;font-size:13px;cursor:pointer;flex-shrink:0';
-      btn.addEventListener('click', function () { window.location.reload(); });
+self.addEventListener('activate', (event) => {
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    const stale = keys.filter((k) => k.startsWith('fixa-') && k !== SHELL_CACHE && k !== RUNTIME_CACHE);
+    const cameFromLegacyWorker = stale.some((k) => LEGACY_CACHE.test(k));
 
-      bar.appendChild(msg);
-      bar.appendChild(btn);
-      document.body.appendChild(bar);
-    });
-  }
+    await Promise.all(stale.map((k) => caches.delete(k)));
+    await self.clients.claim();
 
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', function () {
-      // Was this page already under a service worker when it opened? If not (first visit ever),
-      // the takeover at the end of installation is not an "update" and must not show the banner.
-      var hadController = !!navigator.serviceWorker.controller;
+    // One-time migration: tabs that are still showing pages served by an old worker get reloaded once,
+    // so nobody stays stuck on an old version. Later updates show the "Update" banner from pwa.js instead.
+    if (cameFromLegacyWorker) {
+      const windows = await self.clients.matchAll({ type: 'window' });
+      windows.forEach((w) => { try { w.navigate(w.url).catch(() => {}); } catch (e) { /* ignore */ } });
+    }
+  })());
+});
 
-      navigator.serviceWorker
-        .register('/sw.js', { updateViaCache: 'none' })   // always fetch sw.js fresh, never from HTTP cache
-        .then(function (registration) {
-          if (hadController) {
-            navigator.serviceWorker.addEventListener('controllerchange', showUpdateBanner);
-          }
+self.addEventListener('fetch', (event) => {
+  const { request } = event;
 
-          function check() { registration.update().catch(function () {}); }
-          check();
-          document.addEventListener('visibilitychange', function () {
-            if (document.visibilityState === 'visible') check();
-          });
-          setInterval(check, 30 * 60 * 1000);
-        })
-        .catch(function (err) { console.warn('[PWA] Service worker registration failed:', err); });
-    });
-  }
+  if (request.method !== 'GET') return;                       // logins, payments, messages: never touched
+  if (request.headers.has('range')) return;                   // audio/video seeking
+  if (request.destination === 'audio' || request.destination === 'video') return;
 
-  // ── 4: install button (Chrome / Edge / Android) ───────────────────────────
-  var deferredPrompt = null;
-  var installBtn = document.createElement('button');
-  installBtn.id = 'fixaInstallBtn';
-  installBtn.type = 'button';
-  installBtn.textContent = '⬇ Install App';
-  installBtn.style.cssText =
-    'position:fixed;left:50%;transform:translateX(-50%);' +
-    'bottom:calc(90px + env(safe-area-inset-bottom,0px));' +
-    'background:#ffd700;color:#001;border:none;padding:10px 18px;border-radius:999px;' +
-    'font-weight:800;font-size:13px;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.35);' +
-    'z-index:5000;display:none';
-  onBodyReady(function () { document.body.appendChild(installBtn); });
+  const url = new URL(request.url);
+  if (url.origin !== self.location.origin) return;            // other sites + api.fixaapp.net: browser handles them
 
-  window.addEventListener('beforeinstallprompt', function (e) {
-    e.preventDefault();
-    deferredPrompt = e;
-    installBtn.style.display = 'block';
+  event.respondWith(networkFirst(event));
+});
+
+function networkFirst(event) {
+  const { request } = event;
+
+  // 'no-cache' = ask the server whether the file changed (skips the browser's 10-minute HTTP cache)
+  let cacheWrite = Promise.resolve();
+  const networkPromise = fetch(request, { cache: 'no-cache' }).then((response) => {
+    if (response && response.ok && response.status === 200) {
+      const copy = response.clone();
+      cacheWrite = caches.open(RUNTIME_CACHE)
+        .then(async (cache) => { await cache.put(request, copy); await trimCache(cache); })
+        .catch(() => {});
+    }
+    return response;
   });
 
-  installBtn.addEventListener('click', async function () {
-    if (!deferredPrompt) return;
-    installBtn.style.display = 'none';
-    deferredPrompt.prompt();
-    await deferredPrompt.userChoice;
-    deferredPrompt = null;
-  });
+  // Keep the worker alive until the network + cache write finish, even if we already answered from cache
+  event.waitUntil(networkPromise.then(() => cacheWrite, () => {}));
 
-  window.addEventListener('appinstalled', function () {
-    installBtn.style.display = 'none';
-    deferredPrompt = null;
+  return new Promise((resolve) => {
+    let answered = false;
+    const answer = (response) => {
+      if (response && !answered) { answered = true; resolve(response); }
+    };
+
+    // Slow network: show the cached copy now, the fresh copy is saved for next time
+    const timer = setTimeout(() => { cachedCopy(request).then(answer); }, NETWORK_TIMEOUT_MS);
+
+    networkPromise.then(
+      (response) => { clearTimeout(timer); answer(response); },
+      async () => {
+        clearTimeout(timer);
+        answer(await fromCache(request));               // offline: cached copy, or the offline page
+        if (!answered) resolve(Response.error());       // nothing to show at all
+      }
+    );
   });
-})();
+}
+
+// caches.match() searches caches in creation order, so it would return the OLD copy saved at install
+// time before the newer copy saved on a later visit. Look in the runtime cache (newest) first.
+async function cachedCopy(request, options) {
+  const runtime = await caches.open(RUNTIME_CACHE);
+  return (await runtime.match(request, options)) || (await caches.match(request, options));
+}
+
+async function fromCache(request) {
+  const hit = await cachedCopy(request);
+  if (hit) return hit;
+  if (request.mode === 'navigate') {
+    const loose = await cachedCopy(request, { ignoreSearch: true }); // e.g. ?reference=... after a payment
+    return loose || caches.match(OFFLINE_URL);
+  }
+  return undefined;
+}
+
+async function trimCache(cache, max = 80) {
+  const keys = await cache.keys();
+  for (let i = 0; i < keys.length - max; i++) await cache.delete(keys[i]);
+}
