@@ -1,53 +1,146 @@
-const VERSION = 'fixa-v1';
-const SHELL = ['/offline.html', '/icons/icon-192.png'];
+const VERSION = 'fixa-v5';
 
-self.addEventListener('install', e => {
-  e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL)));
+const SHELL = [
+  '/',
+  '/index.html',
+  '/offline.html',
+  '/manifest.webmanifest',
+  '/config.js',
+  '/pwa.js',
+  '/sw.js',
+  '/icons/icon-192.png'
+];
+
+self.addEventListener('install', event => {
+  event.waitUntil(
+    caches.open(VERSION)
+      .then(cache => cache.addAll(SHELL))
+      .catch(error => {
+        console.error('[Fixa SW] Precache failed:', error);
+      })
+  );
+
   self.skipWaiting();
 });
 
-self.addEventListener('activate', e => {
-  e.waitUntil(
-    caches.keys().then(keys => Promise.all(keys.filter(k => k !== VERSION).map(k => caches.delete(k))))
+self.addEventListener('activate', event => {
+  event.waitUntil(
+    caches.keys()
+      .then(keys =>
+        Promise.all(
+          keys
+            .filter(key => key !== VERSION)
+            .map(key => caches.delete(key))
+        )
+      )
       .then(() => self.clients.claim())
   );
 });
 
-self.addEventListener('fetch', e => {
-  const req = e.request;
-  const url = new URL(req.url);
-  if (req.method !== 'GET' || url.origin !== location.origin) return;   // never touch API, socket.io, Paystack, CDNs
+self.addEventListener('fetch', event => {
+  const request = event.request;
 
-  if (req.mode === 'navigate') {                       // pages: network first, offline page as fallback
-    e.respondWith(fetch(req).catch(() => caches.match('/offline.html')));
+  if (request.method !== 'GET') return;
+
+  const url = new URL(request.url);
+
+  // Only handle Fixa's own origin.
+  // API, Socket.IO, Paystack and external CDNs are untouched.
+  if (url.origin !== self.location.origin) return;
+
+  // HTML navigation: network first, offline fallback.
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request)
+        .then(response => {
+          const copy = response.clone();
+
+          caches.open(VERSION).then(cache => {
+            cache.put(request, copy);
+          });
+
+          return response;
+        })
+        .catch(() => caches.match('/offline.html'))
+    );
+
     return;
   }
-  if (/\.(png|jpg|jpeg|svg|webp|mp3|woff2?|css)$/.test(url.pathname)) {   // static: cache first
-    e.respondWith(caches.match(req).then(hit => hit || fetch(req).then(res => {
-      const copy = res.clone();
-      caches.open(VERSION).then(c => c.put(req, copy));
-      return res;
-    })));
+
+  // Static assets: cache first, then network.
+  if (
+    /\.(png|jpg|jpeg|svg|webp|gif|mp3|wav|woff|woff2|css|js)$/i.test(
+      url.pathname
+    )
+  ) {
+    event.respondWith(
+      caches.match(request).then(cached => {
+        if (cached) return cached;
+
+        return fetch(request).then(response => {
+          if (!response || !response.ok) {
+            return response;
+          }
+
+          const copy = response.clone();
+
+          caches.open(VERSION).then(cache => {
+            cache.put(request, copy);
+          });
+
+          return response;
+        });
+      })
+    );
   }
 });
 
 // Web Push
-self.addEventListener('push', e => {
-  const d = e.data ? e.data.json() : {};
-  e.waitUntil(self.registration.showNotification(d.title || 'Fixa', {
-    body: d.body || '',
-    icon: '/icons/icon-192.png',
-    badge: '/icons/icon-192.png',
-    tag: d.tag || 'fixa',
-    data: { url: d.url || '/SignIn.html' }
-  }));
+self.addEventListener('push', event => {
+  let data = {};
+
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch (error) {
+    console.error('[Fixa SW] Invalid push payload:', error);
+  }
+
+  event.waitUntil(
+    self.registration.showNotification(data.title || 'Fixa', {
+      body: data.body || '',
+      icon: '/icons/icon-192.png',
+      badge: '/icons/icon-192.png',
+      tag: data.tag || 'fixa',
+      data: {
+        url: data.url || '/SignIn.html'
+      }
+    })
+  );
 });
 
-self.addEventListener('notificationclick', e => {
-  e.notification.close();
-  const url = e.notification.data?.url || '/SignIn.html';
-  e.waitUntil(clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
-    const open = list.find(c => 'focus' in c);
-    return open ? open.focus() : clients.openWindow(url);
-  }));
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+
+  const url = event.notification.data?.url || '/SignIn.html';
+
+  event.waitUntil(
+    clients.matchAll({
+      type: 'window',
+      includeUncontrolled: true
+    }).then(clientList => {
+      const existing = clientList.find(client => {
+        return client.url.includes(self.location.origin);
+      });
+
+      if (existing) {
+        return existing.focus().then(() => {
+          if ('navigate' in existing) {
+            return existing.navigate(url);
+          }
+        });
+      }
+
+      return clients.openWindow(url);
+    })
+  );
 });
