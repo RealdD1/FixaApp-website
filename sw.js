@@ -1,5 +1,4 @@
-const VERSION = 'fixa-v5';
-
+const VERSION = 'fixa-v2';
 const SHELL = [
   '/',
   '/index.html',
