@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin Dashboard - Fixa</title>
+  <style>
+    body { font-family:sans-serif; background:#f5f5f5; margin:0; padding:0; }
+    header { background:#00172b; color:#ffd700; padding:1rem; text-align:center; }
+    .stats { display:flex; gap:1rem; padding:1rem; flex-wrap:wrap; }
+    .card { background:#fff; padding:1rem; border-radius:8px; flex:1 1 200px; text-align:center; box-shadow:0 0 5px rgba(0,0,0,0.1); }
+    button { padding:0.5rem 1rem; background:#00172b; color:#ffd700; border:none; cursor:pointer; margin:0.25rem; }
+    table { width:100%; border-collapse:collapse; margin-top:1rem; }
+    th, td { padding:0.5rem; border:1px solid #ccc; text-align:left; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Fixa Admin Dashboard</h1>
+  <button id="logoutBtn">Logout</button>
+</header>
+
+<div class="stats">
+  <div class="card">Total Users: <span id="totalUsers">0</span></div>
+  <div class="card">Total Artisans: <span id="totalArtisans">0</span></div>
+  <div class="card">Total Bookings: <span id="totalBookings">0</span></div>
+  <div class="card">Pending Bookings: <span id="pendingBookings">0</span></div>
+  <div class="card">Completed Bookings: <span id="completedBookings">0</span></div>
+  <div class="card">Pending Verifications: <span id="pendingVerifications">0</span></div>
+</div>
+
+<h2>Pending Verifications</h2>
+<table id="verificationTable">
+  <thead>
+    <tr>
+      <th>Artisan</th>
+      <th>Email</th>
+      <th>Phone</th>
+      <th>ID Type</th>
+      <th>ID Number</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<script>
+const token = localStorage.getItem('adminToken');
+if(!token) window.location.href = 'adminlogin.html';
+
+// =======================
+// FETCH DASHBOARD STATS
+// =======================
+async function loadStats() {
+  const res = await fetch('http://localhost:5000/api/admin/stats', {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  const data = await res.json();
+  if(res.ok){
+    document.getElementById('totalUsers').innerText = data.data.totalUsers;
+    document.getElementById('totalArtisans').innerText = data.data.totalArtisans;
+    document.getElementById('totalBookings').innerText = data.data.totalBookings;
+    document.getElementById('pendingBookings').innerText = data.data.pendingBookings;
+    document.getElementById('completedBookings').innerText = data.data.completedBookings;
+    document.getElementById('pendingVerifications').innerText = data.data.pendingVerifications;
+  }
+}
+loadStats();
+
+// =======================
+// FETCH PENDING VERIFICATIONS
+// =======================
+async function loadVerifications() {
+  const res = await fetch('http://localhost:5000/api/admin/verifications/pending', {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  const verifications = await res.json();
+
+  const tbody = document.querySelector('#verificationTable tbody');
+  tbody.innerHTML = '';
+  verifications.forEach(v => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${v.artisanId.name}</td>
+      <td>${v.artisanId.email}</td>
+      <td>${v.artisanId.phone}</td>
+      <td>${v.idType}</td>
+      <td>${v.idNumber}</td>
+      <td>
+        <button onclick="updateVerification('${v._id}', 'approved')">Approve</button>
+        <button onclick="updateVerification('${v._id}', 'rejected')">Reject</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+loadVerifications();
+
+// =======================
+// APPROVE / REJECT VERIFICATION
+// =======================
+async function updateVerification(id, status){
+  const comments = prompt("Optional comment:");
+  const res = await fetch(`http://localhost:5000/api/admin/verifications/${id}`, {
+    method: 'PATCH',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ status, comments })
+  });
+  if(res.ok){
+    alert('Updated successfully');
+    loadVerifications();
+    loadStats();
+  } else {
+    const data = await res.json();
+    alert(data.message);
+  }
+}
+
+// =======================
+// LOGOUT
+// =======================
+document.getElementById('logoutBtn').addEventListener('click', () => {
+  localStorage.removeItem('adminToken');
+  localStorage.removeItem('admin');
+  window.location.href = 'admin-login.html';
+});
+</script>
+
+</body>
+</html>

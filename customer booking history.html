@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="http://localhost:5000/socket.io/socket.io.js"></script>
+    <title>My Service History</title>
+    <style>
+        :root {
+            --bg-dark: #00172b;
+            --card-bg: #0f2a44;
+            --accent: #ffd700; /* Gold */
+            --text-main: #ffffff;
+            --text-dim: #a0aec0;
+            --green: #2ecc71;
+            --orange: #f39c12;
+            --red: #e74c3c;
+        }
+
+        body { margin:0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg-dark); color: var(--text-main); }
+        .container { padding: 20px; max-width: 600px; margin: auto; }
+        
+        h2 { margin-bottom: 20px; font-weight: 600; }
+
+        /* Tabs Styling */
+        .tabs { display: flex; gap: 8px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 5px; }
+        .tab { 
+            padding: 10px 18px; 
+            border-radius: 25px; 
+            background: #1a3a5a; 
+            cursor: pointer; 
+            white-space: nowrap;
+            font-size: 14px;
+            transition: 0.3s;
+            border: 1px solid transparent;
+        }
+        .tab.active { background: var(--accent); color: black; font-weight: bold; }
+
+        /* Card Styling */
+        .card { 
+            background: var(--card-bg); 
+            padding: 16px; 
+            border-radius: 15px; 
+            margin-bottom: 15px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            border-left: 5px solid transparent;
+        }
+        .card.completed { border-left-color: var(--green); }
+        .card.ongoing { border-left-color: var(--orange); }
+        .card.cancelled { border-left-color: var(--red); }
+
+        .card-header { display: flex; justify-content: space-between; align-items: flex-start; }
+        .card h4 { margin: 0; font-size: 18px; color: var(--accent); }
+        
+        .badge { 
+            padding: 4px 10px; 
+            border-radius: 8px; 
+            font-size: 11px; 
+            text-transform: uppercase; 
+            font-weight: bold; 
+        }
+        .badge.completed { background: rgba(46, 204, 113, 0.2); color: var(--green); }
+        .badge.ongoing { background: rgba(243, 156, 18, 0.2); color: var(--orange); }
+        .badge.cancelled { background: rgba(231, 76, 60, 0.2); color: var(--red); }
+
+        .details { margin: 12px 0; color: var(--text-dim); font-size: 14px; }
+        .price { font-weight: bold; color: white; font-size: 16px; margin-top: 5px; }
+
+        .btns { display: flex; gap: 10px; margin-top: 15px; }
+        .btn-outline { 
+            flex: 1; padding: 10px; border: 1px solid var(--accent); 
+            background: transparent; color: var(--accent); 
+            border-radius: 8px; cursor: pointer; font-weight: bold;
+        }
+        .btn-fill { 
+            flex: 1; padding: 10px; border: none; 
+            background: var(--accent); color: black; 
+            border-radius: 8px; cursor: pointer; font-weight: bold;
+        }
+        .modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.6);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.modal-box {
+  background: #0f2a44;
+  color: white;
+  padding: 20px;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 400px;
+}
+.modal-box {
+  animation: pop 0.3s ease;
+}
+
+@keyframes pop {
+  from { transform: scale(0.8); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+        .empty-state { text-align: center; padding: 40px; color: var(--text-dim); }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>My Bookings</h2>
+    
+    <div class="tabs" id="customerTabs">
+        <div class="tab active" onclick="filterCustomer('all', event)">All</div>
+        <div class="tab" onclick="filterCustomer('ongoing', event)">Active</div>
+        <div class="tab" onclick="filterCustomer('completed', event)">Completed</div>
+        <div class="tab" onclick="filterCustomer('cancelled', event)">Cancelled</div>
+    </div>
+
+    <div id="customerList">
+        <!-- Loading Spinner or Placeholder -->
+        <div class="empty-state">Loading your history...</div>
+    </div>
+   <div id="modal" class="modal" style="display:none;">
+  <div class="modal-box">
+   
+    <div id="modalContent"></div>
+  </div>
+</div>
+</div>
+<script src="http://localhost:5000/socket.io/socket.io.js"></script>
+<script>
+const API_URL = "http://localhost:5000/api/bookings";
+const BASE_URL = "http://localhost:5000";
+const socket = io(BASE_URL);
+
+let jobs = [];
+
+// Socket Registration
+const customerId = localStorage.getItem("userId"); // Consistently use 'userId'
+if (customerId) {
+    socket.emit("register", customerId);
+}
+
+// Socket Listeners
+socket.on("bookingAccepted", () => {
+  alert("Artisan accepted your job ✅");
+  loadJobs();
+});
+socket.on("bookingStatusUpdated", (data) => {
+    console.log("Real-time update received:", data);
+    
+    if (data.status === "verifying") {
+        alert("Artisan marked job as completed. Please confirm! 🛠️");
+    } else if (data.status === "completed") {
+        alert("Job completed successfully! 🎉");
+    }
+    
+    // Refresh the UI
+    loadJobs();
+});
+
+async function loadJobs() {
+  try {
+    const token = localStorage.getItem("token");
+    const res = await fetch(API_URL, {
+      headers: { "Authorization": `Bearer ${token}` }
+    });
+
+    if (res.status === 401) {
+       window.location.href = "SignIn.html";
+       return;
+    }
+
+    const data = await res.json();
+
+    if (!Array.isArray(data)) {
+      document.getElementById("customerList").innerHTML = `<div class="empty-state">No bookings found yet.</div>`;
+      return;
+    }
+
+    jobs = data.map(j => ({
+      id: j._id,
+      artisanName: j.artisanId?.name || "Assigning Artisan...",
+      artisanPic: j.artisanId?.profilePic
+        ? (j.artisanId.profilePic.startsWith("http") ? j.artisanId.profilePic : `${BASE_URL}/${j.artisanId.profilePic}`)
+        : `${BASE_URL}/uploads/default-avatar.png`,
+      service: j.category?.name || j.category || "General Service",
+      status: mapStatus(j.status),
+      price: j.estimatedPrice ? `₦${Number(j.estimatedPrice).toLocaleString()}` : "Price TBD",
+      date: j.createdAt ? new Date(j.createdAt).toLocaleDateString() : "—",
+    }));
+
+    renderCustomer('all');
+  } catch (err) {
+    console.error(err);
+    document.getElementById("customerList").innerHTML = `<div class="empty-state">⚠️ Failed to load history.</div>`;
+  }
+}
+
+function mapStatus(status) {
+  const s = status.toLowerCase();
+  if (s === "completed") return "completed";
+  if(s === "pending") return "pending";
+  if (s === "verifying") return "verifying";
+  if (s === "rejected") return "cancelled";
+  return "ongoing";
+}
+
+function renderCustomer(filter) {
+  const list = document.getElementById("customerList");
+  const filteredJobs = jobs.filter(j => filter === 'all' || j.status === filter);
+
+  if (!filteredJobs.length) {
+    list.innerHTML = `<div class="empty-state">No bookings found.</div>`;
+    return;
+  }
+
+  list.innerHTML = filteredJobs.map(job => {
+    let actionButtons = job.status === "verifying" 
+      ? `<button class="btn-fill" onclick="confirmCompletion('${job.id}')">Confirm Completion</button>`
+      : `<button class="btn-fill" onclick="viewDetails('${job.id}')">View Details</button>`;
+
+    return `
+      <div class="card ${job.status}">
+        <div style="display:flex; gap:12px;">
+          <img src="${job.artisanPic}" style="width:50px;height:50px;border-radius:50%;object-fit:cover;" />
+          <div style="flex:1;">
+            <div class="card-header">
+              <h4>${job.service}</h4>
+              <span class="badge ${job.status}">${job.status}</span>
+            </div>
+            <div class="details">
+              <div>Artisan: ${job.artisanName}</div>
+              <div style="font-size:12px;margin-top:4px;">Date: ${job.date}</div>
+              <div class="price">${job.price}</div>
+            </div>
+            <div class="btns">
+              <button class="btn-outline" onclick="openChat('${job.id}')">Message</button>
+              ${actionButtons}
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function confirmCompletion(bookingId) {
+  const token = localStorage.getItem("token");
+  if (!confirm("Confirm that this job is completed?")) return;
+
+  try {
+    const res = await fetch(`${BASE_URL}/api/bookings/${bookingId}/confirm`, {
+      method: "PUT",
+      headers: { "Authorization": `Bearer ${token}` }
+    });
+
+    if (!res.ok) throw new Error("Failed");
+    alert("Job confirmed successfully ✅");
+    loadJobs();
+  } catch (err) {
+    alert("Error confirming job ❌");
+  }
+}
+
+async function viewDetails(id) {
+  try {
+    const token = localStorage.getItem("token");
+    const res = await fetch(`${API_URL}/${id}`, {
+        headers: { "Authorization": `Bearer ${token}` }
+    });
+    const job = await res.json();
+    
+    const pic = job.artisanId?.profilePic;
+    const imageUrl = !pic ? `${BASE_URL}/uploads/default-avatar.png` : (pic.startsWith("http") ? pic : `${BASE_URL}/${pic}`);
+
+    document.getElementById("modalContent").innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #1a3a5a; padding-bottom:1rem; margin-bottom:15px;">
+        <h3 style="margin:0; color:var(--accent);">Job Details</h3>
+        <span onclick="closeModal()" style="cursor:pointer; font-size:24px; color:var(--text-dim);">&times;</span>
+      </div>
+      <div style="text-align:center; margin-bottom:15px;">
+        <img src="${imageUrl}" style="width:60px; height:60px; border-radius:50%; border:2px solid var(--accent); object-fit:cover;">
+        <p style="margin:5px 0; font-weight:bold;">${job.artisanId?.name || 'Assigning Artisan...'}</p>
+      </div>
+      <p><b>Service:</b> ${job.category?.name || job.category}</p>
+      <p><b>Description:</b> ${job.description}</p>
+      <p><b>Status:</b> <span class="badge ${mapStatus(job.status)}">${job.status}</span></p>
+      <p><b>Price:</b> ₦${Number(job.estimatedPrice).toLocaleString()}</p>
+      <p><b>Address:</b> ${job.address}</p>
+      <p><b>Date:</b> ${new Date(job.createdAt).toLocaleString()}</p>
+    `;
+    document.getElementById("modal").style.display = "flex";
+  } catch (err) {
+    alert("Failed to load details");
+  }
+}
+
+function filterCustomer(type, e) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  e.target.classList.add('active');
+  renderCustomer(type);
+}
+
+function closeModal() { document.getElementById("modal").style.display = "none"; }
+window.onclick = e => { if (e.target.id === "modal") closeModal(); };
+
+loadJobs();
+</script></body>
+</html>

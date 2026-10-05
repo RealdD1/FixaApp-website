@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Chat with Artisan</title>
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<style>
+  body { font-family: sans-serif; margin:0; display:flex; flex-direction:column; height:100vh; }
+  #chatBox { flex:1; overflow-y:auto; padding:10px; background:#00172b; color:white; }
+  #chatInput { display:flex; padding:10px; background:#002544; }
+  #chatInput input { flex:1; padding:10px; border-radius:8px; border:none; margin-right:5px; }
+  #chatInput button { padding:10px 15px; border:none; border-radius:8px; background:gold; cursor:pointer; }
+  .message { margin:5px 0; padding:8px 12px; border-radius:8px; max-width:70%; }
+  .customer { background:#007bff; align-self:flex-end; }
+  .artisan { background:#388e3c; align-self:flex-start; }
+</style>
+</head>
+<body>
+<div id="chatBox"></div>
+<div id="chatInput">
+  <input type="text" id="msgInput" placeholder="Type a message..." />
+  <button id="sendBtn">Send</button>
+</div>
+
+<script>
+const socket = io('http://localhost:5000');
+const chatData = JSON.parse(localStorage.getItem('chatWith'));
+const { artisanId, artisanName, customerId } = chatData;
+const roomId = `chat_${artisanId}_${customerId}`; // Unique room for artisan & customer
+
+socket.emit('joinRoom', { roomId });
+
+const chatBox = document.getElementById('chatBox');
+const msgInput = document.getElementById('msgInput');
+const sendBtn = document.getElementById('sendBtn');
+
+sendBtn.addEventListener('click', () => {
+  const message = msgInput.value.trim();
+  if (!message) return;
+  socket.emit('sendMessage', { roomId, senderId: customerId, message });
+  appendMessage(message, 'customer');
+  msgInput.value = '';
+});
+
+socket.on('receiveMessage', ({ senderId, message }) => {
+  const sender = senderId === customerId ? 'customer' : 'artisan';
+  appendMessage(message, sender);
+});
+
+function appendMessage(msg, sender) {
+  const div = document.createElement('div');
+  div.textContent = msg;
+  div.className = `message ${sender}`;
+  chatBox.appendChild(div);
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
+</script>
+</body>
+</html>

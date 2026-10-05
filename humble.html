@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nigerian Navy Portal</title>
+    <style>
+     .off-screen-menu{
+      background-color: black;
+      height: 100vh;
+      width: 100%;
+      font-size: 25px;
+      color: aqua;
+      max-width: 450px;
+      position:fixed;
+      top: 0;
+      right: -450px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      transition: .3s ease;
+     }
+     .off-screen-menu.active{
+      right: 0;
+     }
+     nav{
+      padding: 1rem;
+      margin-left: auto;
+      position: relative;
+      background-color: black;
+     }
+     .ham-menu{
+      height: 50px;
+      width: 50px;
+      margin-left: auto;
+      position: relative;
+
+     }
+     .ham-menu span{
+      height: 5px;
+      width: 100%;
+      background-color: red;
+      border-radius: 25px;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%,-50%);
+      transition: .3s ease;
+     }
+    .ham-menu :nth-child(1){
+      top: 25%;
+    }
+    .ham-menu :nth-child(3){
+      top: 75%;
+    }
+    .ham-menu.active span:nth-child(1){
+      top: 50%;
+      transform: translate(-50%,-50%) rotate(45deg);
+    }
+    .ham-menu.active span:nth-child(2){
+      opacity: 0;
+    }
+    .ham-menu.active span:nth-child(3){
+      top: 50%;
+      transform: translate(-50%,50%) rotate(-45deg);
+    }
+    </style>
+
+    
+</head>
+<body>
+    <div class="off-screen-menu" >
+      
+      <ul >
+          <li><a href="#">Home</a></li>
+          <li><a href="#">books</a></li>
+          <li><a href="#">About</a></li>
+          <li><a href="#">Setting</a></li>
+          <li><a href="#">Contact</a></li>
+      </ul>
+  </div>
+  <nav>
+    <div class="ham-menu">
+     <span></span>
+      <span></span>
+      <span></span>
+  </div>
+  
+  </nav>
+   
+   
+   <script>
+     const offScreenMenu= document.querySelector(".off-screen-menu");
+    const hamMenu = document.querySelector(".ham-menu");
+   
+
+    hamMenu.addEventListener('click',() =>{
+      hamMenu.classList.toggle('active');
+        offScreenMenu.classList.toggle('active');
+       
+    });
+   </script>
+</body>
+</html>

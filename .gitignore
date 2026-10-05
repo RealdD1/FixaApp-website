@@ -1,0 +1,34 @@
+# Backend repository
+fixa-backend/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Dependencies
+node_modules/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.vscode/
+
+# Local installers
+*.msi
+*.exe
+
+# Temporary/test files
+*.tmp
+*.temp
+
+# Build/cache
+dist/
+build/
+.cache/

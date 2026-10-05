@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Welcome to Fixa</title>
+  <script>if (localStorage.getItem("hasVisited")) {
+      window.location.href = "SignIn.html"; // or SignIn.html if you prefer
+    }</script>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      color: white;
+      background: #00172b;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .slideshow-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+    }
+    
+    .slideshow-image {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0;
+      position: absolute;
+      top: 0;
+      left: 0;
+      transition: opacity 2s ease-in-out;
+    }
+
+    .slideshow-image.active {
+      opacity: 1;
+    }
+
+    body::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 23, 43, 0.85);
+      z-index: 1;
+    }
+
+    .container {
+      position: relative;
+      z-index: 2;
+      max-width: 450px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    /* Logo section (icon + text) */
+    .logo-wrapper {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 25px;
+    }
+
+    .logo-icon {
+      width: 60px; /* hand + spanner icon size */
+      height: auto;
+      margin-right: 12px;
+    }
+
+    .logo-text {
+      font-size: 2rem;
+      font-weight: bold;
+      color: gold;
+      letter-spacing: 1px;
+    }
+
+    .tagline {
+      font-size: 1.4rem;
+      font-weight: 300;
+      margin-bottom: 30px;
+      color: #f0c400;
+    }
+
+    .info {
+      margin-bottom: 40px;
+      font-size: 1.1rem;
+      line-height: 1.8;
+      list-style: none;
+      padding: 0;
+      text-align: left;
+      width: 100%;
+    }
+
+    .info li {
+      margin: 15px 0;
+      display: flex;
+      align-items: center;
+    }
+    
+    .info li::before {
+      content: '✔';
+      color: gold;
+      font-weight: bold;
+      margin-right: 15px;
+      font-size: 1.2rem;
+    }
+
+    .btn {
+      background-color: gold;
+      color: rgb(0, 23, 43);
+      padding: 15px 30px;
+      border: none;
+      border-radius: 50px;
+      font-size: 1.1rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-weight: bold;
+      text-decoration: none;
+      margin-bottom: 15px;
+    }
+
+    .btn:hover {
+      background-color: #f0c400;
+      transform: translateY(-3px);
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    }
+    
+    .signin-link {
+      color: white;
+      text-decoration: none;
+      font-size: 0.95rem;
+      transition: color 0.3s;
+    }
+
+    .signin-link:hover {
+      color: gold;
+      text-decoration: underline;
+    }
+
+    /* Mobile */
+    @media (max-width: 600px) {
+      .logo-icon { width: 45px; }
+      .logo-text { font-size: 1.6rem; }
+      .tagline { font-size: 1.2rem; }
+      .info { font-size: 1rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="slideshow-container">
+    <img src="find-artisan.jpg" class="slideshow-image" alt="Find artisans on a map">
+    <img src="book-service.jpg" class="slideshow-image" alt="Book a service">
+    <img src="track-job.jpg" class="slideshow-image" alt="Track a job">
+  </div>
+
+  <div class="container">
+    <!-- Logo row: icon + text -->
+    <div class="logo-wrapper">
+      <img src="fixa-logo.png" alt="Hand holding spanner" class="logo-icon">
+      <div class="logo-text">Fixa</div>
+    </div>
+    
+   
+    <div class="tagline">Connecting you to trusted artisans fast</div>
+
+    <ul class="info">
+      <li>Find skilled artisans near you</li>
+      <li>Book instantly with secure payments</li>
+      <li>Track jobs in real time</li>
+    </ul>
+
+    <a href="fixa landing page.html" class="btn" onclick="markVisited()">Get Started</a>
+    <a href="SignIn.html" class="signin-link" onclick="markVisited()">Already have an account? Sign In</a>
+  </div>
+
+  <script>
+    let slideIndex = 0;
+    carousel();
+
+    function carousel() {
+      let i;
+      let slides = document.getElementsByClassName("slideshow-image");
+      for (i = 0; i < slides.length; i++) {
+        slides[i].classList.remove("active");
+      }
+      slideIndex++;
+      if (slideIndex > slides.length) {slideIndex = 1}
+      slides[slideIndex-1].classList.add("active");
+      setTimeout(carousel, 5000); // Change image every 5 seconds
+    }
+    // Mark that user has visited
+    function markVisited() {
+      localStorage.setItem("hasVisited", "true");
+    }
+  </script>
+</body>
+</html>

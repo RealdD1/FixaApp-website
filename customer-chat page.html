@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Chat with Artisan</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            background: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .chat-container {
+            width: 100%;
+            max-width: 500px;
+            height: 95vh;
+            display: flex;
+            flex-direction: column;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+        }
+        .chat-header {
+            padding: 15px;
+            background:rgb(0,23,43);
+            color: #ffc107;
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
+            text-align: center;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+        .chat-messages {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .message {
+            max-width: 80%;
+            padding: 10px 15px;
+            border-radius: 20px;
+            line-height: 1.4;
+        }
+        .message.sent {
+            background: rgb(0,23,43);
+            color: #ffc107;
+            align-self: flex-end;
+        }
+        .message.received {
+            background: #e5e5ea;
+            color: #000;
+            align-self: flex-start;
+        }
+        .media-message audio, .media-message video {
+            max-width: 100%;
+            border-radius: 10px;
+        }
+        .chat-input {
+            display: flex;
+            padding: 15px;
+            border-top: 1px solid #ffc107;
+            align-items: center;
+        }
+        .chat-input input {
+            flex-grow: 1;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 20px;
+            outline: none;
+        }
+        .chat-input button {
+            background: rgb(0,23,43);
+            color: #ffc107;
+            border: none;
+            padding: 10px 12px;
+            border-radius: 20px;
+            margin-left: 10px;
+            cursor: pointer;
+        }
+        .record-btn {
+            background: #dc3545;
+        }
+        #recordingStatus {
+            margin-left: 10px;
+            color: #dc3545;
+            font-weight: bold;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div class="chat-container">
+    <div class="chat-header" id="chatHeader">Chat with Artisan</div>
+    <div class="chat-messages" id="chatMessages">
+        </div>
+    <form id="chatForm" class="chat-input">
+        <input type="text" id="messageInput" placeholder="Type a message..." required>
+        <button type="button" id="voiceRecordBtn" class="record-btn">🎤</button>
+        <button type="button" id="videoRecordBtn" class="record-btn">📹</button>
+        <button type="submit">Send</button>
+        <span id="recordingStatus">Recording...</span>
+    </form>
+</div>
+
+<script>
+    const customerId = 'customer123'; // Replace with the actual customer ID
+    const artisanId = new URLSearchParams(window.location.search).get('artisanId');
+    const artisanName = new URLSearchParams(window.location.search).get('artisanName');
+    let chatId = null;
+    let mediaRecorder = null;
+    let recordedChunks = [];
+    const recordingStatus = document.getElementById('recordingStatus');
+
+    document.getElementById('chatHeader').innerText = `Chat with ${artisanName || 'Artisan'}`;
+    const chatMessages = document.getElementById('chatMessages');
+
+    async function fetchChat() {
+        // ... (Your existing fetchChat function remains the same)
+    }
+
+    function renderMessages(messages) {
+        chatMessages.innerHTML = '';
+        messages.forEach(msg => {
+            const isSent = msg.sender === customerId;
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message', isSent ? 'sent' : 'received');
+            
+            if (msg.type === 'text') {
+                messageDiv.innerText = msg.text;
+            } else if (msg.type === 'audio' && msg.url) {
+                const audio = document.createElement('audio');
+                audio.src = msg.url;
+                audio.controls = true;
+                messageDiv.appendChild(audio);
+                messageDiv.classList.add('media-message');
+            } else if (msg.type === 'video' && msg.url) {
+                const video = document.createElement('video');
+                video.src = msg.url;
+                video.controls = true;
+                messageDiv.appendChild(video);
+                messageDiv.classList.add('media-message');
+            }
+            
+            chatMessages.appendChild(messageDiv);
+        });
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    document.getElementById('chatForm').addEventListener('submit', async (e) => {
+        // ... (Your existing form submission logic remains the same)
+    });
+
+    // New Media Recording Logic
+    async function startRecording(mimeType) {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                audio: true, 
+                video: mimeType === 'video/webm' 
+            });
+            
+            mediaRecorder = new MediaRecorder(stream, { mimeType });
+            recordedChunks = [];
+            
+            mediaRecorder.ondataavailable = event => {
+                recordedChunks.push(event.data);
+            };
+            
+            mediaRecorder.onstop = () => {
+                const blob = new Blob(recordedChunks, { type: mimeType });
+                sendMedia(blob, mimeType);
+                stream.getTracks().forEach(track => track.stop());
+            };
+            
+            mediaRecorder.start();
+            recordingStatus.style.display = 'inline';
+            
+            // Toggle button text to indicate stopping
+            document.getElementById('voiceRecordBtn').innerText = '⏹️';
+            document.getElementById('videoRecordBtn').innerText = '⏹️';
+        } catch (error) {
+            console.error('Error starting media recording:', error);
+            alert('Could not access microphone/camera. Please check permissions.');
+        }
+    }
+
+    function stopRecording() {
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+            mediaRecorder.stop();
+            recordingStatus.style.display = 'none';
+            document.getElementById('voiceRecordBtn').innerText = '🎤';
+            document.getElementById('videoRecordBtn').innerText = '📹';
+        }
+    }
+
+    async function sendMedia(blob, mimeType) {
+        const formData = new FormData();
+        formData.append('sender', customerId);
+        formData.append('type', mimeType.startsWith('audio') ? 'audio' : 'video');
+        formData.append('file', blob);
+
+        try {
+            const response = await fetch(`http://localhost:5000/api/chats/${chatId}/messages`, {
+                method: 'POST',
+                body: formData
+            });
+            const chat = await response.json();
+            renderMessages(chat.messages);
+        } catch (error) {
+            console.error('Error sending media:', error);
+        }
+    }
+
+    document.getElementById('voiceRecordBtn').addEventListener('click', () => {
+        if (mediaRecorder && mediaRecorder.state === 'recording') {
+            stopRecording();
+        } else {
+            startRecording('audio/webm');
+        }
+    });
+
+    document.getElementById('videoRecordBtn').addEventListener('click', () => {
+        if (mediaRecorder && mediaRecorder.state === 'recording') {
+            stopRecording();
+        } else {
+            startRecording('video/webm');
+        }
+    });
+
+    fetchChat();
+</script>
+
+</body>
+</html>

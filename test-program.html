@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Artisan Profile Popup</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: rgb(0,23,43);
+      color: white;
+    }
+
+    /* Popup background */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      background-color: rgba(0,0,0,0.6);
+    }
+
+    /* Popup content */
+    .modal-content {
+      background: #00172B;
+      margin: 5% auto;
+      padding: 20px;
+      border-radius: 20px;
+      width: 90%;
+      max-width: 500px;
+      box-shadow: 0px 4px 12px rgba(0,0,0,0.5);
+      animation: slideDown 0.3s ease-out;
+    }
+
+    @keyframes slideDown {
+      from { transform: translateY(-50px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    /* Close button */
+    .close {
+      float: right;
+      font-size: 22px;
+      font-weight: bold;
+      color: #FFD700;
+      cursor: pointer;
+    }
+
+    /* Profile section */
+    .profile-header {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      border-bottom: 1px solid rgba(255,255,255,0.2);
+      padding-bottom: 15px;
+      margin-bottom: 15px;
+    }
+
+    .profile-header img {
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 3px solid #FFD700;
+    }
+
+    .profile-info h2 {
+      margin: 0;
+      font-size: 20px;
+      color: #FFD700;
+    }
+
+    .profile-info p {
+      margin: 2px 0;
+      font-size: 14px;
+      color: #bbb;
+    }
+
+    /* Guide section */
+    .guide {
+      margin: 15px 0;
+      padding: 15px;
+      border-radius: 15px;
+      background: rgba(255,255,255,0.05);
+    }
+
+    .guide h3 {
+      margin: 0 0 10px;
+      color: #FFD700;
+      font-size: 16px;
+    }
+
+    .guide ul {
+      margin: 0;
+      padding-left: 20px;
+      font-size: 14px;
+      color: #ddd;
+    }
+
+    /* Buttons */
+    .actions {
+      margin-top: 20px;
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: bold;
+      transition: 0.3s;
+    }
+
+    .btn-chat {
+      background: #FFD700;
+      color: #00172B;
+    }
+
+    .btn-chat:hover {
+      background: #e6c200;
+    }
+
+    .btn-book {
+      background: #005f99;
+      color: white;
+    }
+
+    .btn-book:hover {
+      background: #0077cc;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Trigger -->
+<button onclick="openModal()">Open Artisan Profile</button>
+
+<!-- Popup -->
+<div id="profileModal" class="modal">
+  <div class="modal-content">
+    <span class="close" onclick="closeModal()">&times;</span>
+
+    <!-- Artisan profile -->
+    <div class="profile-header">
+      <img src="https://via.placeholder.com/70" alt="Artisan Photo">
+      <div class="profile-info">
+        <h2>John Doe</h2>
+        <p>Electrician</p>
+        <p>5 years experience</p>
+      </div>
+    </div>
+
+    <!-- Work Difficulty Guide -->
+    <div class="guide">
+      <h3>Work Difficulty Guide</h3>
+      <ul>
+        <li><b>Easy:</b> Small task, takes little time (e.g., fix a socket).</li>
+        <li><b>Medium:</b> Bigger task, needs more effort (e.g., wiring a room).</li>
+        <li><b>Hard:</b> Very big task, takes lots of hours (e.g., house wiring).</li>
+      </ul>
+    </div>
+
+    <!-- Buttons -->
+    <div class="actions">
+      <button class="btn btn-chat">💬 Chat</button>
+      <button class="btn btn-book">📅 Book</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const modal = document.getElementById("profileModal");
+
+  function openModal() {
+    modal.style.display = "block";
+  }
+
+  function closeModal() {
+    modal.style.display = "none";
+  }
+
+  // Close when clicking outside
+  window.onclick = (e) => {
+    if (e.target == modal) modal.style.display = "none";
+  };
+</script>
+
+</body>
+</html>

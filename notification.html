@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Notifications - Fixa</title>
+<style>
+  body {
+    background-color: rgb(0,23,43);
+    color: white;
+    font-family: Arial, sans-serif;
+    padding: 20px;
+  }
+  h1 {
+    color: gold;
+    text-align: center;
+  }
+  .setting {
+    background-color: rgba(255,255,255,0.05);
+    padding: 15px;
+    border-radius: 8px;
+    margin: 10px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  button {
+    background-color: #ffc107;
+    border: none;
+    padding: 12px;
+    font-size: 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    width: 100%;
+    margin-top: 20px;
+  }
+</style>
+</head>
+<body>
+
+<h1>Notifications</h1>
+<p>Control how you get updates about bookings, payments, and messages.</p>
+
+<div class="setting">
+  📅 Booking Updates
+  <input type="checkbox" checked>
+</div>
+
+<div class="setting">
+  💬 Chat Messages
+  <input type="checkbox" checked>
+</div>
+
+<div class="setting">
+  💳 Payment Alerts
+  <input type="checkbox">
+</div>
+
+<div class="setting">
+  🔔 Promotions & Offers
+  <input type="checkbox">
+</div>
+
+<div class="setting">
+  📧 Email Notifications
+  <input type="checkbox" checked>
+</div>
+
+<div class="setting">
+  📱 Push Notifications
+  <input type="checkbox">
+</div>
+
+<div class="setting">
+  📩 SMS Alerts
+  <input type="checkbox">
+</div>
+
+<button onclick="alert('Save Change successfully')">Save Changes</button>
+
+</body>
+</html>

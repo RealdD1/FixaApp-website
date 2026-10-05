@@ -1,0 +1,18 @@
+{
+  "name": "Fixa",
+  "short_name": "Fixa",
+  "description": "Book trusted artisans with escrow-protected payments",
+  "start_url": "/SignIn.html",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#041b2b",
+    "Content-Type": "application/manifest+json",
+  "Cache-Control":" no-cache",
+  "theme_color": "#041b2b",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

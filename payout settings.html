@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Payout Settings - Fixa</title>
+<style>
+  body {
+    background-color: rgb(0,23,43);
+    color: white;
+    font-family: Arial, sans-serif;
+    padding: 20px;
+  }
+  h1 {
+    color: gold;
+    text-align: center;
+  }
+  label {
+    display: block;
+    margin: 15px 0 5px;
+  }
+  input, select {
+    width: 100%;
+    padding: 10px;
+    border: none;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    box-sizing: border-box;
+  }
+  button {
+    background-color: gold;
+    border: none;
+    padding: 12px;
+    font-size: 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    width: 100%;
+    margin-top: 10px;
+  }
+</style>
+</head>
+<body>
+
+<div id="payoutCardView" style="display:none">
+  <div style="background:rgba(255,215,0,.08);border:1px solid rgba(255,215,0,.25);border-radius:16px;padding:20px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start">
+      <div>
+        <div style="font-size:12px;color:#9aa6b2;text-transform:uppercase">Payout Method</div>
+        <div id="cardBankName" style="font-size:18px;font-weight:700;margin-top:4px"></div>
+        <div id="cardAccountLine" style="font-size:13px;color:#cbd5e1;margin-top:2px"></div>
+        <div id="cardFrequency" style="font-size:12px;color:#9aa6b2;margin-top:6px"></div>
+      </div>
+      <button type="button" id="changePayoutBtn" style="width:auto;margin-top:0;background:gold;color:#000;border:none;padding:8px 16px;border-radius:8px;font-weight:700;cursor:pointer">Change</button>
+    </div>
+  </div>
+</div>
+
+<div id="payoutFormView">
+  <h1>Payout Settings</h1>
+  <p>Set up how you receive your artisan earnings.</p>
+
+  <label for="bank">Bank Name</label>
+  <select id="bank">
+    <option value="">-- Select Your Bank --</option>
+  </select>
+
+  <label for="accountNumber">Account Number</label>
+  <input type="text" id="accountNumber" placeholder="Enter your account number">
+
+  <label for="accountName">Account Holder Name</label>
+  <input type="text" id="accountName" placeholder="Auto-filled after verification" readonly>
+
+  <label for="frequency">Payment Frequency</label>
+  <select id="frequency">
+    <option value="daily">Daily</option>
+    <option value="weekly">Weekly</option>
+    <option value="monthly">Monthly</option>
+  </select>
+
+  <button type="button" id="saveSettingsBtn">Save Settings</button>
+</div>
+
+<div id="statusMsg" style="display:none;margin-top:10px;padding:10px;border-radius:6px;font-size:13px"></div>
+
+<script>
+const BASE_URL = 'http://localhost:5000';
+const token = localStorage.getItem('token');
+if (!token) window.location.href = 'SignIn.html';
+
+const bankSelect = document.getElementById('bank');
+const accNumInput = document.getElementById('accountNumber');
+const accNameInput = document.getElementById('accountName');
+const freqSelect = document.getElementById('frequency');
+const saveBtn = document.getElementById('saveSettingsBtn');
+
+let bankList = [];
+let resolvedName = '';
+
+function showStatus(msg, isError) {
+  const el = document.getElementById('statusMsg');
+  el.style.display = 'block';
+  el.style.background = isError ? '#dc2626' : '#16a34a';
+  el.style.color = '#fff';
+  el.textContent = msg;
+}
+
+async function loadBanks() {
+  try {
+    const res = await fetch(`${BASE_URL}/api/payouts/banks`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    bankList = await res.json();
+    bankSelect.innerHTML = '<option value="">-- Select Your Bank --</option>' +
+      bankList.map(b => `<option value="${b.code}">${b.name}</option>`).join('');
+  } catch {
+    showStatus('Could not load bank list', true);
+  }
+}
+
+async function loadPayoutSettings() {
+  const cardView = document.getElementById('payoutCardView');
+  const formView = document.getElementById('payoutFormView');
+
+  try {
+    const res = await fetch(`${BASE_URL}/api/payouts/settings`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const p = await res.json();
+
+    if (p?.recipientCode) {
+      document.getElementById('cardBankName').textContent = p.bankName;
+      document.getElementById('cardAccountLine').textContent = `${p.accountName} •••• ${p.accountNumber.slice(-4)}`;
+      document.getElementById('cardFrequency').textContent =
+        `Paid out ${p.frequency.charAt(0).toUpperCase() + p.frequency.slice(1)}`;
+      cardView.style.display = 'block';
+      formView.style.display = 'none';
+
+      bankSelect.value = p.bankCode;
+      accNumInput.value = p.accountNumber;
+      accNameInput.value = p.accountName;
+      resolvedName = p.accountName;
+      freqSelect.value = p.frequency;
+    } else {
+      cardView.style.display = 'none';
+      formView.style.display = 'block';
+    }
+  } catch (e) {
+    console.error('loadPayoutSettings:', e);
+    cardView.style.display = 'none';
+    formView.style.display = 'block';
+  }
+}
+
+async function tryResolve() {
+  const bankCode = bankSelect.value;
+  const accountNumber = accNumInput.value.trim();
+  if (!bankCode || accountNumber.length !== 10) return;
+
+  accNameInput.value = 'Verifying...';
+  try {
+    const res = await fetch(`${BASE_URL}/api/payouts/resolve-account`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ accountNumber, bankCode })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message);
+    resolvedName = data.accountName;
+    accNameInput.value = resolvedName;
+  } catch (err) {
+    accNameInput.value = '';
+    resolvedName = '';
+    showStatus(err.message || 'Could not verify account', true);
+  }
+}
+
+bankSelect.addEventListener('change', tryResolve);
+accNumInput.addEventListener('blur', tryResolve);
+
+saveBtn.addEventListener('click', async (e) => {
+  e.preventDefault();
+  const bankCode = bankSelect.value;
+  const bankName = bankSelect.options[bankSelect.selectedIndex]?.text;
+  const accountNumber = accNumInput.value.trim();
+
+  if (!bankCode || accountNumber.length !== 10 || !resolvedName) {
+    showStatus('Select a bank and enter a valid account number to verify first', true);
+    return;
+  }
+
+  try {
+    const res = await fetch(`${BASE_URL}/api/payouts/settings`, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        bankCode, bankName, accountNumber,
+        accountName: resolvedName,
+        frequency: freqSelect.value
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message);
+    showStatus('Payout settings saved ✓', false);
+    await loadPayoutSettings();
+  } catch (err) {
+    showStatus(err.message || 'Failed to save', true);
+  }
+});
+
+document.getElementById('changePayoutBtn')?.addEventListener('click', () => {
+  document.getElementById('payoutCardView').style.display = 'none';
+  document.getElementById('payoutFormView').style.display = 'block';
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+  loadBanks().then(loadPayoutSettings);
+});
+</script>
+
+</body>
+</html>

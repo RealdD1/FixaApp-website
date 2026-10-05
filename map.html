@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fixa Map</title>
+
+  <!-- 1) Environment config (API URL) — must load first -->
+  <script src="config.js"></script>
+  <!-- 2) Socket.IO client (loaded once) -->
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <!-- 3) Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    body, html { margin: 0; padding: 0; height: 100%; font-family: Arial, sans-serif; }
+    #map { height: 100%; width: 100%; background: #00172b; }
+
+    #loader {
+      position: fixed; inset: 0;
+      background: rgba(0, 23, 43, 0.9);
+      display: flex; justify-content: center; align-items: center; flex-direction: column;
+      z-index: 1000; padding: 20px; text-align: center;
+    }
+    .spinner {
+      border: 6px solid rgba(255, 215, 0, 0.2);
+      border-top: 6px solid gold;
+      border-radius: 50%;
+      width: 60px; height: 60px;
+      animation: spin 1s linear infinite;
+      margin-bottom: 15px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loader-text { color: gold; font-size: 1.2rem; max-width: 420px; }
+    #loader.failed .spinner { display: none; }
+    #loader.failed .loader-text { color: #ff8a8a; }
+    #retryBtn {
+      display: none; margin-top: 16px; padding: 10px 22px;
+      background: gold; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;
+    }
+    #loader.failed #retryBtn { display: inline-block; }
+
+    .pin-wrap { position: relative; width: 44px; height: 54px; }
+    .artisan-pin {
+      position: absolute; top: 0; left: 2px;
+      width: 40px; height: 40px;
+      background: gold;
+      border-radius: 50% 50% 50% 0;
+      transform: rotate(-45deg);
+      box-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
+      overflow: hidden;
+    }
+    .pin-wrap:not(.offline) .artisan-pin { animation: pulse 2s infinite; }
+    .artisan-pin img {
+      position: absolute; top: 50%; left: 50%;
+      width: 70%; height: 70%;
+      border-radius: 50%;
+      transform: translate(-50%, -50%) rotate(45deg);
+      border: 2px solid white;
+      object-fit: cover;
+    }
+    .pin-wrap.offline { opacity: 0.45; filter: grayscale(0.6); }
+    @keyframes pulse {
+      0%   { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.6); }
+      70%  { box-shadow: 0 0 0 20px rgba(255, 215, 0, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0); }
+    }
+
+    .customer-dot {
+      width: 16px; height: 16px;
+      background: #007bff;
+      border: 2px solid white;
+      border-radius: 50%;
+      box-shadow: 0 0 6px rgba(0, 0, 0, 0.5);
+    }
+
+    .modal {
+      display: none;
+      position: fixed; inset: 0; z-index: 2000;
+      background: rgba(0, 0, 0, 0.6);
+      justify-content: center; align-items: center;
+    }
+    .modal-content {
+      background: #002544; color: white;
+      border-radius: 20px;
+      padding: 25px;
+      width: 350px; max-width: 95%;
+      max-height: 92vh; overflow-y: auto;
+      text-align: center;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+      animation: bounceIn 0.5s forwards;
+    }
+    @keyframes bounceIn {
+      0%   { transform: scale(0.7); opacity: 0; }
+      60%  { transform: scale(1.05); opacity: 1; }
+      80%  { transform: scale(0.97); }
+      100% { transform: scale(1); }
+    }
+    .close { float: right; font-size: 24px; font-weight: bold; color: #FFD700; cursor: pointer; }
+    .profile-pic {
+      width: 90px; height: 90px; border-radius: 50%;
+      border: 3px solid #FFD700; margin: 15px auto; display: block; object-fit: cover;
+    }
+    .artisan-header { display: flex; flex-direction: column; align-items: center; margin-bottom: 10px; }
+    .artisan-header h2 { margin: 0 0 4px; }
+    .artisan-header p { margin: 0 0 6px; color: #cbd5e1; }
+    .artisan-rating { color: gold; font-size: 1.1rem; margin-bottom: 5px; }
+    .verification-badge {
+      display: inline-flex; align-items: center; color: white;
+      padding: 4px 10px; border-radius: 12px; font-size: 0.8rem; font-weight: bold; margin-top: 5px;
+    }
+    .verification-badge.verified { background-color: #388e3c; }
+    .verification-badge.not-verified { background-color: #d32f2f; }
+    .verification-badge .badge-icon { margin-right: 5px; font-size: 1rem; }
+
+    .guide {
+      background: #012A4A; border-radius: 12px; padding: 12px;
+      margin: 15px 0; text-align: left; font-size: 13px;
+    }
+    .guide h3 { margin-top: 0; }
+    .guide ul { padding-left: 18px; margin: 0; }
+
+    .estimator { background: #012A4A; padding: 15px; border-radius: 12px; margin-top: 15px; text-align: left; }
+    .estimator h3 { margin-top: 0; text-align: center; }
+    .estimator label, .estimator select, .estimator input { display: block; width: 100%; margin-bottom: 10px; box-sizing: border-box; }
+    .estimator select, .estimator input {
+      padding: 8px; border-radius: 6px; border: 1px solid #FFD700;
+      background-color: #00172B; color: white;
+    }
+    .estimator p { margin: 6px 0; }
+
+    .btn { margin: 10px 5px; padding: 10px 20px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; }
+    .chat-btn { background: #FFD700; color: #00172B; }
+    .book-btn { background: #0066CC; color: #fff; }
+
+    .leaflet-control-attribution { background: rgba(0,23,43,0.7) !important; color: #cbd5e1 !important; }
+    .leaflet-control-attribution a { color: #FFD700 !important; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+
+  <div id="loader">
+    <div class="spinner"></div>
+    <div class="loader-text" id="loaderText">Loading artisans near you...</div>
+    <button id="retryBtn" type="button">Try again</button>
+  </div>
+
+  <div id="artisanModal" class="modal">
+    <div class="modal-content">
+      <span class="close" id="closeModalBtn" title="Close">&times;</span>
+      <img id="artisanPic" class="profile-pic" alt="Artisan">
+
+      <div class="artisan-header">
+        <h2 id="artisanName"></h2>
+        <p id="artisanOccupation"></p>
+        <div id="artisanRating" class="artisan-rating"></div>
+        <div id="verificationBadge" class="verification-badge">
+          <span id="badgeIcon" class="badge-icon"></span>
+          <span id="badgeText"></span>
+        </div>
+      </div>
+      <p id="artisanDetails"></p>
+
+      <div class="guide">
+        <h3>Work Effort Guide ⚡</h3>
+        <ul>
+          <li><b>Easy:</b> Quick job (1-2 hrs) e.g., change a bulb</li>
+          <li><b>Medium:</b> Tools needed (3-4 hrs) e.g., fix wiring</li>
+          <li><b>Hard:</b> Big task (5+ hrs) e.g., house wiring</li>
+        </ul>
+      </div>
+
+      <div class="estimator">
+        <h3>Estimate Price</h3>
+        <label for="hoursInput">Hours:</label>
+        <input type="number" id="hoursInput" min="1" placeholder="Enter hours" />
+        <label for="complexityInput">Difficulty:</label>
+        <select id="complexityInput">
+          <option value="1">🟢 Easy (x1)</option>
+          <option value="1.5">🟡 Medium (x1.5)</option>
+          <option value="2">🔴 Hard (x2)</option>
+          <option value="3">🔥 Very Hard (x3)</option>
+        </select>
+        <p>Rate: <span id="artisanRate">₦0</span> / hr</p>
+        <p>Total: <b id="totalPrice">₦0</b></p>
+        <small style="color:#facc15; display:block; margin-top:5px;">
+          💡 Note: This is only an estimate. Final price may vary after discussion with the artisan.
+        </small>
+      </div>
+
+      <div class="actions">
+        <button class="btn book-btn" id="bookBtn" type="button">📅 Book</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (function () {
+    'use strict';
+
+    const API_URL = window.FIXA_CONFIG.API_URL;
+    const NIGERIA_CENTER = [9.082, 8.6753];
+
+    const DEFAULT_AVATAR = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 90 90">' +
+      '<rect width="90" height="90" fill="#0b3a5c"/>' +
+      '<circle cx="45" cy="34" r="16" fill="#FFD700"/>' +
+      '<path d="M15 80c4-20 20-26 30-26s26 6 30 26z" fill="#FFD700"/></svg>'
+    );
+
+    const baseRates = {
+      "Electrician": 5000, "Painter": 3000, "Tiler": 4000, "Mechanic": 6000, "Welder": 4500,
+      "Generator Repairer": 5000, "POP Installer": 7000, "Fashion Designer": 4000, "Make-Up Artist": 3500,
+      "CCTV Installer": 6000, "Solar Panel Installer": 8000, "Cook/Caterer": 3000, "Handyman": 2500,
+      "Carpenter": 4000, "HVAC Technician": 7500, "Mobile Mechanic": 6500, "Gardener": 2000,
+      "Roof Repair Specialist": 7000, "Tech Support": 5000, "Appliance Repairer": 4500,
+      "Interior Designer": 10000, "Window Installer": 3500, "Furniture Assembler": 3000,
+      "Nanny/House help": 2500, "Massage Therapist": 4000
+    };
+
+    let user = null;
+    try { user = JSON.parse(localStorage.getItem('user') || 'null'); } catch { user = null; }
+    const customerId       = user?._id || user?.id || user?.userId || null;
+    const customerToken    = localStorage.getItem('token');
+    const selectedCategory = localStorage.getItem('selectedCategory');
+
+    if (!customerId || !customerToken) {
+      alert('You must be logged in to view the map.');
+      window.location.href = 'SignIn.html';
+      return;
+    }
+
+    let map = null;
+    let customerMarker = null;
+    let userLocated = false;
+    let currentArtisan = null;
+    let estimatedPrice = 0;
+    let estimatedRange = null;
+    const markersByArtisan = new Map();
+
+    const $ = (id) => document.getElementById(id);
+    const loader          = $('loader');
+    const loaderText      = $('loaderText');
+    const artisanModal    = $('artisanModal');
+    const hoursInput      = $('hoursInput');
+    const complexityInput = $('complexityInput');
+    const rateDisplay     = $('artisanRate');
+    const totalDisplay    = $('totalPrice');
+
+    function showLoader(text) {
+      loader.classList.remove('failed');
+      loaderText.textContent = text || 'Loading artisans near you...';
+      loader.style.display = 'flex';
+    }
+    function hideLoader() { loader.style.display = 'none'; }
+    function fatal(message) {
+      loader.classList.add('failed');
+      loaderText.textContent = message;
+      loader.style.display = 'flex';
+    }
+    $('retryBtn').addEventListener('click', () => window.location.reload());
+
+    map = L.map('map', { zoomControl: true }).setView(NIGERIA_CENTER, 6);
+// Esri Dark Gray Canvas — free, no API key, and explicitly licensed for production use
+// (unlike tile.openstreetmap.org, which only tolerates light/non-commercial traffic).
+// Note the tile URL order is {z}/{y}/{x} for Esri, not {z}/{x}/{y} like OSM/Carto.
+L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+  attribution: 'Tiles &copy; Esri &mdash; Source: Esri, DeLorme, NAVTEQ, USGS, Intermap, iPC, NRCAN, Esri Japan, METI, Esri China (Hong Kong), Esri (Thailand), TomTom, 2012',
+  maxZoom: 19,
+}).addTo(map);
+    function buildPinElement(artisan, online) {
+      const wrap = document.createElement('div');
+      wrap.className = 'pin-wrap' + (online ? '' : ' offline');
+
+      const pin = document.createElement('div');
+      pin.className = 'artisan-pin';
+
+      const img = document.createElement('img');
+      img.alt = artisan.name || 'Artisan';
+      img.src = artisan.profilePic || DEFAULT_AVATAR;
+      img.onerror = () => { img.onerror = null; img.src = DEFAULT_AVATAR; };
+
+      pin.appendChild(img);
+      wrap.appendChild(pin);
+      return wrap;
+    }
+
+    function pinIcon(artisan, online) {
+      const el = buildPinElement(artisan, online);
+      return L.divIcon({
+        html: el.outerHTML,
+        className: '',
+        iconSize: [44, 54],
+        iconAnchor: [22, 54],
+      });
+    }
+
+    function addArtisanMarker(artisan, online) {
+      const coords = artisan.location?.coordinates;
+      if (!Array.isArray(coords) || coords.length !== 2) return;
+      const [lng, lat] = coords;
+      if (typeof lat !== 'number' || typeof lng !== 'number') return;
+      if (lat === 0 && lng === 0) return;
+
+      const marker = L.marker([lat, lng], { icon: pinIcon(artisan, online) }).addTo(map);
+      marker.on('click', () => showArtisanProfile(artisan, [lat, lng]));
+      markersByArtisan.set(String(artisan._id), { marker, artisan, online });
+    }
+
+    function setMarkerOnline(entry, online) {
+      entry.online = online;
+      entry.marker.setIcon(pinIcon(entry.artisan, online));
+    }
+
+    function clearArtisanMarkers() {
+      markersByArtisan.forEach(({ marker }) => map.removeLayer(marker));
+      markersByArtisan.clear();
+    }
+
+    async function loadArtisans(category) {
+      showLoader('Loading artisans near you...');
+      clearArtisanMarkers();
+
+      try {
+        const url = category
+          ? `${API_URL}/api/artisans/category/${encodeURIComponent(category)}`
+          : `${API_URL}/api/artisans`;
+        const res = await fetch(url, { headers: { Authorization: `Bearer ${customerToken}` } });
+
+        if (res.status === 401) {
+          localStorage.removeItem('token');
+          window.location.href = 'SignIn.html';
+          return;
+        }
+        if (!res.ok) throw new Error('Failed to load artisans');
+
+        const data = await res.json();
+        const artisans = Array.isArray(data) ? data : (data.artisans || []);
+        hideLoader();
+
+        if (!artisans.length) {
+          alert('No artisans found for this category.');
+          return;
+        }
+
+        artisans.forEach((a) => addArtisanMarker(a, !!(a.isOnline ?? a.status?.online)));
+
+        if (!userLocated && markersByArtisan.size) {
+          if (markersByArtisan.size === 1) {
+            const only = markersByArtisan.values().next().value;
+            map.setView(only.marker.getLatLng(), 14);
+          } else {
+            const group = L.featureGroup([...markersByArtisan.values()].map((e) => e.marker));
+            map.fitBounds(group.getBounds().pad(0.2));
+          }
+        }
+      } catch (err) {
+        console.error(err);
+        fatal('Error loading artisans: ' + err.message);
+      }
+    }
+
+    function locateCustomer() {
+      if (!navigator.geolocation) {
+        console.warn('Geolocation is not supported by this browser.');
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          userLocated = true;
+          const p = [pos.coords.latitude, pos.coords.longitude];
+          map.setView(p, 15);
+
+          if (customerMarker) {
+            customerMarker.setLatLng(p);
+          } else {
+            const dot = document.createElement('div');
+            dot.className = 'customer-dot';
+            const icon = L.divIcon({ html: dot.outerHTML, className: '', iconSize: [16, 16], iconAnchor: [8, 8] });
+            customerMarker = L.marker(p, { icon, zIndexOffset: 1000 }).addTo(map);
+          }
+        },
+        (err) => console.warn(`Geolocation error: ${err.message}`),
+        { enableHighAccuracy: true, timeout: 15000 }
+      );
+    }
+
+    function initSocket() {
+      const socket = io(API_URL, {
+        auth: { token: customerToken },
+        transports: ['websocket', 'polling'],
+      });
+
+      socket.on('connect_error', (err) => console.warn('[Socket]', err.message));
+
+      socket.on('artisanOffline', ({ artisanId }) => {
+        const entry = markersByArtisan.get(String(artisanId));
+        if (entry) setMarkerOnline(entry, false);
+      });
+
+      socket.on('artisanOnline', (data) => {
+        const { artisanId, userId, coordinates, category, name, profilePic } = data || {};
+        if (!artisanId) return;
+
+        const existing = markersByArtisan.get(String(artisanId));
+        if (existing) {
+          setMarkerOnline(existing, true);
+          return;
+        }
+
+        if (selectedCategory && category !== selectedCategory) return;
+        if (!Array.isArray(coordinates) || coordinates.length !== 2) return;
+
+        addArtisanMarker({
+          _id: artisanId,
+          user: userId,
+          name, profilePic, category,
+          location: { coordinates },
+        }, true);
+      });
+    }
+
+    function showArtisanProfile(artisan, latlng) {
+      map.flyTo(latlng, 15, { duration: 0.8 });
+
+      const rating = typeof artisan.rating === 'number' ? artisan.rating.toFixed(1) : 'N/A';
+      const isVerified = !!artisan.verification;
+
+      $('artisanName').textContent       = artisan.name || '';
+      $('artisanOccupation').textContent = artisan.category || '';
+      $('artisanDetails').textContent    = artisan.bio || 'No details available.';
+      $('artisanRating').textContent     = `⭐ ${rating} / 5`;
+
+      const pic = $('artisanPic');
+      pic.onerror = () => { pic.onerror = null; pic.src = DEFAULT_AVATAR; };
+      pic.src = artisan.profilePic || DEFAULT_AVATAR;
+
+      $('badgeText').textContent = isVerified ? 'Verified' : 'Not Verified';
+      $('badgeIcon').textContent = isVerified ? '✓' : '✕';
+      $('verificationBadge').className = 'verification-badge ' + (isVerified ? 'verified' : 'not-verified');
+
+      currentArtisan = artisan;
+      hoursInput.value = '';
+      complexityInput.value = '1';
+      updateEstimator();
+
+      artisanModal.style.display = 'flex';
+    }
+
+    function closeArtisanModal() { artisanModal.style.display = 'none'; }
+
+    $('closeModalBtn').addEventListener('click', closeArtisanModal);
+    artisanModal.addEventListener('click', (e) => { if (e.target === artisanModal) closeArtisanModal(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeArtisanModal(); });
+
+    function calculatePriceRange(category, hours, complexity) {
+      const base = baseRates[category] || 3000;
+      const estimate = base * hours * complexity;
+      return { minPrice: Math.round(estimate * 0.8), maxPrice: Math.round(estimate * 1.2) };
+    }
+
+    function updateEstimator() {
+      if (!currentArtisan) return;
+      const hours = parseFloat(hoursInput.value) || 0;
+      const complexity = parseFloat(complexityInput.value) || 1;
+      const base = baseRates[currentArtisan.category] || 3000;
+
+      rateDisplay.textContent = `₦${base.toLocaleString()}`;
+
+      if (hours <= 0) {
+        totalDisplay.textContent = 'Enter valid hours and difficulty.';
+        estimatedPrice = 0;
+        estimatedRange = null;
+        return;
+      }
+
+      const { minPrice, maxPrice } = calculatePriceRange(currentArtisan.category, hours, complexity);
+      totalDisplay.textContent = `Fair Price Range: ₦${minPrice.toLocaleString()} – ₦${maxPrice.toLocaleString()}`;
+      estimatedPrice = Math.round((minPrice + maxPrice) / 2);
+      estimatedRange = { minPrice, maxPrice };
+    }
+
+    hoursInput.addEventListener('input', updateEstimator);
+    complexityInput.addEventListener('change', updateEstimator);
+
+    $('bookBtn').addEventListener('click', () => {
+      if (!currentArtisan) return alert('No artisan selected');
+      if (estimatedPrice <= 0) return alert('Please enter a valid price estimate.');
+
+      localStorage.setItem('bookingData', JSON.stringify({
+        artisanId: currentArtisan._id,
+        artisanName: currentArtisan.name,
+        category: currentArtisan.category,
+        customerId,
+        estimatedPrice,
+        estimatedRange,
+        hours: hoursInput.value,
+        difficulty: complexityInput.value,
+      }));
+      window.location.href = 'booking.html';
+    });
+
+
+    initSocket();
+    locateCustomer();
+    loadArtisans(selectedCategory);
+  })();
+  </script>
+
+  <!-- Existing shared script: open it and make sure it uses FIXA_CONFIG.API_URL (no localhost) -->
+  <script src="socket-connection.js"></script>
+</body>
+</html>

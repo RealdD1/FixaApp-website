@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>chat testing </title>
+    <style>
+        :root{
+  --navy: rgb(0,23,43);
+  --gold: #f5c26b;
+  --muted: #9aa6b2;
+  --bg: #061424;
+  --bubble-me: linear-gradient(135deg,#0b6b5f,#0e8f7a);
+  --bubble-them: linear-gradient(135deg,#0f2b3a,#13384a);
+  --glass: rgba(255,255,255,0.03);
+  --radius: 14px;
+  --max-width: 980px;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  color: #e6eef6;
+}
+
+html,body{height:100%;margin:0;background:linear-gradient(180deg,var(--navy),var(--bg));}
+.app {
+  max-width: var(--max-width);
+  margin: 28px auto;
+  height: calc(100vh - 56px);
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 18px;
+  padding: 14px;
+}
+
+/* Left: user list */
+.sidebar {
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.02));
+  border-radius: 12px;
+  padding: 14px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  box-shadow: 0 6px 20px rgba(2,8,23,0.6), inset 0 1px 0 rgba(255,255,255,0.02);
+  min-width:240px;
+}
+
+.brand {display:flex; align-items:center; gap:10px;}
+.logo {width:40px;height:40px;border-radius:10px;background:var(--gold); display:flex;align-items:center;justify-content:center;color:var(--navy);font-weight:700;}
+.title {font-weight:600; font-size:16px; color:#fff}
+.subtitle {font-size:12px;color:var(--muted)}
+
+.search {
+  display:flex;gap:8px;align-items:center;background:var(--glass);padding:8px;border-radius:10px;
+}
+.search input{
+  background:transparent;border:0;outline:none;color:var(--muted);width:100%;
+  font-size:14px;
+}
+
+.users {
+  overflow:auto; padding-right:6px;
+}
+.user {
+  display:flex;align-items:center;gap:10px;padding:8px;border-radius:10px;cursor:pointer;
+  transition: background 140ms;
+}
+.user:hover{background:rgba(255,255,255,0.02)}
+.user.active{background:linear-gradient(90deg, rgba(245,194,107,0.08), rgba(245,194,107,0.02));box-shadow: inset 0 0 0 1px rgba(245,194,107,0.06)}
+.avatar{
+  width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,#183a44,#0b6b5f);flex:0 0 44px;display:flex;align-items:center;justify-content:center;font-weight:700;
+  position:relative;color:#fff;
+}
+.online-dot{
+  position:absolute;right:-2px;bottom:-2px;width:12px;height:12px;border-radius:50%;border:2px solid var(--navy);background:#34d399;
+}
+.user-info{flex:1;min-width:0}
+.user-info .name{font-weight:600;font-size:14px}
+.user-info .meta{font-size:12px;color:var(--muted);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* Right: chat area */
+.chat {
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  border-radius: 12px; display:flex;flex-direction:column; overflow:hidden; box-shadow: 0 6px 30px rgba(2,8,23,0.6);
+}
+
+.chat-header{
+  padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.02);
+  display:flex;align-items:center;gap:12px;
+}
+.chat-header .title{font-weight:700}
+.chat-header .status{font-size:13px;color:var(--muted)}
+
+.messages {
+  padding:18px; flex:1; overflow:auto; display:flex;flex-direction:column; gap:10px;
+  background-image: linear-gradient(45deg, rgba(255,255,255,0.01) 1px, transparent 1px), linear-gradient(-45deg, rgba(255,255,255,0.01) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+.day-divider{
+  align-self:center;padding:6px 12px;border-radius:999px;background:rgba(255,255,255,0.02);font-size:13px;color:var(--muted);
+}
+
+.msg-row{display:flex;gap:10px;align-items:flex-end;max-width:70%;}
+.msg-row.me{margin-left:auto;flex-direction:row-reverse;}
+.bubble{
+  padding:10px 12px;border-radius:12px;position:relative;display:inline-block;font-size:14px;line-height:1.35;
+  box-shadow: 0 6px 18px rgba(2,8,23,0.6);
+  word-break:break-word;
+}
+.bubble.me{background:var(--bubble-me);border-radius:12px 12px 4px 12px;color:#e9fff9;}
+.bubble.them{background:var(--bubble-them);border-radius:12px 12px 12px 4px;color:#dff1fb;}
+.meta{
+  font-size:11px;color:var(--muted);margin-top:6px;display:flex;gap:8px;align-items:center;
+}
+.meta .time{white-space:nowrap}
+
+.small-avatar{width:30px;height:30px;border-radius:8px;flex:0 0 30px;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;background:linear-gradient(135deg,#23414a,#0b6b5f)}
+.seen-dot{width:18px;height:18px;border-radius:50%;background:var(--gold);display:inline-block}
+
+.typing {
+  display:flex;gap:6px;align-items:center;padding:8px 12px;border-radius:12px;background:rgba(255,255,255,0.02);width:max-content;
+  font-size:13px;color:var(--muted);
+}
+.dot {width:6px;height:6px;background:#cbd5e1;border-radius:50%;opacity:0.7;animation: blink 1s infinite;}
+.dot:nth-child(2){animation-delay:0.12s}
+.dot:nth-child(3){animation-delay:0.24s}
+@keyframes blink{0%{opacity:0.2}50%{opacity:1}100%{opacity:0.2}}
+
+.composer{
+  padding:12px;border-top:1px solid rgba(255,255,255,0.02);display:flex;gap:10px;align-items:center;
+  background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent);
+}
+.composer .left-tools{display:flex;gap:8px;align-items:center}
+.icon-btn{width:40px;height:40px;border-radius:10px;background:rgba(255,255,255,0.02);display:flex;align-items:center;justify-content:center;border:0;cursor:pointer}
+.composer textarea{flex:1;min-height:44px;max-height:120px;border-radius:10px;padding:10px;background:transparent;border:1px solid rgba(255,255,255,0.03);color:var(--muted);resize:none;outline:none;font-size:14px}
+.send-btn{background:var(--gold);border:0;padding:10px 14px;border-radius:10px;font-weight:700;color:var(--navy);cursor:pointer;display:flex;align-items:center;gap:8px}
+.send-btn:disabled{opacity:0.6;cursor:not-allowed}
+
+/* responsive */
+@media (max-width:900px){
+  .app{grid-template-columns: 1fr; height: calc(100vh - 24px);}
+  .sidebar{order:2;height:220px}
+  .chat{order:1}
+  .users{display:flex;gap:8px;overflow:auto}
+  .user{min-width:160px;flex-direction:column;align-items:flex-start}
+}
+
+    </style>
+</head>
+<body>
+
+  <div class="app" role="application" aria-label="Chat application">
+    <aside class="sidebar" aria-hidden="false">
+      <div class="brand" aria-hidden="true">
+        <div class="logo">FX</div>
+        <div>
+          <div class="title">Fixa Chat</div>
+          <div class="subtitle">Connect with artisans</div>
+        </div>
+      </div>
+
+      <div class="search" role="search" aria-label="Search users">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M21 21l-4.35-4.35" stroke="#9daec0" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="11" cy="11" r="6" stroke="#9daec0" stroke-width="1.6"/></svg>
+        <input id="userSearch" placeholder="Search users..." aria-label="Search users"/>
+      </div>
+
+      <div class="users" id="usersList" role="list" aria-label="Active conversations">
+        <!-- populated by JS -->
+      </div>
+    </aside>
+
+    <main class="chat" aria-live="polite">
+      <header class="chat-header" id="chatHeader">
+        <div class="small-avatar" id="chatAvatar">A</div>
+        <div>
+          <div class="title" id="chatTitle">Select a chat</div>
+          <div class="status" id="chatStatus"> </div>
+        </div>
+      </header>
+
+      <section class="messages" id="messages" aria-label="Messages">
+        <div class="day-divider" id="firstHint">No conversation selected — pick a user from the left.</div>
+      </section>
+
+      <div class="composer" role="region" aria-label="Message composer">
+        <div class="left-tools" aria-hidden="true">
+          <button class="icon-btn" id="emojiBtn" title="Emoji" aria-label="Emoji">😊</button>
+          <button class="icon-btn" id="attachBtn" title="Attach file" aria-label="Attach file">📎</button>
+        </div>
+
+        <textarea id="messageInput" placeholder="Type a message" aria-label="Message input" rows="1"></textarea>
+        <button class="send-btn" id="sendBtn" aria-label="Send message" title="Send message">Send</button>
+      </div>
+    </main>
+  </div>
+<script>/* --------------------------
+   Sample data & state
+   -------------------------- */
+const currentUser = { id: 'me', name: 'You', initials: 'Y', avatarColor: '#0b6b5f' };
+
+const users = [
+  { id: 'u1', name:'Amina Bello', initials:'AB', online:true, last: '2m ago', unread:2 },
+  { id: 'u2', name:'Chike Okonkwo', initials:'CO', online:true, last: '10m ago', unread:0 },
+  { id: 'u3', name:'Fatima Yusuf', initials:'FY', online:false, last: 'Yesterday', unread:0 },
+  { id: 'u4', name:'Ngozi', initials:'N', online:true, last: '5m ago', unread:1 }
+];
+
+const conversations = {
+  u1: [
+    { from:'u1', text:'Hello! Are you available this afternoon?', time: '11:04 AM' },
+    { from:'me', text:'Yes — I can help. What service do you need?', time: '11:05 AM', seen:true },
+  ],
+  u2: [
+    { from:'u2', text:'My generator is not starting', time: '9:30 AM' },
+    { from:'me', text:'I can check it tomorrow morning', time: '9:32 AM', seen:true }
+  ],
+  u3: [
+    { from:'u3', text:'Thanks for the advice earlier.', time: 'Yesterday 5:21 PM' }
+  ],
+  u4: [
+    { from:'u4', text:'Can you come by now?', time: '10:48 AM' }
+  ]
+};
+
+let activeUserId = null;
+const usersListEl = document.getElementById('usersList');
+const messagesEl = document.getElementById('messages');
+const chatTitleEl = document.getElementById('chatTitle');
+const chatAvatarEl = document.getElementById('chatAvatar');
+const chatStatusEl = document.getElementById('chatStatus');
+const messageInput = document.getElementById('messageInput');
+const sendBtn = document.getElementById('sendBtn');
+const userSearch = document.getElementById('userSearch');
+
+/* --------------------------
+   Helpers: time formatting, render
+   -------------------------- */
+function nowTime() {
+  const d = new Date();
+  return d.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'});
+}
+
+function createUserNode(u){
+  const el = document.createElement('div');
+  el.className = 'user';
+  el.setAttribute('role','listitem');
+  el.dataset.id = u.id;
+  el.tabIndex = 0;
+  el.innerHTML = `
+    <div class="avatar" aria-hidden="true" style="background:linear-gradient(135deg,#183a44,#0b6b5f)">${u.initials}</div>
+    <div class="user-info">
+      <div class="name">${u.name}</div>
+      <div class="meta">${u.last} ${u.unread ? ' • ' + u.unread + ' new' : ''}</div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+      ${u.online ? '<div class="online-dot" title="online"></div>' : ''}
+    </div>
+  `;
+  // click / keyboard activation
+  el.addEventListener('click', () => selectUser(u.id));
+  el.addEventListener('keydown', (e) => { if (e.key === 'Enter') selectUser(u.id); });
+  return el;
+}
+
+function renderUsers(filter = '') {
+  usersListEl.innerHTML = '';
+  const filtered = users.filter(u => u.name.toLowerCase().includes(filter.toLowerCase()));
+  filtered.forEach(u => {
+    const node = createUserNode(u);
+    if (u.id === activeUserId) node.classList.add('active');
+    usersListEl.appendChild(node);
+  });
+}
+
+function renderMessagesFor(userId){
+  messagesEl.innerHTML = '';
+  const list = conversations[userId] || [];
+  if (!list.length) {
+    const hint = document.createElement('div');
+    hint.className = 'day-divider';
+    hint.textContent = 'No messages — say hi 👋';
+    messagesEl.appendChild(hint);
+  }
+  list.forEach(msg => {
+    const row = document.createElement('div');
+    row.className = 'msg-row ' + (msg.from === 'me' ? 'me' : '');
+    // avatar
+    const avatar = document.createElement('div');
+    avatar.className = 'small-avatar';
+    avatar.textContent = msg.from === 'me' ? currentUser.initials : (users.find(u=>u.id===userId)?.initials || 'U');
+    // bubble
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble ' + (msg.from === 'me' ? 'me' : 'them');
+    bubble.innerHTML = `<div>${escapeHtml(msg.text)}</div>
+      <div class="meta"><span class="time">${msg.time}</span>
+      ${msg.from === 'me' ? (msg.seen ? '<span title="Seen" class="seen-dot"></span>' : '') : ''}</div>`;
+    row.appendChild(avatar);
+    row.appendChild(bubble);
+    messagesEl.appendChild(row);
+  });
+  // keep scrolled to bottom
+  requestAnimationFrame(()=> messagesEl.scrollTop = messagesEl.scrollHeight);
+}
+
+/* --------------------------
+   Core interactions
+   -------------------------- */
+function selectUser(id){
+  activeUserId = id;
+  // update left highlight
+  document.querySelectorAll('.user').forEach(n => n.classList.toggle('active', n.dataset.id === id));
+  // header
+  const u = users.find(x => x.id === id);
+  chatTitleEl.textContent = u.name;
+  chatAvatarEl.textContent = u.initials;
+  chatStatusEl.textContent = u.online ? 'Online' : 'Last seen ' + u.last;
+  // render messages
+  renderMessagesFor(id);
+  // clear unread
+  u.unread = 0;
+  renderUsers(userSearch.value);
+}
+
+sendBtn.addEventListener('click', sendMessage);
+messageInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+});
+
+function sendMessage(){
+  if (!activeUserId) { alert('Pick a user to chat with.'); messageInput.focus(); return; }
+  const text = messageInput.value.trim();
+  if (!text) return;
+  const msg = { from:'me', text, time: nowTime(), seen:false };
+  conversations[activeUserId] = conversations[activeUserId] || [];
+  conversations[activeUserId].push(msg);
+  renderMessagesFor(activeUserId);
+  messageInput.value = '';
+  // simulate remote reply after a short delay
+  simulateReply(activeUserId);
+}
+
+/* --------------------------
+   Simulate typing + reply (demo only)
+   -------------------------- */
+function simulateReply(userId){
+  const indicator = document.createElement('div');
+  indicator.className = 'msg-row';
+  indicator.innerHTML = `<div class="small-avatar">${users.find(u=>u.id===userId).initials}</div>
+    <div class="typing"><span class="dot"></span><span class="dot"></span><span class="dot"></span> Typing...</div>`;
+  messagesEl.appendChild(indicator);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+
+  setTimeout(() => {
+    // remove typing
+    messagesEl.removeChild(indicator);
+    // push reply
+    const replies = [
+      "Got it — I'll be there shortly.",
+      "Thanks! I'll check and revert.",
+      "Can we do this tomorrow morning?",
+      "Okay, sounds good!",
+      "Please send a photo of the problem."
+    ];
+    const text = replies[Math.floor(Math.random()*replies.length)];
+    conversations[userId].push({ from:userId, text, time: nowTime() });
+    renderMessagesFor(userId);
+  }, 1200 + Math.random()*1600);
+}
+
+/* --------------------------
+   Utilities
+   -------------------------- */
+function escapeHtml(str){
+  return str.replace(/[&<>"']/g, (m) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+/* --------------------------
+   Search + initialization
+   -------------------------- */
+userSearch.addEventListener('input', (e) => renderUsers(e.target.value));
+
+// initial render
+renderUsers();
+renderMessagesFor('u1'); // preload conversation of first user
+activeUserId = 'u1';
+document.querySelectorAll('.user')[0]?.classList.add('active');
+chatTitleEl.textContent = users.find(u=>u.id==='u1').name;
+chatAvatarEl.textContent = users.find(u=>u.id==='u1').initials;
+chatStatusEl.textContent = users.find(u=>u.id==='u1').online ? 'Online' : 'Last seen ' + users.find(u=>u.id==='u1').last;
+
+/* --------------------------
+   Tiny enhancements: focus + send state
+   -------------------------- */
+usersListEl.addEventListener('click', ()=> setTimeout(()=> messageInput.focus(), 200));
+messageInput.addEventListener('focus', () => messageInput.setAttribute('aria-expanded', 'true'));
+messageInput.addEventListener('blur', () => messageInput.setAttribute('aria-expanded', 'false'));
+
+function refreshSendState(){
+  sendBtn.disabled = !messageInput.value.trim();
+}
+messageInput.addEventListener('input', refreshSendState);
+refreshSendState();
+</script>
+</body>
+</html>
