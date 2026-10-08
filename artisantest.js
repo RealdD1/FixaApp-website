@@ -1842,6 +1842,23 @@ document.getElementById('ratingSubmitBtn')?.addEventListener('click', async () =
     fetchArtisanJobs();
     loadArtisanChats();
     checkBanStatusOnLoad();
+    // DOMContentLoaded, after the other chat controls:
+FixaChatUI.init({ messages: 'messages', footer: 'chatFooter', input: 'msgInput' });
+
+// openChat(): first lines
+FixaChatUI.enter();
+
+// closeChat(): first line
+FixaChatUI.exit();
+
+// switchPage(): first line
+FixaChatUI.exit();
+
+// sendTextMessage(): replace `input.value = '';` with
+FixaChatUI.resetInput();
+
+// appendMessage(): at the end, after computing nearBottom
+if (!nearBottom && !isMe) FixaChatUI.noteIncoming();
 
     showPage('homePage', document.querySelector('.nav-btn'));
   });
