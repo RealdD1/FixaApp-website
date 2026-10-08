@@ -1193,9 +1193,9 @@ html,body{background:var(--fixa-bg);color:var(--fixa-text);transition:background
         id: j._id,
         chatId: j.chatId || j.chat?._id || j.chat?.id || '',
         customerName: j.customerId?.username || j.customerId?.name || 'Customer',
-        customerPic: j.customerId?.profilePic
-          ? `http://localhost:5000/${j.customerId.profilePic}`
-          : 'http://localhost:5000/uploads/default-avatar.png',
+ customerPic: j.customerId?.profilePic
+  ? `${HIST_BASE}/${j.customerId.profilePic}`
+  : `${HIST_BASE}/uploads/default-avatar.png`,
         service: j.category || 'General Service',
         status: mapStatus(j.status),
         price: j.estimatedPrice ? `₦${Number(j.estimatedPrice).toLocaleString()}` : 'Price TBD',
