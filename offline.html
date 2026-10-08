@@ -143,50 +143,45 @@
     ></div>
 
   </main>
+<script>
+  const statusEl = document.getElementById('status');
+  let reloading = false;
 
+  function reloadPage() {
+    if (reloading) return;
+    reloading = true;
+    statusEl.textContent = 'Connection restored. Reloading...';
 
-  <script>
-    function tryAgain() {
-
-      const status =
-        document.getElementById('status');
-
-      if (navigator.onLine) {
-
-        status.textContent =
-          'Connection restored. Loading Fixa...';
-
-        setTimeout(function () {
-          window.location.href = '/index.html';
-        }, 500);
-
-      } else {
-
-        status.textContent =
-          'Still offline. Please check your connection.';
-
-      }
-
+    // If someone opened /offline.html directly, there is no "original page"
+    if (location.pathname === '/offline.html') {
+      location.replace('/');
+    } else {
+      location.reload();   // re-requests the SAME URL, query string included
     }
+  }
 
+  async function tryAgain() {
+    statusEl.textContent = 'Checking connection...';
+    try {
+      // Real network probe of the current URL. navigator.onLine is unreliable
+      // (it can say true on wifi with no internet).
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 5000);
+      const res = await fetch(location.href, { cache: 'no-store', signal: ctrl.signal });
+      clearTimeout(t);
 
-    window.addEventListener(
-      'online',
-      function () {
-
-        const status =
-          document.getElementById('status');
-
-        status.textContent =
-          'Connection restored.';
-
-        setTimeout(function () {
-          window.location.href = '/index.html';
-        }, 700);
-
+      if (res.ok) {
+        reloadPage();
+        return;
       }
-    );
-  </script>
+      statusEl.textContent = 'Server unreachable. Please try again shortly.';
+    } catch (err) {
+      statusEl.textContent = 'Still offline. Please check your connection.';
+    }
+  }
+
+  window.addEventListener('online', () => setTimeout(tryAgain, 500));
+</script>
 
 </body>
 </html>
