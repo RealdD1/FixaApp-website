@@ -1116,6 +1116,7 @@ function applyExecutionPanelState() {
   // ═══════════════════════════════════════════════════════════
   async function openChat(chatId, peerName) {
     activeChatId = chatId;
+    FixaChatUI.enter();
     if (socket?.connected) socket.emit('joinChat', String(chatId));
 
     // Show chat UI elements
@@ -1190,6 +1191,7 @@ function applyExecutionPanelState() {
   window.openChat = openChat;
 
   function closeChat() {
+    FixaChatUI.exit();  
     if (activeChatId && socket?.connected) socket.emit('leaveChat', String(activeChatId));
     activeChatId = null;
     activeBookingId = null;
@@ -1274,6 +1276,7 @@ if (dateStr !== lastRenderedDateStr) {
       bubble.appendChild(t);
     }
 
+    
     bubble.classList.add('bubble-meta-wrap'); // optional, not required
     wrapper.appendChild(bubble);
         const meta = document.createElement('div');
@@ -1283,8 +1286,10 @@ if (dateStr !== lastRenderedDateStr) {
     meta.textContent = formatTimeShort(m.createdAt || Date.now());
     if (isMe) meta.textContent += (m.seenAt || m.seen) ? ' ✓✓' : (m.deliveredAt || m.delivered) ? ' ✓' : ' ·';
     bubble.appendChild(meta);
-    container.appendChild(wrapper);
-    container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+       container.appendChild(wrapper);
+    const nearBottom = (container.scrollHeight - container.clientHeight - container.scrollTop) < 120;
+    if (!nearBottom && !isMe) FixaChatUI.noteIncoming();
+    if (nearBottom || isMe) container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
   }
 
   function replaceOptimisticMessage(localId, realMsg) {
@@ -1316,7 +1321,8 @@ function handleIncomingSocketMessage(payload) {
       if (window.FixaSystem) FixaSystem.showToast('Cannot send', 'Your messaging is currently restricted', 'warning');
       return;
     }
-    const input = document.getElementById('text');
+// in sendTextMessage()
+const input = document.getElementById('msgInput');
     if (!input) return;
     if (!activeChatId) { showStatusMessage('Select a chat first', 'warning'); return; }
 
@@ -1331,7 +1337,7 @@ function handleIncomingSocketMessage(payload) {
       }
     }
 
-    input.value = '';
+    FixaChatUI.resetInput();
     const localId = `temp-text-${Date.now()}`;
     appendMessage({
       _id: localId, text,
@@ -1536,7 +1542,9 @@ function handleIncomingSocketMessage(payload) {
   // NAVIGATION
   // ═══════════════════════════════════════════════════════════
 function showPage(pageId, clickedBtn) {
+  if (pageId !== 'jobsPage') FixaChatUI.exit();
   document.querySelectorAll('.page').forEach(p => {
+    
     p.classList.remove('active');
     p.style.display = 'none';
   });
@@ -1561,9 +1569,19 @@ window.showPage = showPage;
       e.preventDefault();
       sendTextMessage();
     });
+    const themeBtn = document.getElementById('themeToggleBtn');
+const themeLabel = document.getElementById('themeToggleLabel');
+function syncThemeLabel() {
+  if (themeLabel) themeLabel.textContent = window.FixaTheme.get() === 'dark' ? 'Dark mode' : 'Light mode';
+}
+themeBtn?.addEventListener('click', () => {
+  window.FixaTheme.toggle();
+  syncThemeLabel();
+});
+syncThemeLabel();
 
-    const txt = document.getElementById('text');
-    if (txt) {
+// in wireUp()
+const txt = document.getElementById('msgInput');    if (txt) {
       txt.addEventListener('keydown', e => {
         if (e.key === 'Enter' && !e.shiftKey) {
           e.preventDefault();
@@ -1842,25 +1860,9 @@ document.getElementById('ratingSubmitBtn')?.addEventListener('click', async () =
     fetchArtisanJobs();
     loadArtisanChats();
     checkBanStatusOnLoad();
-    // DOMContentLoaded, after the other chat controls:
-FixaChatUI.init({ messages: 'messages', footer: 'chatFooter', input: 'msgInput' });
 
-// openChat(): first lines
-FixaChatUI.enter();
-
-// closeChat(): first line
-FixaChatUI.exit();
-
-// switchPage(): first line
-FixaChatUI.exit();
-
-// sendTextMessage(): replace `input.value = '';` with
-FixaChatUI.resetInput();
-
-// appendMessage(): at the end, after computing nearBottom
-if (!nearBottom && !isMe) FixaChatUI.noteIncoming();
+    FixaChatUI.init({ messages: 'messages', footer: 'chatFooter', input: 'msgInput' });
 
     showPage('homePage', document.querySelector('.nav-btn'));
   });
-
 })();

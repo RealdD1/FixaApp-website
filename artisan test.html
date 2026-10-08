@@ -19,8 +19,9 @@
   <script src="chat-guard.js"></script>
    <script src='artisantest.js'></script>
    <script src="chat-ui.js"></script>
-   <link rel="stylesheet" href="artisan-home.css">
-
+<script src="theme.js"></script>
+<link rel="stylesheet" href="artisan-home.css">
+<link rel="stylesheet" href="theme.css">
   <style>
     /* ────────────────────────────────────────
        BASE PAGE LAYOUT
@@ -680,13 +681,13 @@
           <div id="typingIndicator"></div>
 
           <!-- Chat input -->
-          <div class="chat-input-container" id="chatFooter" style="display:none">
-            <input type="file" id="media" accept="image/*,video/*" style="display:none">
-            <button type="button" id="attachBtn" title="Attach file" style="background:none;border:none;color:#9aa6b2;cursor:pointer;font-size:20px">📎</button>
-            <button type="button" id="voiceBtn" title="Voice note" style="background:none;border:none;color:#9aa6b2;cursor:pointer;font-size:20px">🎤</button>
-<textarea id="msgInput" rows="1" placeholder="Message" autocomplete="off" enterkeyhint="send"></textarea>
-            <button type="button" id="sendBtn" style="background:#ffd700;color:#000;border:none;padding:10px 18px;border-radius:999px;font-weight:700;cursor:pointer">Send</button>
-          </div>
+          <div class="chat-input-container chat-footer" id="chatFooter" style="display:none">
+  <input type="file" id="media" accept="image/*,video/*" style="display:none">
+  <button type="button" id="attachBtn" class="chat-icon-btn" title="Attach file" style="background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:20px">📎</button>
+  <button type="button" id="voiceBtn" class="chat-icon-btn" title="Voice note" style="background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:20px">🎤</button>
+  <textarea id="msgInput" rows="1" placeholder="Message" autocomplete="off" enterkeyhint="send"></textarea>
+  <button type="button" id="sendBtn" class="send-btn" style="background:var(--gold);color:#000;border:none;padding:10px 18px;border-radius:999px;font-weight:700;cursor:pointer">Send</button>
+</div>
         </div>
 
       </div>
@@ -791,6 +792,10 @@
           </div>
         </div>
       </div>
+      <button class="account-card" id="themeToggleBtn" type="button">
+  <div><h3>🎨 Appearance</h3><p id="themeToggleLabel">Dark mode</p></div>
+  <span class="arrow">➔</span>
+</button>
       <button type="button" id="banLogoutBtn" style="background:rgba(255,59,92,0.15);color:#ff3b5c;border:1px solid rgba(255,59,92,0.3);padding:10px 20px;border-radius:10px;font-weight:700;cursor:pointer;width:100%">Log out</button>
     </div>
   </div>

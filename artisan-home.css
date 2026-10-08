@@ -1,13 +1,25 @@
-:root {
-    --primary-color: #ffc107; /* Gold */
-    --background-color: #00172b; /* Dark Blue */
-    --card-background: #002340; /* Slightly lighter dark blue */
-    --text-color: #e0e0e0; /* Light grey */
-    --text-secondary: #a0a0a0; /* Lighter grey */
-    --border-color: #333;
-    --border-radius: 12px;
-    --font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+:root,
+html[data-theme="dark"] {
+  --primary-color: #ffc107;
+  --background-color: #00172b;
+  --card-background: #002340;
+  --text-color: #e0e0e0;
+  --text-secondary: #a0a0a0;
+  --border-color: #333;
+  --gold: #ffd700;
 }
+
+html[data-theme="light"] {
+  --primary-color: #caa000;
+  --background-color: #f4f6f9;
+  --card-background: #ffffff;
+  --text-color: #0a2540;
+  --text-secondary: #5b6b7c;
+  --border-color: #d8dee5;
+  --gold: #caa000;
+}
+
+html[data-theme="light"] body { background: var(--background-color); color: var(--text-color); }
 
 /* General PWA Feel */
 body {
