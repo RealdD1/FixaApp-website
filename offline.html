@@ -147,18 +147,15 @@
   const statusEl = document.getElementById('status');
   let reloading = false;
 
-  function reloadPage() {
-    if (reloading) return;
-    reloading = true;
-    statusEl.textContent = 'Connection restored. Reloading...';
+function reloadPage() {
+  if (reloading) return;
 
-    // If someone opened /offline.html directly, there is no "original page"
-    if (location.pathname === '/offline.html') {
-      location.replace('/');
-    } else {
-      location.reload();   // re-requests the SAME URL, query string included
-    }
-  }
+  reloading = true;
+  statusEl.textContent = 'Connection restored. Reloading your page...';
+
+  // Reload the exact URL currently in the browser.
+  window.location.reload();
+}
 
   async function tryAgain() {
     statusEl.textContent = 'Checking connection...';

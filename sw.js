@@ -51,22 +51,51 @@ self.addEventListener('fetch', (event) => {
   if (url.origin !== self.location.origin) return;   // API, sockets, Paystack, CDNs untouched
 
   // Pages: network first. Cached copy is keyed WITHOUT the query string.
-  if (req.mode === 'navigate') {
-    const key = url.origin + url.pathname;
-    event.respondWith((async () => {
-      try {
-        let res = await networkFirst(req, key, 6000);
-        if (res.redirected) {          // Safari refuses redirected responses from a SW
-          const body = await res.blob();
-          res = new Response(body, { status: res.status, statusText: res.statusText, headers: res.headers });
-        }
-        return res;
-      } catch {
-        return (await caches.match(key)) || (await caches.match('/offline.html')) || Response.error();
+// Pages: network first, preserving the original requested URL.
+if (req.mode === 'navigate') {
+  const key = url.origin + url.pathname;
+
+  event.respondWith((async () => {
+    try {
+      let res = await networkFirst(req, key, 6000);
+
+      if (res.redirected) {
+        const body = await res.blob();
+        res = new Response(body, {
+          status: res.status,
+          statusText: res.statusText,
+          headers: res.headers
+        });
       }
-    })());
-    return;
-  }
+
+      return res;
+    } catch (err) {
+      // Serve a cached version of the requested page first.
+      const cache = await caches.open(VERSION);
+      const cachedPage = await cache.match(key);
+
+      if (cachedPage) {
+        return cachedPage;
+      }
+
+      // Display offline UI without navigating away from the requested URL.
+      const offlinePage = await cache.match('/offline.html');
+
+      if (offlinePage) {
+        return offlinePage;
+      }
+
+      return new Response('You are offline. Please try again.', {
+        status: 503,
+        headers: {
+          'Content-Type': 'text/plain; charset=utf-8'
+        }
+      });
+    }
+  })());
+
+  return;
+}
 
   // Code + config: ALWAYS try network first so deploys reach users immediately
   if (/\.(js|css|webmanifest)$/i.test(url.pathname)) {
