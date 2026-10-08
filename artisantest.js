@@ -1177,7 +1177,7 @@ function applyExecutionPanelState() {
       if (!res.ok) throw new Error('Failed');
       const messages = await res.json();
       if (container) container.innerHTML = '';
-let lastRenderedDateStr = null;
+
       (Array.isArray(messages) ? messages : []).forEach(appendMessage);
       markChatRead(chatId);
     } catch (e) {
@@ -1198,6 +1198,7 @@ let lastRenderedDateStr = null;
     activeChatStatus = 'intro';
     clearArtisanPaymentTimer();
     hidePeerBanBanner();
+    lastRenderedDateStr = null;
 
     document.querySelectorAll('.chat-item.active').forEach(item => item.classList.remove('active'));
     document.getElementById('chatHeaderRow').style.display = 'none';
