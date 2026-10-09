@@ -239,7 +239,8 @@
 
 <script>
   const API = window.FIXA_CONFIG.API_URL;
-  const BASE = `${API}/login`;
+const BASE = `${API}/admin`; // match your app.use('/…', adminRoutes) path
+
   let _preAuthToken = null;
   let _setupToken   = null;
 
