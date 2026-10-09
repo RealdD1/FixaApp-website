@@ -36,7 +36,6 @@ const BASE_URL        = window.FIXA_CONFIG.API_URL;
   let peerBanCountdownInterval = null;
   let _isCurrentlyBanned = false;
 let lastRenderedDateStr = null;
-fixaNewMessageDividerShown = false;
 
   // Chat phase state
   let activeBooking = null;
@@ -1306,23 +1305,6 @@ function handleIncomingSocketMessage(payload) {
   if (String(activeChatId) === String(chatId)) {
     appendMessage(message);
     markChatRead(chatId);
-    const messagesEl = document.getElementById('messages');
-
-if (messagesEl) {
-const distanceFromBottom =
-messagesEl.scrollHeight -
-messagesEl.clientHeight -
-messagesEl.scrollTop;
-
-// Only show the divider when the user has scrolled
-// away from the latest messages.
-if (distanceFromBottom > 120) {
-showNewMessageDivider(messagesEl);
-}
-}
-
-appendMessage(message);
-
   } else {
     updateChatPreview(chatId, message, unreadCount);
     const senderName = message.sender?.username || message.senderName || 'Customer';
@@ -1587,7 +1569,16 @@ window.showPage = showPage;
       e.preventDefault();
       sendTextMessage();
     });
-
+    const themeBtn = document.getElementById('themeToggleBtn');
+const themeLabel = document.getElementById('themeToggleLabel');
+function syncThemeLabel() {
+  if (themeLabel) themeLabel.textContent = window.FixaTheme.get() === 'dark' ? 'Dark mode' : 'Light mode';
+}
+themeBtn?.addEventListener('click', () => {
+  window.FixaTheme.toggle();
+  syncThemeLabel();
+});
+syncThemeLabel();
 
 // in wireUp()
 const txt = document.getElementById('msgInput');    if (txt) {
