@@ -19,7 +19,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
   <script src="fixa-notification-system.js"></script>
   <script src="chat-guard.js"></script>
-  <script src="/chat-ui.js" defer></script>.
+  <script src="/chat-ui.js" defer></script>
+  <script src="theme.js"></script>
   <script src="https://js.paystack.co/v2/inline.js"></script>
   <style>
     :root {
@@ -32,6 +33,9 @@
       --text-muted: #b0b8c9;
       --accent: #00d4ff;
       --danger: #ff3b5c;
+      --line: rgba(255,255,255,.08);
+--surface-2: rgba(255,255,255,.07);
+--gold-text: var(--gold);
     }
     *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
     body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg-dark);color:var(--text-main);min-height:100vh;padding-bottom:90px}
@@ -254,7 +258,50 @@
 .hist-modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;justify-content:center;align-items:center;z-index:9999;padding:20px}
 .hist-modal.open{display:flex}
 .hist-modal-box{background:#0f2a44;color:#fff;padding:20px;border-radius:12px;width:90%;max-width:400px;animation:pop .3s ease}
-@keyframes pop{from{transform:scale(.8);opacity:0}to{transform:scale(1);opacity:1}}</style>
+@keyframes pop{from{transform:scale(.8);opacity:0}to{transform:scale(1);opacity:1}}
+html[data-theme="light"]{
+  --bg-dark:#f4f7fb; --bg-card:#ffffff; --bg-glass:rgba(255,255,255,.9);
+  --text-main:#102a43; --text-muted:#5f7387;
+  --line:rgba(16,42,67,.12); --surface-2:#e8eef5; --gold-text:#9a7400;
+  color-scheme: light;
+}
+html[data-theme="dark"]{ color-scheme: dark; }
+
+html[data-theme="light"] .logo-brand span{background:linear-gradient(90deg,#b8860b,#e6b800);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+html[data-theme="light"] .search-bar{border-color:var(--line)}
+html[data-theme="light"] .search-bar input,
+html[data-theme="light"] .account-card,
+html[data-theme="light"] .hist-modal-box{color:var(--text-main)}
+html[data-theme="light"] .icon-square,
+html[data-theme="light"] .account-card,
+html[data-theme="light"] .artisan-card,
+html[data-theme="light"] .bottom-nav,
+html[data-theme="light"] .msg-header,
+html[data-theme="light"] .conv-header{border-color:var(--line)}
+html[data-theme="light"] .conv-header{background:var(--surface-2)}
+html[data-theme="light"] .chat-item{border-bottom-color:var(--line)}
+html[data-theme="light"] .chat-item:hover{background:rgba(16,42,67,.04)}
+html[data-theme="light"] .chat-footer textarea{background:var(--surface-2);border-color:var(--line);color:var(--text-main)}
+html[data-theme="light"] .msg-row.recv .bubble{background:#e8eef5;color:#102a43}
+html[data-theme="light"] .date-sep span{background:var(--surface-2)}
+html[data-theme="light"] .section-title a,
+html[data-theme="light"] .nav-item.active,
+html[data-theme="light"] .back-btn,
+html[data-theme="light"] .typing-indicator,
+html[data-theme="light"] .chat-item.has-unread .chat-name span:first-child{color:var(--gold-text)}
+html[data-theme="light"] .voice-ui{background:var(--bg-card)}
+html[data-theme="light"] #historyPage .tab{background:var(--surface-2)}
+html[data-theme="light"] #historyPage .tab.active{background:var(--gold);color:#000}
+html[data-theme="light"] #historyPage .card{background:var(--bg-card);border:1px solid var(--line);border-left-width:5px}
+html[data-theme="light"] #historyPage .card h4{color:var(--gold-text)}
+html[data-theme="light"] #historyPage .price{color:var(--text-main)}
+html[data-theme="light"] .hist-modal-box{background:var(--bg-card)}
+
+/* selector control */
+.theme-seg{display:flex;gap:6px;background:var(--surface-2);padding:4px;border-radius:12px}
+.theme-seg button{flex:1;border:0;background:transparent;color:var(--text-muted);padding:9px 6px;border-radius:9px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer}
+.theme-seg button.active{background:var(--gold);color:#000}
+</style>
 </head>
 <body>
   
@@ -1450,71 +1497,87 @@ async function initiatePayment() {
       const err = await initRes.json().catch(() => ({}));
       throw new Error(err.message || 'Failed to initialize payment');
     }
-    const { authorizationUrl } = await initRes.json();
-    window.location.href = authorizationUrl;
+ const { authorizationUrl, reference } = await initRes.json();
+localStorage.setItem('pendingPayment', JSON.stringify({
+  reference,
+  chatId: activeChatId,
+  bookingId: activeBookingId,
+  name: document.getElementById('convName')?.textContent || 'Artisan'
+}));
+window.location.href = authorizationUrl;
   } catch (err) {
     console.error('[initiatePayment]', err);
     if (window.FixaSystem) FixaSystem.showToast('Payment failed', err.message, 'warning');
   }
 }
+function showPayOverlay(msg) {
+  let el = document.getElementById('payReturnOverlay');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'payReturnOverlay';
+    el.style.cssText = 'position:fixed;inset:0;z-index:9800;display:flex;align-items:center;justify-content:center;background:rgba(4,27,43,.94);color:#fff;font-weight:700;text-align:center;padding:24px';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.style.display = 'flex';
+}
+function hidePayOverlay() {
+  const el = document.getElementById('payReturnOverlay');
+  if (el) el.style.display = 'none';
+}
+
 async function handlePaymentReturn() {
   const params = new URLSearchParams(window.location.search);
   const reference = params.get('reference') || params.get('trxref');
   if (!reference) return;
 
-  let pendingTopUp = null;
-  try { pendingTopUp = JSON.parse(localStorage.getItem('pendingTopUp') || 'null'); } catch {}
+  const readLS = (k) => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch { return null; } };
+  const pendingTopUp = readLS('pendingTopUp');
+  const pending = readLS('pendingPayment');
+  const isTopUp = !!(pendingTopUp && pendingTopUp.reference === reference);
 
-  if (pendingTopUp && pendingTopUp.reference === reference) {
-    try {
-      const vRes = await fetch(`${BASE_URL}/api/payments/verify-topup`, {
+  showPayOverlay('Confirming your payment…');
+  window.history.replaceState({}, '', window.location.pathname);   // a refresh won't re-run this
+
+  let result = null;
+  try {
+    // Paystack can lag a few seconds behind the redirect, so poll briefly
+    for (let i = 0; i < 6; i++) {
+      const r = await fetch(`${BASE_URL}/api/payments/${isTopUp ? 'verify-topup' : 'verify'}`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          bookingId: pendingTopUp.bookingId,
-          topUpId: pendingTopUp.topUpId,
-          reference
-        })
+        body: JSON.stringify(isTopUp
+          ? { bookingId: pendingTopUp.bookingId, topUpId: pendingTopUp.topUpId, reference }
+          : { reference })
       });
-      const v = await vRes.json();
-      if (v.status === 'paid') {
-        if (window.FixaSystem) FixaSystem.showToast('Top-up paid! 🎉', `₦${v.amount?.toLocaleString() || ''} added to escrow`, 'success');
-      } else {
-        if (window.FixaSystem) FixaSystem.showToast('Payment pending', 'We are still verifying — refresh in a moment', 'warning');
-      }
-    } catch (err) {
-      console.error('[handlePaymentReturn:topup]', err);
-    } finally {
-      localStorage.removeItem('pendingTopUp');
-      window.history.replaceState({}, '', window.location.pathname);
-    }
-    return;
-  }
-
-  // ── Regular booking payment (including a proposed-price payment — same endpoint, server already charges the correct amount) ──
-  try {
-    const vRes = await fetch(`${BASE_URL}/api/payments/verify`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ reference })
-    });
-    const v = await vRes.json();
-
-    if (v.status === 'paid') {
-      if (window.FixaSystem) {
-        FixaSystem.showToast('Payment confirmed! 🎉', `₦${v.amount?.toLocaleString() || ''} held in escrow`, 'success');
-      }
-      if (activeChatId) {
-        if (window.ChatGuard) await window.ChatGuard.onChatOpen(activeChatId);
-        await loadChatBookingAndPaymentStatus(activeChatId);
-      }
-    } else {
-      if (window.FixaSystem) FixaSystem.showToast('Payment pending', 'We are still verifying — refresh in a moment', 'warning');
+      result = await r.json().catch(() => ({}));
+      if (!r.ok || result.status === 'paid' || result.status === 'failed') break;
+      await new Promise(res => setTimeout(res, 2000));
     }
   } catch (err) {
     console.error('[handlePaymentReturn]', err);
-  } finally {
-    window.history.replaceState({}, '', window.location.pathname);
+  }
+
+  hidePayOverlay();
+  localStorage.removeItem('pendingTopUp');
+  localStorage.removeItem('pendingPayment');
+
+  if (window.FixaSystem) {
+    if (result?.status === 'paid') {
+      FixaSystem.showToast(isTopUp ? 'Top-up paid! 🎉' : 'Payment confirmed! 🎉',
+        `₦${result.amount?.toLocaleString() || ''} held in escrow`, 'success');
+    } else if (result?.status === 'failed') {
+      FixaSystem.showToast('Payment problem', result.reason || 'Please contact support', 'warning');
+    } else {
+      FixaSystem.showToast('Payment processing', 'Your chat will unlock as soon as it is confirmed', 'warning');
+    }
+  }
+
+  // Land the customer back in the conversation they paid from
+  const chatId = result?.chatId || (isTopUp ? pendingTopUp.chatId : pending?.chatId);
+  if (chatId) {
+    switchPage('messages');
+    setTimeout(() => openChat(chatId, pending?.name || 'Artisan'), 150);
   }
 }
 async function rebook(artisanId, formData) {
@@ -2223,6 +2286,52 @@ async function changePassword() {
     FixaSystem.showToast('Password updated', '', 'success');
   } catch (e) { FixaSystem.showToast('Failed', e.message, 'warning'); }
 }
+async function findChatForPayment(payment) {
+  if (payment.chat) return Chat.findById(payment.chat);
+  return Chat.findOne({ booking: payment.booking });
+}
+
+async function finalizeBookingPayment(reference, paidKobo) {
+  const payment = await Payment.findOne({ transactionRef: reference });
+  if (!payment) return { ok: false, code: 'NOT_FOUND' };
+  if (['paid', 'completed'].includes(payment.status)) return { ok: true, payment, already: true };
+
+  if (paidKobo < Math.round(payment.amount * 100)) {
+    await Payment.updateOne({ _id: payment._id, status: 'pending' }, { status: 'failed' });
+    return { ok: false, code: 'MISMATCH' };
+  }
+
+  // atomic claim: only one caller (webhook or verify) gets past this
+  const claimed = await Payment.findOneAndUpdate(
+    { _id: payment._id, status: 'pending' },
+    { status: 'paid' },
+    { new: true }
+  );
+  if (!claimed) return { ok: true, payment, already: true };
+
+  const booking = await Booking.findByIdAndUpdate(
+    claimed.booking,
+    { paymentStatus: 'escrowed', paymentDeadline: null },
+    { new: true }
+  );
+
+  const chat = await findChatForPayment(claimed);
+  if (chat) {
+    chat.status = 'secured';
+    await chat.save();
+    if (io) io.to(String(chat._id)).emit('chatUpgraded', { chatId: chat._id, bookingId: claimed.booking, status: 'secured' });
+  }
+
+  if (booking) {
+    emitToUser(booking.customerId, 'paymentEscrowed', { bookingId: booking._id });
+    emitToUser(claimed.artisan, 'paymentEscrowed', { bookingId: booking._id });
+    await pushNotification(booking.customerId, '💰 Payment Received',
+      'Your payment is safely held in escrow until job completion.', 'payment');
+    await pushNotification(claimed.artisan, '🔔 Payment in Escrow',
+      'Customer has paid. Start the job — funds release on completion.', 'payment');
+  }
+  return { ok: true, payment: claimed, chatId: chat?._id };
+}
 
 async function openPayments() {
   openSheet('Payment History', '<p style="color:var(--text-muted)">Loading…</p>');
@@ -2424,6 +2533,14 @@ document.addEventListener('submit', e => { e.preventDefault(); e.stopPropagation
       </div>
     </div>
      
+</div>
+<div class="account-card" style="flex-direction:column;align-items:stretch;gap:12px;cursor:default">
+  <div><h3>🎨 Appearance</h3><p>Choose how Fixa looks</p></div>
+  <div class="theme-seg">
+    <button type="button" data-theme-choice="system">Auto</button>
+    <button type="button" data-theme-choice="light">☀️ Light</button>
+    <button type="button" data-theme-choice="dark">🌙 Dark</button>
+  </div>
 </div>
 
     <button type="button" id="banLogoutBtn" style="background:rgba(255,59,92,0.15);color:#ff3b5c;border:1px solid rgba(255,59,92,0.3);padding:10px 20px;border-radius:10px;font-weight:700;cursor:pointer;width:100%">Log out</button>
