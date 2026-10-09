@@ -256,16 +256,33 @@
 .hist-modal.open{display:flex}
 .hist-modal-box{background:#0f2a44;color:#fff;padding:20px;border-radius:12px;width:90%;max-width:400px;animation:pop .3s ease}
 @keyframes pop{from{transform:scale(.8);opacity:0}to{transform:scale(1);opacity:1}}
-html[data-theme="light"] .empty-state .material-icons{color:rgba(16,42,67,.15)}
-html[data-theme="light"] .account-card:hover{background:var(--surface-2)}
-html[data-theme="light"] #peerBanReason,
-html[data-theme="light"] .timer-label{color:var(--text-muted)!important}
-html[data-theme="light"] .bubble-meta{color:var(--text-main)}
-html[data-theme="light"] #sheetBody input{
-  background:var(--surface-2)!important;color:var(--text-main)!important;border-color:var(--line)!important}
-html[data-theme="light"] .hist-modal-box h3{color:var(--gold-text)!important}
-html[data-theme="light"] ::-webkit-scrollbar-thumb{background:rgba(16,42,67,.2)}
-html[data-theme="light"] #histModalContent div[style*="border-bottom"]{border-color:var(--line)!important}
+/* NEW MESSAGES divider */
+.new-message-divider {
+display: flex;
+align-items: center;
+gap: 12px;
+width: 100%;
+margin: 14px 0;
+color: #8a6700;
+font-size: 11px;
+font-weight: 800;
+letter-spacing: 0.7px;
+text-transform: uppercase;
+pointer-events: none;
+}
+
+.new-message-divider::before,
+.new-message-divider::after {
+content: "";
+flex: 1;
+height: 1px;
+background: #ffd700;
+}
+
+html[data-theme="dark"] .new-message-divider {
+color: #ffd700;
+}
+
 </style>
 </head>
 <body>

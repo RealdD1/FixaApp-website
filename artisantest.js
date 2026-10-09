@@ -36,6 +36,7 @@ const BASE_URL        = window.FIXA_CONFIG.API_URL;
   let peerBanCountdownInterval = null;
   let _isCurrentlyBanned = false;
 let lastRenderedDateStr = null;
+fixaNewMessageDividerShown = false;
 
   // Chat phase state
   let activeBooking = null;
@@ -1305,6 +1306,23 @@ function handleIncomingSocketMessage(payload) {
   if (String(activeChatId) === String(chatId)) {
     appendMessage(message);
     markChatRead(chatId);
+    const messagesEl = document.getElementById('messages');
+
+if (messagesEl) {
+const distanceFromBottom =
+messagesEl.scrollHeight -
+messagesEl.clientHeight -
+messagesEl.scrollTop;
+
+// Only show the divider when the user has scrolled
+// away from the latest messages.
+if (distanceFromBottom > 120) {
+showNewMessageDivider(messagesEl);
+}
+}
+
+appendMessage(message);
+
   } else {
     updateChatPreview(chatId, message, unreadCount);
     const senderName = message.sender?.username || message.senderName || 'Customer';

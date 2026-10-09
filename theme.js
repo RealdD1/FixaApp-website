@@ -7,8 +7,9 @@
   function apply() {
     const t = resolve(pref());
     document.documentElement.setAttribute('data-theme', t);
-    document.querySelector('meta[name="theme-color"]')
-      ?.setAttribute('content', t === 'dark' ? '#041b2b' : '#f4f7fb');
+document.querySelector('meta[name="theme-color"]')
+?.setAttribute('content', t === 'dark' ? '#041b2b' : '#ffffff');
+
     document.querySelectorAll('[data-theme-choice]').forEach(b =>
       b.classList.toggle('active', b.dataset.themeChoice === pref()));
   }
