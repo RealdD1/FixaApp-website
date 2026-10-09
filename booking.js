@@ -7,6 +7,8 @@
 const API_KEY = "092c5d59abdd4704b1a055ec21d8ff79";
 const bookingData = JSON.parse(localStorage.getItem("bookingData"));
 const user = JSON.parse(localStorage.getItem("user")); 
+// ──────────────────────────────────────────
+const BASE_URL = window.FIXA_CONFIG.API_URL;
 
 let userLocation = null; // Store detected location
 
@@ -150,7 +152,7 @@ form.addEventListener("submit", async (e) => {
 
     try {
         // 1. Send Booking data to the API
-        const res = await fetch("http://localhost:5000/api/bookings", {
+        const res = await fetch(`${BASE_URL}/api/bookings`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
