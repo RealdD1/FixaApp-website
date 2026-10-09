@@ -807,7 +807,33 @@ html,body{background:var(--fixa-bg);color:var(--fixa-text);transition:background
     height:var(--app-h,100dvh) !important;
     max-height:var(--app-h,100dvh);
   }
-}
+}/* ===== THEME SELECTOR ===== */
+:root{--fixa-gold-text:var(--fixa-gold)}
+html[data-theme="light"]{--fixa-gold-text:#9a7400;color-scheme:light}
+html[data-theme="dark"]{color-scheme:dark}
+
+.theme-seg{display:flex;gap:6px;background:var(--fixa-surface);border:1px solid var(--fixa-border);padding:4px;border-radius:12px}
+.theme-seg button{flex:1;border:0;background:transparent;color:var(--fixa-muted);padding:9px 6px;border-radius:9px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer}
+.theme-seg button.active{background:var(--fixa-gold);color:#07131d}
+.appearance-card{background:var(--fixa-card);color:var(--fixa-text);border:1px solid var(--fixa-border);border-radius:16px;padding:16px;margin-bottom:10px;display:flex;flex-direction:column;gap:12px}
+.appearance-card h3{font-size:15px;margin:0 0 3px}
+.appearance-card p{font-size:11px;margin:0;color:var(--fixa-muted)}
+
+/* ===== Hard-coded colours that ignore the theme (inline styles need !important) ===== */
+.chat-item-name{color:var(--fixa-text)!important}
+.chat-item.has-unread .chat-item-name{color:var(--fixa-gold-text)!important}
+.chat-preview-text{color:var(--fixa-muted)!important}
+#chatBackBtn,#typingIndicator,#jobList .card h4,.history-modal-box h3{color:var(--fixa-gold-text)}
+#walletBalanceDisplay{color:var(--fixa-gold-text)!important}
+#walletCard{background:var(--fixa-card)!important;border-color:var(--fixa-border)!important}
+.voice-ui{background:var(--fixa-card)}
+#peerBanReason,
+#artisanPaymentBanner div[style*="rgba(255,255,255"],
+#artisanSecuredBanner div[style*="rgba(255,255,255"]{color:var(--fixa-muted)!important}
+#proofPhotoType{background:var(--fixa-surface)!important;color:var(--fixa-text)!important;border-color:var(--fixa-border)!important}
+.exec-btn{color:var(--fixa-text)}
+html[data-theme="light"] .chat-item:hover{background:rgba(16,42,67,.05)}
+html[data-theme="light"] .exec-btn{color:#0369a1}
 
   </style>
 </head>
@@ -998,29 +1024,7 @@ html,body{background:var(--fixa-bg);color:var(--fixa-text);transition:background
       </div>
     </section>
 
-    
-<script>
-(function () {
-  const KEY = 'fixa-theme';
-  function applyTheme(mode) {
-    const theme = mode === 'light' ? 'light' : 'dark';
-    document.documentElement.setAttribute('data-theme', theme);
-    document.body?.setAttribute('data-theme', theme);
-    localStorage.setItem(KEY, theme);
-    const label = document.getElementById('themeToggleLabel');
-    if (label) label.textContent = theme === 'dark' ? 'Dark mode' : 'Light mode';
-  }
-  const saved = localStorage.getItem(KEY);
-  applyTheme(saved || 'dark');
-  document.addEventListener('DOMContentLoaded', () => {
-    const btn = document.getElementById('themeToggleBtn');
-    btn?.addEventListener('click', () => {
-      applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
-    });
-  });
-  window.FixaLocalTheme = { apply: applyTheme, get: () => document.documentElement.getAttribute('data-theme') || 'dark' };
-})();
-</script>
+
 
     <!-- ═══════════════════════ HISTORY PAGE ═══════════════════════ -->
     <section id="historyPage" class="page">

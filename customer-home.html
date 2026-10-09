@@ -19,8 +19,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
   <script src="fixa-notification-system.js"></script>
   <script src="chat-guard.js"></script>
-  <script src="/chat-ui.js" defer></script>
-  <script src="theme.js"></script>
+  <script src="/chat-ui.js" defer></script>.
   <script src="https://js.paystack.co/v2/inline.js"></script>
   <style>
     :root {
@@ -33,9 +32,7 @@
       --text-muted: #b0b8c9;
       --accent: #00d4ff;
       --danger: #ff3b5c;
-      --line: rgba(255,255,255,.08);
---surface-2: rgba(255,255,255,.07);
---gold-text: var(--gold);
+      
     }
     *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
     body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg-dark);color:var(--text-main);min-height:100vh;padding-bottom:90px}
@@ -259,48 +256,16 @@
 .hist-modal.open{display:flex}
 .hist-modal-box{background:#0f2a44;color:#fff;padding:20px;border-radius:12px;width:90%;max-width:400px;animation:pop .3s ease}
 @keyframes pop{from{transform:scale(.8);opacity:0}to{transform:scale(1);opacity:1}}
-html[data-theme="light"]{
-  --bg-dark:#f4f7fb; --bg-card:#ffffff; --bg-glass:rgba(255,255,255,.9);
-  --text-main:#102a43; --text-muted:#5f7387;
-  --line:rgba(16,42,67,.12); --surface-2:#e8eef5; --gold-text:#9a7400;
-  color-scheme: light;
-}
-html[data-theme="dark"]{ color-scheme: dark; }
-
-html[data-theme="light"] .logo-brand span{background:linear-gradient(90deg,#b8860b,#e6b800);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-html[data-theme="light"] .search-bar{border-color:var(--line)}
-html[data-theme="light"] .search-bar input,
-html[data-theme="light"] .account-card,
-html[data-theme="light"] .hist-modal-box{color:var(--text-main)}
-html[data-theme="light"] .icon-square,
-html[data-theme="light"] .account-card,
-html[data-theme="light"] .artisan-card,
-html[data-theme="light"] .bottom-nav,
-html[data-theme="light"] .msg-header,
-html[data-theme="light"] .conv-header{border-color:var(--line)}
-html[data-theme="light"] .conv-header{background:var(--surface-2)}
-html[data-theme="light"] .chat-item{border-bottom-color:var(--line)}
-html[data-theme="light"] .chat-item:hover{background:rgba(16,42,67,.04)}
-html[data-theme="light"] .chat-footer textarea{background:var(--surface-2);border-color:var(--line);color:var(--text-main)}
-html[data-theme="light"] .msg-row.recv .bubble{background:#e8eef5;color:#102a43}
-html[data-theme="light"] .date-sep span{background:var(--surface-2)}
-html[data-theme="light"] .section-title a,
-html[data-theme="light"] .nav-item.active,
-html[data-theme="light"] .back-btn,
-html[data-theme="light"] .typing-indicator,
-html[data-theme="light"] .chat-item.has-unread .chat-name span:first-child{color:var(--gold-text)}
-html[data-theme="light"] .voice-ui{background:var(--bg-card)}
-html[data-theme="light"] #historyPage .tab{background:var(--surface-2)}
-html[data-theme="light"] #historyPage .tab.active{background:var(--gold);color:#000}
-html[data-theme="light"] #historyPage .card{background:var(--bg-card);border:1px solid var(--line);border-left-width:5px}
-html[data-theme="light"] #historyPage .card h4{color:var(--gold-text)}
-html[data-theme="light"] #historyPage .price{color:var(--text-main)}
-html[data-theme="light"] .hist-modal-box{background:var(--bg-card)}
-
-/* selector control */
-.theme-seg{display:flex;gap:6px;background:var(--surface-2);padding:4px;border-radius:12px}
-.theme-seg button{flex:1;border:0;background:transparent;color:var(--text-muted);padding:9px 6px;border-radius:9px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer}
-.theme-seg button.active{background:var(--gold);color:#000}
+html[data-theme="light"] .empty-state .material-icons{color:rgba(16,42,67,.15)}
+html[data-theme="light"] .account-card:hover{background:var(--surface-2)}
+html[data-theme="light"] #peerBanReason,
+html[data-theme="light"] .timer-label{color:var(--text-muted)!important}
+html[data-theme="light"] .bubble-meta{color:var(--text-main)}
+html[data-theme="light"] #sheetBody input{
+  background:var(--surface-2)!important;color:var(--text-main)!important;border-color:var(--line)!important}
+html[data-theme="light"] .hist-modal-box h3{color:var(--gold-text)!important}
+html[data-theme="light"] ::-webkit-scrollbar-thumb{background:rgba(16,42,67,.2)}
+html[data-theme="light"] #histModalContent div[style*="border-bottom"]{border-color:var(--line)!important}
 </style>
 </head>
 <body>
@@ -2286,52 +2251,7 @@ async function changePassword() {
     FixaSystem.showToast('Password updated', '', 'success');
   } catch (e) { FixaSystem.showToast('Failed', e.message, 'warning'); }
 }
-async function findChatForPayment(payment) {
-  if (payment.chat) return Chat.findById(payment.chat);
-  return Chat.findOne({ booking: payment.booking });
-}
 
-async function finalizeBookingPayment(reference, paidKobo) {
-  const payment = await Payment.findOne({ transactionRef: reference });
-  if (!payment) return { ok: false, code: 'NOT_FOUND' };
-  if (['paid', 'completed'].includes(payment.status)) return { ok: true, payment, already: true };
-
-  if (paidKobo < Math.round(payment.amount * 100)) {
-    await Payment.updateOne({ _id: payment._id, status: 'pending' }, { status: 'failed' });
-    return { ok: false, code: 'MISMATCH' };
-  }
-
-  // atomic claim: only one caller (webhook or verify) gets past this
-  const claimed = await Payment.findOneAndUpdate(
-    { _id: payment._id, status: 'pending' },
-    { status: 'paid' },
-    { new: true }
-  );
-  if (!claimed) return { ok: true, payment, already: true };
-
-  const booking = await Booking.findByIdAndUpdate(
-    claimed.booking,
-    { paymentStatus: 'escrowed', paymentDeadline: null },
-    { new: true }
-  );
-
-  const chat = await findChatForPayment(claimed);
-  if (chat) {
-    chat.status = 'secured';
-    await chat.save();
-    if (io) io.to(String(chat._id)).emit('chatUpgraded', { chatId: chat._id, bookingId: claimed.booking, status: 'secured' });
-  }
-
-  if (booking) {
-    emitToUser(booking.customerId, 'paymentEscrowed', { bookingId: booking._id });
-    emitToUser(claimed.artisan, 'paymentEscrowed', { bookingId: booking._id });
-    await pushNotification(booking.customerId, '💰 Payment Received',
-      'Your payment is safely held in escrow until job completion.', 'payment');
-    await pushNotification(claimed.artisan, '🔔 Payment in Escrow',
-      'Customer has paid. Start the job — funds release on completion.', 'payment');
-  }
-  return { ok: true, payment: claimed, chatId: chat?._id };
-}
 
 async function openPayments() {
   openSheet('Payment History', '<p style="color:var(--text-muted)">Loading…</p>');
@@ -2534,7 +2454,7 @@ document.addEventListener('submit', e => { e.preventDefault(); e.stopPropagation
     </div>
      
 </div>
-<div class="account-card" style="flex-direction:column;align-items:stretch;gap:12px;cursor:default">
+<div class="appearance-card">
   <div><h3>🎨 Appearance</h3><p>Choose how Fixa looks</p></div>
   <div class="theme-seg">
     <button type="button" data-theme-choice="system">Auto</button>

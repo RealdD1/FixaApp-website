@@ -1569,16 +1569,7 @@ window.showPage = showPage;
       e.preventDefault();
       sendTextMessage();
     });
-    const themeBtn = document.getElementById('themeToggleBtn');
-const themeLabel = document.getElementById('themeToggleLabel');
-function syncThemeLabel() {
-  if (themeLabel) themeLabel.textContent = window.FixaTheme.get() === 'dark' ? 'Dark mode' : 'Light mode';
-}
-themeBtn?.addEventListener('click', () => {
-  window.FixaTheme.toggle();
-  syncThemeLabel();
-});
-syncThemeLabel();
+
 
 // in wireUp()
 const txt = document.getElementById('msgInput');    if (txt) {
