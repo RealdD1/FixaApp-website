@@ -2,7 +2,7 @@
   'use strict';
 
   // ─── CONFIG ────────────────────────────────────────────────────────────────
-  const BASE_URL = 'http://localhost:5000';
+  const BASE_URL = window.FIXA_CONFIG.API_URL;
   const MOD_API  = `${BASE_URL}/api/moderation`;
   const PAY_API  = `${BASE_URL}/api/payments`;
   const TESSERACT_CDN = 'https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js';
