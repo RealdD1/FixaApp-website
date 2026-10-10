@@ -150,9 +150,108 @@ textarea.form-input{resize:vertical;min-height:100px}
 .action-btns{display:flex;gap:6px;flex-wrap:nowrap;align-items:center}
 
 @media(max-width:900px){.sidebar{width:220px}.stat-grid{grid-template-columns:repeat(2,1fr)}.main{padding:16px}}
+/* ── MOBILE HAMBURGER TOGGLE (hidden on desktop) ── */
+#mobileMenuBtn {
+  display: none;
+  position: fixed;
+  top: 14px;
+  left: 14px;
+  z-index: 1100;
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  background: var(--navy);
+  border: 1px solid rgba(255,255,255,.15);
+  color: #ffd700;
+  font-size: 20px;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+#sidebarOverlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.5);
+  z-index: 999;
+}
+#sidebarOverlay.open { display: block; }
+
+@media (max-width: 820px) {
+  body > div[style*="display:flex"] { display: block !important; }
+
+  #mobileMenuBtn { display: flex; }
+
+  .sidebar {
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    width: 260px;
+    z-index: 1000;
+    transform: translateX(-100%);
+    transition: transform .25s ease;
+    box-shadow: 8px 0 30px rgba(0,0,0,.4);
+  }
+  .sidebar.open { transform: translateX(0); }
+
+  .main {
+    padding: 70px 14px 24px;
+    width: 100%;
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .header-actions { width: 100%; }
+  .header-actions .btn { flex: 1; }
+
+  .stat-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .stat-value { font-size: 22px; }
+
+  .filter-bar { flex-direction: column; align-items: stretch; }
+  .search-input, .filter-select { width: 100%; }
+
+  /* Tables: shrink text, keep horizontal scroll, hint that it scrolls */
+  .table-wrap {
+    margin: 0 -14px;
+    padding: 0 14px;
+  }
+  table { font-size: 12px; }
+  th, td { padding: 8px 6px; }
+  .td-id { font-size: 10px; }
+
+  /* Action buttons: let them wrap onto two lines instead of overflowing */
+  .action-btns { flex-wrap: wrap; gap: 5px; }
+  .btn-sm { padding: 6px 9px; font-size: 10.5px; }
+
+  /* Modals: full-width on small screens */
+  .modal-box, .confirm-modal-box {
+    max-width: 100%;
+    width: 100%;
+    max-height: 100dvh;
+    border-radius: 14px 14px 0 0;
+    margin-top: auto;
+  }
+  .modal-overlay { align-items: flex-end; padding: 0; }
+  .modal-body > div[style*="grid-template-columns:1fr 1fr"] {
+    grid-template-columns: 1fr !important;
+  }
+  .img-grid { grid-template-columns: 1fr 1fr; }
+
+  /* Notifications view: stack the two-column layout */
+  #view-notifications > div[style*="grid-template-columns:1fr 1fr"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  #toast { left: 14px; right: 14px; top: 70px; }
+  .toast-item { max-width: 100%; }
+}
 </style>
 </head>
 <body>
+  <button id="mobileMenuBtn" type="button" aria-label="Open menu">☰</button>
+<div id="sidebarOverlay"></div>
 <div style="display:flex;min-height:100vh">
 
 <!-- SIDEBAR -->
@@ -669,7 +768,26 @@ function switchView(name) {
 document.querySelectorAll('.nav-item').forEach(item => {
   item.addEventListener('click', () => switchView(item.dataset.view));
 });
+// ── MOBILE SIDEBAR TOGGLE ──
+const sidebarEl = document.querySelector('.sidebar');
+const menuBtn = document.getElementById('mobileMenuBtn');
+const overlay = document.getElementById('sidebarOverlay');
 
+function openSidebar() {
+  sidebarEl.classList.add('open');
+  overlay.classList.add('open');
+}
+function closeSidebar() {
+  sidebarEl.classList.remove('open');
+  overlay.classList.remove('open');
+}
+menuBtn?.addEventListener('click', openSidebar);
+overlay?.addEventListener('click', closeSidebar);
+
+// Close the drawer automatically whenever a nav item is tapped
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', closeSidebar);
+});
 // ── HELPERS ───────────────────────────────────────────────────────────────────
 function badge(status) {
   const map = {
