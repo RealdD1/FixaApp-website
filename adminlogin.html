@@ -238,8 +238,11 @@
 </div>
 
 <script>
-const API = window.FIXA_CONFIG.API_URL;
-const BASE = `${API}/api/admin`;
+
+
+
+  const API = window.FIXA_CONFIG.API_URL;
+const BASE = `${API}/admin`; // match your app.use('/…', adminRoutes) path
 
   let _preAuthToken = null;
   let _setupToken   = null;
