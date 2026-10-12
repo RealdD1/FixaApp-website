@@ -254,7 +254,20 @@
 .hist-modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;justify-content:center;align-items:center;z-index:9999;padding:20px}
 .hist-modal.open{display:flex}
 .hist-modal-box{background:#0f2a44;color:#fff;padding:20px;border-radius:12px;width:90%;max-width:400px;animation:pop .3s ease}
-@keyframes pop{from{transform:scale(.8);opacity:0}to{transform:scale(1);opacity:1}}</style>
+@keyframes pop{from{transform:scale(.8);opacity:0}to{transform:scale(1);opacity:1}}
+.btn-spinner {
+  display: inline-block;
+  width: 14px; height: 14px;
+  border: 2px solid rgba(255,255,255,0.4);
+  border-top-color: #000;
+  border-radius: 50%;
+  animation: btnspin .6s linear infinite;
+  vertical-align: -2px;
+  margin-right: 6px;
+}
+@keyframes btnspin { to { transform: rotate(360deg); } }
+</style>
+
 </head>
 <body>
   
@@ -1597,63 +1610,83 @@ function clearTimedChat() {
 // ──────────────────────────────────────────
 // SEND TEXT
 // ──────────────────────────────────────────
-async function sendTextMessage() {
-  if (_isCurrentlyBanned) {
-    if (window.FixaSystem) FixaSystem.showToast('Cannot send', 'Your messaging is currently restricted', 'warning');
-    return;
+  function withLoadingState(btn, label = '') {
+    if (!btn) return () => {};
+    const original = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `<span class="btn-spinner"></span>${label}`;
+    return function restore() {
+      btn.disabled = false;
+      btn.innerHTML = original;
+    };
   }
-  if (chatSealed) return;
-  const input = document.getElementById('msgInput');
-  const text = input.value.trim();
-  if (!text || !activeChatId) return;
 
-  if (window.ChatGuard) {
-    const check = await window.ChatGuard.checkText(text);
-    if (check.blocked) {
-      window.ChatGuard.showBlockedToast(check.reason);
+  async function sendTextMessage() {
+    if (_isCurrentlyBanned) {
+      if (window.FixaSystem) FixaSystem.showToast('Cannot send', 'Your messaging is currently restricted', 'warning');
       return;
     }
-  }
+    const input = document.getElementById('msgInput');
+    if (!input) return;
+    if (!activeChatId) { showStatusMessage('Select a chat first', 'warning'); return; }
 
-  input.value = '';
-  const localId = `temp-${Date.now()}`;
-  appendMessage({ _id: localId, text, sender: user._id, createdAt: new Date().toISOString(), isLocal: true });
+    const text = input.value.trim();
+    if (!text) return;
 
-  try {
-    const res = await fetch(`${MSG_API}/${encodeURIComponent(activeChatId)}/messages`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text })
-    });
-
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      if (err.code === 'CHAT_BANNED' || err.code === 'ACCOUNT_SUSPENDED') {
-        _isCurrentlyBanned = true;
-        showBanOverlay({
-          banType: err.code === 'ACCOUNT_SUSPENDED' ? 'full' : 'chat',
-          chatBanned: err.code === 'CHAT_BANNED',
-          isSuspended: err.code === 'ACCOUNT_SUSPENDED',
-          banExpiresAt: err.banExpiresAt,
-          reason: err.reason
-        });
-        document.querySelector(`[data-msg-id="${localId}"]`)?.remove();
+    if (window.ChatGuard) {
+      const check = await window.ChatGuard.checkText(text);
+      if (check.blocked) {
+        window.ChatGuard.showBlockedToast(check.reason);
         return;
       }
-      throw new Error(err.message || 'Failed');
     }
 
-    const data = await res.json();
-    const real = data.message || data;
-    document.querySelector(`[data-msg-id="${localId}"]`)?.remove();
-    appendMessage(real);
-  } catch (err) {
-    if (err.message?.includes('CHAT_BANNED') || err.message?.includes('SUSPENDED')) {
-      await checkBanStatusOnLoad();
+    const sendBtn = document.getElementById('sendBtn');
+    const restore = withLoadingState(sendBtn, '');
+
+    FixaChatUI.resetInput();
+    const localId = `temp-text-${Date.now()}`;
+    appendMessage({
+      _id: localId, text,
+      sender: artisanDatabaseId,
+      createdAt: new Date().toISOString(),
+      isLocal: true
+    });
+
+    try {
+      const res = await fetch(`${MESSAGE_API_URL}/${encodeURIComponent(activeChatId)}/messages`, {
+        method: 'POST',
+        headers: authHeaders(true),
+        body: JSON.stringify({ text })
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        if (err.code === 'CHAT_BANNED' || err.code === 'ACCOUNT_SUSPENDED') {
+          _isCurrentlyBanned = true;
+          showBanOverlay({
+            banType: err.code === 'ACCOUNT_SUSPENDED' ? 'full' : 'chat',
+            chatBanned: err.code === 'CHAT_BANNED',
+            isSuspended: err.code === 'ACCOUNT_SUSPENDED',
+            banExpiresAt: err.banExpiresAt,
+            reason: err.reason
+          });
+          document.querySelector(`[data-msg-id="${localId}"]`)?.remove();
+          return;
+        }
+        throw new Error(err.message || 'Failed');
+      }
+
+      const data = await res.json();
+      const realMsg = data.message || data;
+      replaceOptimisticMessage(localId, realMsg);
+    } catch (err) {
+      document.querySelector(`[data-msg-id="${localId}"]`)?.remove();
+      showStatusMessage('Failed to send', 'error');
+    } finally {
+      restore();
     }
-    document.querySelector(`[data-msg-id="${localId}"]`)?.remove();
   }
-}
 
 // ──────────────────────────────────────────
 // SEND MEDIA
@@ -1717,6 +1750,8 @@ async function sendMedia(file, isVoice = false) {
     console.error('sendMedia error:', err);
     document.querySelector(`[data-msg-id="${localId}"]`)?.remove();
     URL.revokeObjectURL(blobUrl);
+  }finally {
+    restore();
   }
 }
 
@@ -2389,10 +2424,15 @@ if (!nearBottom && !isMe) FixaChatUI.noteIncoming();
         localStorage.removeItem('openChatWith');
       } catch {}
     }
+  
+
+  document.getElementById('sheet')?.addEventListener('click', e => {
+    if (e.target.id === 'sheet') closeSheet();
+  });
+  document.addEventListener('submit', e => { e.preventDefault(); e.stopPropagation(); }, true);
   }
 });
-document.getElementById('sheet').addEventListener('click', e => { if (e.target.id === 'sheet') closeSheet(); });
-document.addEventListener('submit', e => { e.preventDefault(); e.stopPropagation(); }, true);
+
 </script>
 
 <!-- Ban Overlay -->

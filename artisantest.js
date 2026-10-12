@@ -1316,13 +1316,23 @@ function handleIncomingSocketMessage(payload) {
   // ═══════════════════════════════════════════════════════════
   // SEND TEXT
   // ═══════════════════════════════════════════════════════════
+  function withLoadingState(btn, label = '') {
+    if (!btn) return () => {};
+    const original = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `<span class="btn-spinner"></span>${label}`;
+    return function restore() {
+      btn.disabled = false;
+      btn.innerHTML = original;
+    };
+  }
+
   async function sendTextMessage() {
     if (_isCurrentlyBanned) {
       if (window.FixaSystem) FixaSystem.showToast('Cannot send', 'Your messaging is currently restricted', 'warning');
       return;
     }
-// in sendTextMessage()
-const input = document.getElementById('msgInput');
+    const input = document.getElementById('msgInput');
     if (!input) return;
     if (!activeChatId) { showStatusMessage('Select a chat first', 'warning'); return; }
 
@@ -1336,6 +1346,9 @@ const input = document.getElementById('msgInput');
         return;
       }
     }
+
+    const sendBtn = document.getElementById('sendBtn');
+    const restore = withLoadingState(sendBtn, '');
 
     FixaChatUI.resetInput();
     const localId = `temp-text-${Date.now()}`;
@@ -1376,9 +1389,10 @@ const input = document.getElementById('msgInput');
     } catch (err) {
       document.querySelector(`[data-msg-id="${localId}"]`)?.remove();
       showStatusMessage('Failed to send', 'error');
+    } finally {
+      restore();
     }
   }
-
   // ═══════════════════════════════════════════════════════════
   // SEND MEDIA
   // ═══════════════════════════════════════════════════════════

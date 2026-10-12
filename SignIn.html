@@ -535,7 +535,10 @@ function updateNetworkStatus() {
         networkStatusBanner.innerHTML = '<i class="fas fa-exclamation-triangle"></i> You are currently offline. Please check your connection.';
     }
 }
-
+document.getElementById('forgotPasswordLink').addEventListener('click', (e) => {
+  e.preventDefault();
+  window.location.href = 'forgot-password.html';
+});
 // Attach event listeners to the window
 window.addEventListener('online', updateNetworkStatus);
 window.addEventListener('offline', updateNetworkStatus);

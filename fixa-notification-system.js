@@ -1240,6 +1240,16 @@ async function _submitDispute() {
   function closeDispute() {
     document.getElementById('fixaDisputeModal').classList.remove('open');
   }
+  function withLoadingState(btn, label = 'Working…') {
+  const original = btn.innerHTML;
+  btn.disabled = true;
+  btn.dataset.originalLabel = original;
+  btn.innerHTML = `<span class="btn-spinner"></span> ${label}`;
+  return function restore() {
+    btn.disabled = false;
+    btn.innerHTML = btn.dataset.originalLabel || original;
+  };
+}
 
   // ─────────────────────────────────────────────
   // RATING SYSTEM
