@@ -2,8 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-   <script src="config.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content" />   <script src="config.js"></script>
    <script src="fixa-push.js"></script>
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
   <title>Fixa - Artisan Dashboard</title>
@@ -808,6 +807,26 @@ html,body{background:var(--fixa-bg);color:var(--fixa-text);transition:background
     max-height:var(--app-h,100dvh);
   }
 }
+.btn-spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(0,0,0,.25);border-top-color:#000;border-radius:50%;animation:btnspin .6s linear infinite;vertical-align:-2px;margin-right:6px}
+@keyframes btnspin{to{transform:rotate(360deg)}}
+#status-message-box{z-index:10000 !important}   /* was hidden behind the 9600 modals */
+
+@media (max-width:768px){
+  body.chat-open{padding-bottom:0 !important;overflow:hidden}
+  body.chat-open #jobsPage{
+    position:fixed !important;left:0;right:0;top:var(--app-top,0px);
+    height:var(--app-h,100dvh) !important;max-height:var(--app-h,100dvh);
+    overflow:hidden;display:flex !important;flex-direction:column;
+  }
+  body.chat-open .messages-shell{height:100% !important;flex:1;min-height:0}
+  body.chat-open #individualChatView{height:100%;min-height:0}
+  body.chat-open #messages{flex:1 1 auto;min-height:0;overflow-y:auto}
+  /* free up room while the keyboard is open */
+  body.kb-open #executionPanel,
+  body.kb-open #topUpRequestBtn,
+  body.kb-open #artisanSecuredBanner,
+  body.kb-open #artisanPaymentBanner{display:none !important}
+}
 
   </style>
 </head>
@@ -1356,6 +1375,28 @@ html,body{background:var(--fixa-bg);color:var(--fixa-text);transition:background
   attachToSharedSocket();
 })();
 </script>
- 
+ <script>
+(function () {
+  const vv = window.visualViewport;
+  if (!vv) return;
+  function sync() {
+    const root = document.documentElement.style;
+    root.setProperty('--app-h', vv.height + 'px');
+    root.setProperty('--app-top', vv.offsetTop + 'px');
+    const kb = window.innerHeight - vv.height > 150;
+    document.body.classList.toggle('kb-open', kb);
+    if (document.body.classList.contains('chat-open')) {
+      window.scrollTo(0, 0);
+      const m = document.getElementById('messages');
+      if (kb && m) m.scrollTop = m.scrollHeight;
+    }
+  }
+  vv.addEventListener('resize', sync);
+  vv.addEventListener('scroll', sync);
+  sync();
+  document.getElementById('msgInput')?.addEventListener('focus', () =>
+    setTimeout(() => { const m = document.getElementById('messages'); if (m) m.scrollTop = m.scrollHeight; }, 300));
+})();
+</script>
 </body>
 </html>

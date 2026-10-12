@@ -36,6 +36,8 @@ const BASE_URL        = window.FIXA_CONFIG.API_URL;
   let peerBanCountdownInterval = null;
   let _isCurrentlyBanned = false;
 let lastRenderedDateStr = null;
+let newDividerBeforeId = null;
+let newDividerCount = 0;
 
   // Chat phase state
   let activeBooking = null;
@@ -191,75 +193,6 @@ let lastRenderedDateStr = null;
         fetchDashboardSummary();
       });
 
-      
-socket.on('newMessage', async (payload) => {
-  const { chatId, message, unreadCount } = payload || {};
-
-  if (!chatId || !message) return;
-
-  const isActiveChat =
-    String(activeChatId) === String(chatId);
-
-  if (isActiveChat) {
-
-    // Show message immediately
-    appendMessage(message);
-
-    // Since user is looking at this chat,
-    // immediately mark it as read.
-    fetch(`${MSG_API}/${encodeURIComponent(chatId)}/read`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    }).catch(() => {});
-
-  } else {
-
-    // Update conversation preview + unread badge
-    updateChatPreview(
-      chatId,
-      message,
-      unreadCount
-    );
-
-    const senderName =
-      message.sender?.username ||
-      message.sender?.name ||
-      message.senderName ||
-      'Artisan';
-
-    const preview =
-      message.text ||
-      (message.image ? '📷 Photo' :
-       message.voiceNote ? '🎤 Voice message' :
-       message.video ? '🎥 Video' :
-       'Sent a media file');
-
-    // Fixa notification system
-    if (window.FixaSystem) {
-      window.FixaSystem.addNotification(
-        `💬 New message from ${senderName}`,
-        preview,
-        'message',
-        chatId
-      );
-    }
-
-    // Browser notification
-    if (
-      document.hidden &&
-      'Notification' in window &&
-      Notification.permission === 'granted'
-    ) {
-      new Notification(`New message from ${senderName}`, {
-        body: preview,
-        icon: '/icons/icon-192.png',
-        tag: `fixa-chat-${chatId}`
-      });
-    }
-  }
-});
       socket.on('peerBanned', (data) => {
         if (String(data.peerUserId) === String(window._activeChatPeerId)) {
           showPeerBanBanner(data);
@@ -267,6 +200,7 @@ socket.on('newMessage', async (payload) => {
         }
       });
 
+      socket.on('newMessage', handleIncomingSocketMessage);
       
       socket.on('peerUnbanned', (data) => {
         if (String(data.peerUserId) === String(window._activeChatPeerId)) {
@@ -305,9 +239,14 @@ socket.on('newMessage', async (payload) => {
           await loadArtisanChatPhase(activeChatId);
         }
       });
-
-      socket.on('bookingStatusUpdated', (data) => {
-        const card = document.querySelector(`[data-job-id="${data.jobId || data.bookingId}"]`);
+socket.on('bookingStatusUpdated', (data) => {
+  const bid = data.bookingId || data.jobId;
+  if (activeBooking && String(activeBooking._id) === String(bid) && data.status === 'completed') {
+    activeBooking.status = 'completed';
+    applyExecutionPanelState();
+  }
+  const card = document.querySelector(`[data-job-id="${bid}"]`);
+  
         if (card) {
           const actions = card.querySelector('.job-actions');
           if (actions) actions.innerHTML = `<em>Job ${String(data.status).toUpperCase()}</em>`;
@@ -317,7 +256,6 @@ socket.on('newMessage', async (payload) => {
         fetchDashboardSummary();
       });
 
-      socket.on('newMessage', handleIncomingSocketMessage);
 
       socket.on('typing', ({ chatId }) => {
         if (String(activeChatId) === String(chatId)) {
@@ -416,12 +354,7 @@ socket.on('topUpPaid', ({ bookingId, amount }) => {
       console.error('[Socket] init failed:', e);
     }
   }
-function markChatRead(chatId) {
-  if (!chatId) return;
-  fetch(`${MESSAGE_API_URL}/${encodeURIComponent(chatId)}/read`, {
-    method: 'POST', headers: authHeaders()
-  }).catch(() => {});
-}
+
   // ═══════════════════════════════════════════════════════════
   // PHASE / PAYMENT TIMER
   // ═══════════════════════════════════════════════════════════
@@ -521,35 +454,30 @@ document.getElementById('viewPayoutHistoryBtn')?.addEventListener('click', () =>
 
   async function loadArtisanChatPhase(chatId) {
     if (!chatId) return;
-    try {
-      const chatRes = await fetch(`${BASE_URL}/api/chats/${chatId}`, { headers: authHeaders() });
-      if (chatRes.ok) {
-        const chat = await chatRes.json();
-        activeBooking = chat?.booking || null;
-        activeBookingId = activeBooking?._id || (typeof activeBooking === 'string' ? activeBooking : null);
-        activeChatStatus = chat?.status || 'intro';
-        activePaymentDeadline = activeBooking?.paymentDeadline || null;
-        if (activeBooking?.executionStatus) {
-          activeExecutionStatus = activeBooking.executionStatus;
-        }
-      }
+try {
+  const res = await fetch(`${MESSAGE_API_URL}/${encodeURIComponent(chatId)}`, { headers: authHeaders() });
+  if (!res.ok) throw new Error('Failed');
+  const messages = await res.json();
+  const list = Array.isArray(messages) ? messages : [];
+  if (container) container.innerHTML = '';
 
-      if (activeBookingId) {
-        const statusRes = await fetch(`${BASE_URL}/api/payments/status`, {
-          method: 'POST',
-          headers: authHeaders(true),
-          body: JSON.stringify({ chatId })
-        });
-        if (statusRes.ok) {
-          const s = await statusRes.json();
-          activePaymentStatus = s.paid ? 'paid' : 'unpaid';
-        }
-      } else {
-        activePaymentStatus = 'unknown';
-      }
-    } catch (err) {
-      console.warn('[loadArtisanChatPhase]', err);
-    }
+  const incoming = list.filter(m => !computeIsMe(m));
+  if (unreadAtOpen > 0 && incoming.length) {
+    const n = Math.min(unreadAtOpen, incoming.length);
+    newDividerCount = n;
+    const first = incoming[incoming.length - n];
+    newDividerBeforeId = String(first._id || first.id);
+  }
+  list.forEach(appendMessage);
+
+  const div = document.getElementById('newMsgDivider');
+  if (div) div.scrollIntoView({ block: 'center' });
+  else if (container) container.scrollTop = container.scrollHeight;
+  markChatRead(chatId);
+} catch (e) {
+  console.error('openChat messages:', e);
+  if (container) container.innerHTML = '<p style="text-align:center;color:#ef4444;padding:20px">Could not load messages</p>';
+}
 
     applyArtisanChatStateToUI();
   }
@@ -872,8 +800,8 @@ function applyExecutionPanelState() {
   const panel = document.getElementById('executionPanel');
   if (!panel) return;
 
-  const phase = getArtisanChatPhase();
-  if (phase !== 'secured') {
+  const phase = getArtisanChatPhase();const finished = String(activeBooking?.status || '').toLowerCase() === 'completed';
+if (phase !== 'secured' || finished) {
     panel.style.display = 'none';
     stopLocationTracking();
   } else {
@@ -1057,17 +985,18 @@ function applyExecutionPanelState() {
       </div>
     `;
 
-    el.addEventListener('click', () => {
-      document.querySelectorAll('.chat-item.active').forEach(item => item.classList.remove('active'));
-      el.classList.add('active');
+el.addEventListener('click', () => {
+  document.querySelectorAll('.chat-item.active').forEach(item => item.classList.remove('active'));
+  el.classList.add('active');
 
-      const state = chatListState.get(String(chatId));
-      if (state) state.unread = 0;
-      el.classList.remove('has-unread');
-      el.querySelector('.unread-badge')?.remove();
-      updateTotalUnreadBadge();
-      openChat(chatId, name);
-    });
+  const state = chatListState.get(String(chatId));
+  const unreadAtOpen = state?.unread || 0;   // capture BEFORE zeroing
+  if (state) state.unread = 0;
+  el.classList.remove('has-unread');
+  el.querySelector('.unread-badge')?.remove();
+  updateTotalUnreadBadge();
+  openChat(chatId, name, unreadAtOpen);
+});
 
     return el;
   }
@@ -1114,7 +1043,9 @@ function applyExecutionPanelState() {
   // ═══════════════════════════════════════════════════════════
   // OPEN CHAT — properly updates header with name & avatar
   // ═══════════════════════════════════════════════════════════
-  async function openChat(chatId, peerName) {
+  async function openChat(chatId, peerName, unreadAtOpen = 0) {
+    lastRenderedDateStr = null;
+     newDividerBeforeId = null;
     activeChatId = chatId;
     FixaChatUI.enter();
     if (socket?.connected) socket.emit('joinChat', String(chatId));
@@ -1201,6 +1132,8 @@ function applyExecutionPanelState() {
     clearArtisanPaymentTimer();
     hidePeerBanBanner();
     lastRenderedDateStr = null;
+    newDividerBeforeId = null;
+
 
     document.querySelectorAll('.chat-item.active').forEach(item => item.classList.remove('active'));
     document.getElementById('chatHeaderRow').style.display = 'none';
@@ -1239,6 +1172,15 @@ if (dateStr !== lastRenderedDateStr) {
   container.appendChild(sep);
   lastRenderedDateStr = dateStr;
 }
+if (msgId && newDividerBeforeId && String(msgId) === String(newDividerBeforeId)) {
+  const d = document.createElement('div');
+  d.className = 'fixa-new-divider';
+  d.id = 'newMsgDivider';
+  d.innerHTML = `<span>${newDividerCount} unread message${newDividerCount > 1 ? 's' : ''}</span>`;
+  container.appendChild(d);
+  newDividerBeforeId = null;
+}
+meta.classList.add('bubble-meta'); if (isMe) wrapper.classList.add('msg-row','sent')
     const wrapper = document.createElement('div');
     wrapper.dataset.msgId = msgId || `temp-${Date.now()}`;
     wrapper.style.cssText = `display:flex;flex-direction:column;align-items:${isMe ? 'flex-end' : 'flex-start'};margin-bottom:12px;padding:0 10px`;
@@ -1587,7 +1529,8 @@ window.showPage = showPage;
 const themeLabel = document.getElementById('themeToggleLabel');
 function syncThemeLabel() {
   if (themeLabel) themeLabel.textContent = window.FixaTheme.get() === 'dark' ? 'Dark mode' : 'Light mode';
-}
+}  const T = window.FixaTheme || window.FixaLocalTheme;
+  if (themeLabel && T) themeLabel.textContent = T.get() === 'dark' ? 'Dark mode' : 'Light mode';
 themeBtn?.addEventListener('click', () => {
   window.FixaTheme.toggle();
   syncThemeLabel();
@@ -1675,123 +1618,89 @@ const txt = document.getElementById('msgInput');    if (txt) {
     });
 
   // Top-up modal open/close
-  const topUpRequestBtn = document.getElementById("topUpRequestBtn");
-  const topUpModal = document.getElementById("topUpModal");
-  const topUpCloseBtn = document.getElementById("topUpCloseBtn");
-  const topUpCancelBtn = document.getElementById("topUpCancelBtn");
+    // ── Top-up / price proposal ──
+    const $ = id => document.getElementById(id);
+    const openModal  = id => { $(id).style.display = 'flex'; };
+    const closeModal = id => { $(id).style.display = 'none'; };
 
-  topUpRequestBtn?.addEventListener("click", () => {
-    topUpModal.style.display = "flex";
-  });
-  topUpCloseBtn?.addEventListener("click", () => {
-    topUpModal.style.display = "none";
-  });
-  topUpCancelBtn?.addEventListener("click", () => {
-    topUpModal.style.display = "none";
-  });
-
-  // Top-up submit
-document.getElementById('topUpRequestBtn')?.addEventListener('click', () => {
-  if (getArtisanChatPhase() === 'secured') {
-    const currentPrice = activeBooking?.totalPaid || activeBooking?.estimatedPrice || 0;
-    document.getElementById('topUpCurrentPriceLine').textContent =
-      `Current agreed price: ₦${Number(currentPrice).toLocaleString()}`;
-    document.getElementById('topUpDiffPreview').textContent = '';
-    document.getElementById('topUpModal').style.display = 'flex';
-  } else {
-    document.getElementById('proposalCurrentPriceLine').textContent =
-      `Current quoted price: ₦${Number(activeBooking?.estimatedPrice || 0).toLocaleString()}`;
-    document.getElementById('priceProposalModal').style.display = 'flex';
-  }
-});
-document.getElementById('topUpCancelBtn')?.addEventListener('click', () => {
-  document.getElementById('topUpModal').style.display = 'none';
-});
-
-document.getElementById('topUpNewPrice')?.addEventListener('input', (e) => {
-  const currentPrice = activeBooking?.totalPaid || activeBooking?.estimatedPrice || 0;
-  const newPrice = Number(e.target.value);
-  const preview = document.getElementById('topUpDiffPreview');
-  if (!newPrice || newPrice <= currentPrice) {
-    preview.textContent = newPrice ? 'New price must be higher than the current price' : '';
-    preview.style.color = '#ef4444';
-    return;
-  }
-  preview.style.color = '#ffd700';
-  preview.textContent = `Customer will be asked to pay an extra ₦${(newPrice - currentPrice).toLocaleString()}`;
-});
-
-document.getElementById('topUpSubmitBtn')?.addEventListener('click', async () => {
-  if (!activeBookingId) { showStatusMessage('No active booking', 'warning'); return; }
-
-  const newPrice = Number(document.getElementById('topUpNewPrice').value);
-  const reason = document.getElementById('topUpReason').value.trim();
-  const currentPrice = activeBooking?.totalPaid || activeBooking?.estimatedPrice || 0;
-
-  if (!newPrice || newPrice <= currentPrice) {
-    showStatusMessage('Enter a new price higher than the current price', 'warning');
-    return;
-  }
-  if (reason.length < 10) {
-    showStatusMessage('Reason must be at least 10 characters', 'warning');
-    return;
-  }
-
-  try {
-    const res = await fetch(`${BASE_URL}/api/bookings/${activeBookingId}/top-up`, {
-      method: 'POST',
-      headers: authHeaders(true),
-      body: JSON.stringify({ newPrice, reason })
+    $('topUpRequestBtn')?.addEventListener('click', () => {
+      if (getArtisanChatPhase() === 'secured') {
+        const cur = activeBooking?.totalPaid || activeBooking?.estimatedPrice || 0;
+        $('topUpCurrentPriceLine').textContent = `Current agreed price: ₦${Number(cur).toLocaleString()}`;
+        $('topUpDiffPreview').textContent = '';
+        openModal('topUpModal');
+      } else {
+        $('proposalCurrentPriceLine').textContent =
+          `Current quoted price: ₦${Number(activeBooking?.estimatedPrice || 0).toLocaleString()}`;
+        openModal('priceProposalModal');
+      }
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || 'Failed to request price update');
+    $('topUpCancelBtn')?.addEventListener('click', () => closeModal('topUpModal'));
+    $('proposalCancelBtn')?.addEventListener('click', () => closeModal('priceProposalModal'));
 
-    document.getElementById('topUpModal').style.display = 'none';
-    document.getElementById('topUpNewPrice').value = '';
-    document.getElementById('topUpReason').value = '';
-    showStatusMessage('Price update request sent', 'success');
-  } catch (err) {
-    showStatusMessage(err.message, 'error');
-  }
-});
-
-document.getElementById('proposalCancelBtn')?.addEventListener('click', () => {
-  document.getElementById('priceProposalModal').style.display = 'none';
-});
-
-document.getElementById('proposalSubmitBtn')?.addEventListener('click', async () => {
-  if (!activeBookingId) { showStatusMessage('No active booking', 'warning'); return; }
-
-  const newPrice = Number(document.getElementById('proposalNewPrice').value);
-  const reason = document.getElementById('proposalReasonInput').value.trim();
-  const currentPrice = activeBooking?.estimatedPrice || 0;
-
-  if (!newPrice || newPrice === currentPrice) {
-    showStatusMessage('Enter a price different from the current quote', 'warning');
-    return;
-  }
-  if (reason.length < 10) {
-    showStatusMessage('Reason must be at least 10 characters', 'warning');
-    return;
-  }
-
-  try {
-    const res = await fetch(`${BASE_URL}/api/bookings/${activeBookingId}/price-proposal`, {
-      method: 'POST',
-      headers: authHeaders(true),
-      body: JSON.stringify({ newPrice, reason })
+    $('topUpNewPrice')?.addEventListener('input', (e) => {
+      const cur = activeBooking?.totalPaid || activeBooking?.estimatedPrice || 0;
+      const np = Number(e.target.value);
+      const pv = $('topUpDiffPreview');
+      if (!np || np <= cur) {
+        pv.textContent = np ? 'New price must be higher than the current price' : '';
+        pv.style.color = '#ef4444';
+        return;
+      }
+      pv.style.color = '#ffd700';
+      pv.textContent = `Customer will be asked to pay an extra ₦${(np - cur).toLocaleString()}`;
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || 'Failed to send price proposal');
 
-    document.getElementById('priceProposalModal').style.display = 'none';
-    document.getElementById('proposalNewPrice').value = '';
-    document.getElementById('proposalReasonInput').value = '';
-    showStatusMessage('Price proposal sent', 'success');
-  } catch (err) {
-    showStatusMessage(err.message, 'error');
-  }
-});
+    async function submitPriceRequest(btn, cfg) {
+      if (btn.disabled) return;
+      if (!activeBookingId) { showStatusMessage('No active booking', 'warning'); return; }
+
+      const newPrice = Number($(cfg.priceId).value);
+      const reason = $(cfg.reasonId).value.trim();
+      const cur = cfg.currentPrice();
+
+      if (!newPrice || (cfg.mustBeHigher ? newPrice <= cur : newPrice === cur)) {
+        showStatusMessage(cfg.priceError, 'warning'); return;
+      }
+      if (reason.length < 10) { showStatusMessage('Reason must be at least 10 characters', 'warning'); return; }
+
+      const restore = withLoadingState(btn, 'Sending…');
+      const cancelBtn = $(cfg.cancelId);
+      if (cancelBtn) cancelBtn.disabled = true;
+      try {
+        const res = await fetch(`${BASE_URL}/api/bookings/${activeBookingId}/${cfg.path}`, {
+          method: 'POST', headers: authHeaders(true), body: JSON.stringify({ newPrice, reason })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message || cfg.failMsg);
+
+        closeModal(cfg.modalId);
+        $(cfg.priceId).value = '';
+        $(cfg.reasonId).value = '';
+        showStatusMessage(cfg.okMsg, 'success');
+      } catch (err) {
+        showStatusMessage(err.message || cfg.failMsg, 'error');
+      } finally {
+        restore();
+        if (cancelBtn) cancelBtn.disabled = false;
+      }
+    }
+
+    $('topUpSubmitBtn')?.addEventListener('click', e => submitPriceRequest(e.currentTarget, {
+      path: 'top-up', priceId: 'topUpNewPrice', reasonId: 'topUpReason',
+      modalId: 'topUpModal', cancelId: 'topUpCancelBtn', mustBeHigher: true,
+      currentPrice: () => activeBooking?.totalPaid || activeBooking?.estimatedPrice || 0,
+      priceError: 'Enter a new price higher than the current price',
+      okMsg: 'Top-up request sent to customer ✓', failMsg: 'Failed to request price update'
+    }));
+
+    $('proposalSubmitBtn')?.addEventListener('click', e => submitPriceRequest(e.currentTarget, {
+      path: 'price-proposal', priceId: 'proposalNewPrice', reasonId: 'proposalReasonInput',
+      modalId: 'priceProposalModal', cancelId: 'proposalCancelBtn', mustBeHigher: false,
+      currentPrice: () => activeBooking?.estimatedPrice || 0,
+      priceError: 'Enter a price different from the current quote',
+      okMsg: 'Price proposal sent ✓', failMsg: 'Failed to send price proposal'
+    }));
     // Dispute
     document.getElementById('artisanDisputeBtn')?.addEventListener('click', e => {
       e.preventDefault();
@@ -1828,46 +1737,7 @@ document.getElementById('proposalSubmitBtn')?.addEventListener('click', async ()
       window.ChatGuard.init(artisanDatabaseId, token);
     }
 
-    document.querySelectorAll('#starRow .star').forEach(star => {
-  star.addEventListener('click', () => {
-    _selectedRating = Number(star.dataset.val);
-    document.querySelectorAll('#starRow .star').forEach(s => {
-      s.style.color = Number(s.dataset.val) <= _selectedRating ? '#ffd700' : '#4a5568';
-    });
-  });
-});
 
-document.getElementById('ratingSkipBtn')?.addEventListener('click', () => {
-  document.getElementById('fixaRatingModal').style.display = 'none';
-  _ratingContext = null;
-});
-
-document.getElementById('ratingSubmitBtn')?.addEventListener('click', async () => {
-  if (!_ratingContext) return;
-  if (!_selectedRating) {
-    if (window.FixaSystem) FixaSystem.showToast('Pick a star rating first', '', 'warning');
-    return;
-  }
-  try {
-    const res = await fetch(`${BASE_URL}/api/reviews`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        artisanId: _ratingContext.artisanId,
-        bookingId: _ratingContext.bookingId,
-        rating: _selectedRating,
-        comment: document.getElementById('ratingComment').value.trim()
-      })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || 'Failed to submit review');
-    document.getElementById('fixaRatingModal').style.display = 'none';
-    _ratingContext = null;
-    if (window.FixaSystem) FixaSystem.showToast('Thanks for your feedback! ⭐', '', 'success');
-  } catch (err) {
-    if (window.FixaSystem) FixaSystem.showToast('Failed', err.message, 'warning');
-  }
-});
     loadArtisanProfile();
     loadPayoutDashboard();
     fetchDashboardSummary();

@@ -266,6 +266,9 @@
   margin-right: 6px;
 }
 @keyframes btnspin { to { transform: rotate(360deg); } }
+.account-card .btn-spinner,.logout-btn .btn-spinner,.service-item .btn-spinner{border-color:rgba(255,255,255,.3);border-top-color:var(--gold)}
+.fixa-new-divider{display:flex;justify-content:center;margin:10px 0 8px;pointer-events:none}
+.fixa-new-divider span{background:var(--gold);color:#041b2b;font-size:10px;font-weight:800;letter-spacing:.35px;text-transform:uppercase;padding:4px 12px;border-radius:999px}
 </style>
 
 </head>
@@ -282,35 +285,22 @@
     <h2 style="font-size:20px">Welcome back, <span id="usernameDisplay" style="color:var(--gold)"></span> 👋</h2>
     <p style="color:var(--text-muted);font-size:13px;margin-top:4px">What service do you need today?</p>
   </div>
+<div class="search-bar">
+  <span class="material-icons" style="color:var(--gold);font-size:20px">search</span>
+  <input id="homeSearch" type="search" enterkeyhint="search" placeholder="Search for a service..."/>
+</div>
+...
+<div class="services-grid">
+  <div class="service-item" data-service="Electrician" role="button" tabindex="0"><div class="icon-square">⚡</div><span>Electrician</span></div>
+  <div class="service-item" data-service="Plumber" role="button" tabindex="0"><div class="icon-square">🔧</div><span>Plumber</span></div>
+  <div class="service-item" data-service="AC Repair" role="button" tabindex="0"><div class="icon-square">❄️</div><span>AC Repair</span></div>
+  <div class="service-item" data-service="Cleaning" role="button" tabindex="0"><div class="icon-square">🧼</div><span>Cleaning</span></div>
+</div>
 
-  <div class="search-container">
-    <div class="search-bar">
-      <span class="material-icons" style="color:var(--gold);font-size:20px">search</span>
-      <input type="text" placeholder="Search for a service..."/>
-    </div>
-  </div>
-
-  <div class="section-title">
-    <h3>Popular Services</h3>
-    <a href="categories.html">View All →</a>
-  </div>
-  <div class="services-grid">
-    <div class="service-item"><div class="icon-square">⚡</div><span>Electrician</span></div>
-    <div class="service-item"><div class="icon-square">🔧</div><span>Plumber</span></div>
-    <div class="service-item"><div class="icon-square">❄️</div><span>AC Repair</span></div>
-    <div class="service-item"><div class="icon-square">🧼</div><span>Cleaning</span></div>
-  </div>
-
-  <div class="artisan-list">
-    <div class="section-title" style="padding:16px 0 12px"><h3>Featured Artisans</h3></div>
-    <div id="featuredArtisans">
-      <div class="artisan-card">
-        <div class="artisan-avatar">J</div>
-        <div><h4 style="font-size:15px">John Musa</h4><p style="font-size:12px;color:var(--text-muted)">Electrician • 4.9 ⭐</p></div>
-        <button class="book-btn">Book</button>
-      </div>
-    </div>
-  </div>
+<div class="artisan-list">
+  <div class="section-title" style="padding:16px 0 12px"><h3>Recent Bookings</h3></div>
+  <div id="homeRecent"><div class="empty-state"><p>Loading…</p></div></div>
+</div>
 </section>
 
 <!-- MESSAGES PAGE -->
@@ -505,6 +495,22 @@ document.getElementById('profileInitial').textContent = (user.username || 'U')[0
 // ──────────────────────────────────────────
 const BASE_URL = window.FIXA_CONFIG.API_URL;
 const MSG_API  = `${BASE_URL}/api/messages`;
+const MESSAGE_API_URL = MSG_API;
+const authHeaders = (json = false) => ({
+  Authorization: `Bearer ${token}`,
+  ...(json ? { 'Content-Type': 'application/json' } : {})
+});
+function toast(title, msg = '', type = 'success') {
+  if (window.FixaSystem?.showToast) FixaSystem.showToast(title, msg, type);
+  else alert(title + (msg ? ': ' + msg : ''));
+}
+function showStatusMessage(msg, type = 'success') {
+  toast(type === 'error' || type === 'warning' ? 'Error' : 'Done', msg, type === 'error' ? 'warning' : type);
+}
+function replaceOptimisticMessage(localId, realMsg) {
+  document.querySelector(`[data-msg-id="${localId}"]`)?.remove();
+  appendMessage(realMsg);
+}
 
 // ──────────────────────────────────────────
 // STATE
@@ -544,6 +550,8 @@ function openRatingModal({ bookingId, artisanId, artisanName }) {
 const chatListState = new Map();
 // Add near your other state variables
 const renderedMsgIds = new Set();
+let newDividerBeforeId = null;
+let newDividerCount = 0;
 let lastRenderedDateStr = null;
 
 function appendMessage(m) {
@@ -567,7 +575,14 @@ function appendMessage(m) {
     msgsEl.appendChild(sep);
     lastRenderedDateStr = dateStr;
   }
-
+if (msgId && newDividerBeforeId && String(msgId) === String(newDividerBeforeId)) {
+  const d = document.createElement('div');
+  d.className = 'fixa-new-divider';
+  d.id = 'newMsgDivider';
+  d.innerHTML = `<span>${newDividerCount} unread message${newDividerCount > 1 ? 's' : ''}</span>`;
+  msgsEl.appendChild(d);
+  newDividerBeforeId = null;
+}
   const row = document.createElement('div');
   row.className = `msg-row ${isMe ? 'sent' : 'recv'}`;
   row.dataset.msgId = msgId || `local-${Date.now()}`;
@@ -657,6 +672,7 @@ function switchPage(page) {
 
   if (page === 'messages') loadChatList();
   if (page === 'history') loadHistory(); 
+  if (page === 'home') loadHomeRecent();
 }
 
 // ──────────────────────────────────────────
@@ -836,94 +852,40 @@ socket.on('messagesRead', ({ chatId }) => {
     socket.on('artisan:locationUpdate', ({ lat, lng }) => {
       console.log('Artisan location:', lat, lng);
     });
-
-    let _activeTopUp = null;
-
-socket.on('topUpRequested', ({ bookingId, topUpId, previousPrice, newPrice, amount, reason, artisanName }) => {
-  _activeTopUp = { bookingId, topUpId };
-  document.getElementById('topUpArtisanName').textContent = artisanName || 'Your artisan';
-  document.getElementById('topUpPrevPriceDisplay').textContent = `₦${Number(previousPrice).toLocaleString()}`;
-  document.getElementById('topUpNewPriceDisplay').textContent = `₦${Number(newPrice).toLocaleString()}`;
-  document.getElementById('topUpAmountDisplay').textContent = `₦${Number(amount).toLocaleString()}`;
-  document.getElementById('topUpReasonDisplay').textContent = reason;
-  document.getElementById('topUpApprovalModal').style.display = 'flex';
-  addNotification('💰 Price Update Requested', `${artisanName}: new price ₦${Number(newPrice).toLocaleString()}`, 'payment');
-});
-
-socket.on('topUpPaid', ({ amount }) => {
-  addNotification('Top-Up Paid ✅', `Additional ₦${amount.toLocaleString()} added to escrow`, 'success');
-});
-
-document.getElementById('topUpApproveBtn').addEventListener('click', async () => {
+document.getElementById('topUpApproveBtn').addEventListener('click', async (e) => {
   if (!_activeTopUp) return;
+  const restore = withLoadingState(e.currentTarget, 'Redirecting…');
   try {
     const res = await fetch(`${BASE_URL}/api/bookings/${_activeTopUp.bookingId}/top-up/${_activeTopUp.topUpId}/approve`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+      method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message);
-
-    // NEW: remember this top-up so we can verify it on return
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.message || 'Could not approve');
     localStorage.setItem('pendingTopUp', JSON.stringify({
-      bookingId: _activeTopUp.bookingId,
-      topUpId: _activeTopUp.topUpId,
-      reference: data.reference
+      bookingId: _activeTopUp.bookingId, topUpId: _activeTopUp.topUpId, reference: data.reference
     }));
-
     document.getElementById('topUpApprovalModal').style.display = 'none';
     window.location.href = data.authorizationUrl;
   } catch (err) {
-    if (window.FixaSystem) FixaSystem.showToast('Failed', err.message, 'warning');
+    restore();
+    toast('Failed', err.message, 'warning');
   }
 });
 
-document.getElementById('topUpRejectBtn').addEventListener('click', async () => {
+document.getElementById('topUpRejectBtn').addEventListener('click', async (e) => {
   if (!_activeTopUp) return;
+  const restore = withLoadingState(e.currentTarget, 'Rejecting…');
   try {
-    await fetch(`${BASE_URL}/api/bookings/${_activeTopUp.bookingId}/top-up/${_activeTopUp.topUpId}/reject`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}` }
+    const res = await fetch(`${BASE_URL}/api/bookings/${_activeTopUp.bookingId}/top-up/${_activeTopUp.topUpId}/reject`, {
+      method: 'POST', headers: { Authorization: `Bearer ${token}` }
     });
+    if (!res.ok) throw new Error('Could not reject');
     document.getElementById('topUpApprovalModal').style.display = 'none';
     _activeTopUp = null;
-  } catch {}
-});
-socket.on('priceProposalRequested', ({ bookingId, previousPrice, newPrice, reason, artisanName }) => {
-  if (String(activeBookingId) !== String(bookingId)) return;
-  document.getElementById('proposalArtisanName').textContent = artisanName || 'Your artisan';
-  document.getElementById('proposalPrevPrice').textContent = `₦${previousPrice.toLocaleString()}`;
-  document.getElementById('proposalNewPrice').textContent = `₦${newPrice.toLocaleString()}`;
-  document.getElementById('proposalReason').textContent = reason;
-  document.getElementById('priceProposalBanner').style.display = 'flex';
-  addNotification('💬 New Price Proposed', `${artisanName}: ₦${newPrice.toLocaleString()}`, bookingId);
-});
-
-document.getElementById('proposalApproveBtn')?.addEventListener('click', async () => {
-  try {
-    const res = await fetch(`${BASE_URL}/api/bookings/${activeBookingId}/price-proposal/approve`, {
-      method: 'PUT',
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message);
-    activeBooking.estimatedPrice = data.estimatedPrice;
-    document.getElementById('priceProposalBanner').style.display = 'none';
-    applyChatStateToUI();
-    if (window.FixaSystem) FixaSystem.showToast('Price updated', `New price: ₦${data.estimatedPrice.toLocaleString()}`, 'success');
+    toast('Request rejected', 'The artisan has been notified', 'success');
   } catch (err) {
-    if (window.FixaSystem) FixaSystem.showToast('Failed', err.message, 'warning');
-  }
-});
-
-document.getElementById('proposalRejectBtn')?.addEventListener('click', async () => {
-  try {
-    await fetch(`${BASE_URL}/api/bookings/${activeBookingId}/price-proposal/reject`, {
-      method: 'PUT',
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    document.getElementById('priceProposalBanner').style.display = 'none';
-  } catch {}
+    toast('Failed', err.message, 'warning');
+  } finally { restore(); }
 });
 socket.on('bookingStatusUpdated', ({ status, artisanName, bookingId, artisanId }) => {
        const msgs = {
@@ -938,6 +900,7 @@ socket.on('bookingStatusUpdated', ({ status, artisanName, bookingId, artisanId }
   if (status === 'completed' && bookingId && artisanId) {
     openRatingModal({ bookingId, artisanId, artisanName });
   }
+  if (activeBooking && String(activeBooking._id) === String(bookingId)) { activeBooking.status = 'completed'; hideJobStatusUI(); }
 });
 
     socket.on('bookingCancelled', async ({ bookingId, reason }) => {
@@ -1084,15 +1047,15 @@ function renderChatList(chats) {
         </div>
       </div>
     `;
-    el.addEventListener('click', () => {
-      // Clear unread for this chat
-      const state = chatListState.get(String(chatId));
-      if (state) state.unread = 0;
-      el.classList.remove('has-unread');
-      el.querySelector('.unread-badge')?.remove();
-      updateTotalUnreadBadge();
-      openChat(chatId, name, isSealed, timerLeft || 0);
-    });
+el.addEventListener('click', () => {
+  const state = chatListState.get(String(chatId));
+  const unreadAtOpen = state?.unread || 0;      // capture BEFORE zeroing
+  if (state) state.unread = 0;
+  el.classList.remove('has-unread');
+  el.querySelector('.unread-badge')?.remove();
+  updateTotalUnreadBadge();
+  openChat(chatId, name, isSealed, timerLeft || 0, unreadAtOpen);
+});
     container.appendChild(el);
   });
   updateTotalUnreadBadge();
@@ -1105,6 +1068,7 @@ function markChatRead(chatId) {
 }
 
 function updateExecutionTimeline(status) {
+  if (isBookingFinished(activeBooking)) { hideJobStatusUI(); return; }
   const timeline = document.getElementById('executionTimeline');
   if (!timeline) return;
   timeline.style.display = 'block';
@@ -1186,7 +1150,7 @@ function updateChatPreview(chatId, message, unreadCount) {
 // ──────────────────────────────────────────
 // OPEN CHAT
 // ──────────────────────────────────────────
-async function openChat(chatId, peerName, isSealed = false, timerSecs = 0) {
+async function openChat(chatId, peerName, isSealed = false, timerSecs = 0,unreadAtOpen = 0) {
   activeChatId = chatId;
   chatSealed = isSealed;
   activeBookingId = null;
@@ -1217,15 +1181,28 @@ async function openChat(chatId, peerName, isSealed = false, timerSecs = 0) {
 
   const msgsEl = document.getElementById('messages');
       renderedMsgIds.clear();
+      newDividerBeforeId = null;
 lastRenderedDateStr = null;
   msgsEl.innerHTML = '<div class="empty-state"><p>Loading messages...</p></div>';
   try {
     const res = await fetch(`${MSG_API}/${encodeURIComponent(chatId)}`, { headers: { Authorization: `Bearer ${token}` } });
     if (!res.ok) throw new Error('Failed');
-    const msgs = await res.json();
-    msgsEl.innerHTML = '';
-    (Array.isArray(msgs) ? msgs : []).forEach(appendMessage);
-    msgsEl.scrollTop = msgsEl.scrollHeight;
+const msgs = await res.json();
+const list = Array.isArray(msgs) ? msgs : [];
+msgsEl.innerHTML = '';
+
+const incoming = list.filter(m => !computeIsMe(m));
+if (unreadAtOpen > 0 && incoming.length) {
+  const n = Math.min(unreadAtOpen, incoming.length);
+  newDividerCount = n;
+  const first = incoming[incoming.length - n];
+  newDividerBeforeId = String(first._id || first.id);
+}
+list.forEach(appendMessage);
+
+const div = document.getElementById('newMsgDivider');
+if (div) div.scrollIntoView({ block: 'center' });
+else msgsEl.scrollTop = msgsEl.scrollHeight;
   } catch {
 
     msgsEl.innerHTML = '<div class="empty-state"><p style="color:#ef4444">Could not load messages</p></div>';
@@ -1272,6 +1249,14 @@ function canOpenDispute() {
     if (ageMs > 7 * 24 * 60 * 60 * 1000) return false;
   }
   return true;
+}
+function isBookingFinished(b) { return String(b?.status || '').toLowerCase() === 'completed'; }
+function hideJobStatusUI() {
+  ['executionTimeline', 'timedBanner', 'payNowBtn'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.style.display = 'none';
+  });
+  const g = document.getElementById('proofPhotoGallery');
+  if (g) { g.innerHTML = ''; g.style.display = 'none'; }
 }
 
 function applyChatStateToUI() {
@@ -1412,6 +1397,7 @@ if (
   startPaymentDeadline(activePaymentDeadline);
 }
 applyChatStateToUI();
+if (isBookingFinished(activeBooking)) hideJobStatusUI();
 }
 
 function updatePeerStatus(isOnline, lastSeen) {
@@ -1648,7 +1634,7 @@ function clearTimedChat() {
     const localId = `temp-text-${Date.now()}`;
     appendMessage({
       _id: localId, text,
-      sender: artisanDatabaseId,
+      sender: user._id,
       createdAt: new Date().toISOString(),
       isLocal: true
     });
@@ -1750,8 +1736,6 @@ async function sendMedia(file, isVoice = false) {
     console.error('sendMedia error:', err);
     document.querySelector(`[data-msg-id="${localId}"]`)?.remove();
     URL.revokeObjectURL(blobUrl);
-  }finally {
-    restore();
   }
 }
 
@@ -2151,47 +2135,54 @@ async function confirmCompletion(bookingId){
     const job = _histJobs.find(j => j.id === bookingId);
     if (job) {
       openRatingModal({ bookingId: job.id, artisanId: job.artisanId, artisanName: job.artisanName });
-    }
+    }if (activeBooking && String(activeBooking._id) === String(bookingId)) { activeBooking.status = 'completed'; hideJobStatusUI(); }
     loadHistory();
   }catch(err){
     if (window.FixaSystem) FixaSystem.showToast('Error confirming job', '', 'warning'); else alert('Error confirming job ❌');
   }
 }
-async function viewDetails(id){
-  try{
-    const res = await fetch(`${BASE_URL}/api/bookings/${id}`, {
-      headers:{ Authorization:`Bearer ${token}` }
-    });
+async function viewDetails(id) {
+  const cached = _histJobs.find(j => j.id === id) || {};
+  try {
+    const res = await fetch(`${BASE_URL}/api/bookings/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) throw new Error();
     const job = await res.json();
+
     const pic = job.artisanId?.profilePic;
-    const imageUrl = !pic
-      ? `${BASE_URL}/uploads/default-avatar.png`
-      : (String(pic).startsWith('http') ? pic : `${BASE_URL}/${pic}`);
-    const name = job.artisanId?.name || job.artisanId?.user?.username || 'Assigning artisan…';
+    const imageUrl = cached.artisanPic || (!pic ? `${BASE_URL}/uploads/default-avatar.png`
+      : (String(pic).startsWith('http') ? pic : `${BASE_URL}/${pic}`));
+    const name = cached.artisanName || job.artisanId?.name || job.artisanId?.user?.username || 'Assigning artisan…';
     const group = histStatusGroup(job.status);
-    const rateBtn = job.group === 'completed'
-  ? `<button class="btn-outline" onclick='openRatingModal({bookingId:"${job.id}", artisanId:"${job.artisanId}", artisanName:"${escHtml(job.artisanName)}"})'>⭐ Rate</button>`
-  : '';
 
     document.getElementById('histModalContent').innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #1a3a5a;padding-bottom:1rem;margin-bottom:15px">
-        <h3 style="margin:0;color:var(--gold)">Job Details</h3>
+        <h3 style="margin:0;color:var(--gold)">Booking Details</h3>
         <span onclick="closeHistModal()" style="cursor:pointer;font-size:24px;color:var(--text-muted)">&times;</span>
       </div>
-      <div style="text-align:center;margin-bottom:15px">
-        <img src="${imageUrl}" onerror="this.src='${BASE_URL}/uploads/default-avatar.png'" style="width:60px;height:60px;border-radius:50%;border:2px solid var(--gold);object-fit:cover">
-        <p style="margin:5px 0;font-weight:bold">${escHtml(name)}</p>
+      <div style="display:flex;gap:14px;align-items:flex-start">
+        <div style="text-align:center;flex-shrink:0;width:84px">
+          <img src="${imageUrl}" onerror="this.src='${BASE_URL}/uploads/default-avatar.png'"
+               style="width:76px;height:76px;border-radius:50%;border:2px solid var(--gold);object-fit:cover">
+          <p style="margin:6px 0 0;font-weight:700;font-size:12px;word-break:break-word">${escHtml(name)}</p>
+        </div>
+        <div style="flex:1;min-width:0;font-size:13.5px;line-height:1.6">
+          <p><b>Service:</b> ${escHtml(job.category?.name || job.category || 'General service')}</p>
+          <p><b>Status:</b> <span class="badge ${group}">${escHtml(job.status || '')}</span></p>
+          <p><b>Price:</b> ${job.estimatedPrice ? '₦' + Number(job.estimatedPrice).toLocaleString() : 'TBD'}</p>
+          <p><b>Address:</b> ${escHtml(job.address || '—')}</p>
+          <p><b>Date:</b> ${job.createdAt ? new Date(job.createdAt).toLocaleString() : '—'}</p>
+        </div>
       </div>
-      <p><b>Service:</b> ${escHtml(job.category?.name || job.category || 'General service')}</p>
-      <p><b>Description:</b> ${escHtml(job.description || '—')}</p>
-      <p><b>Status:</b> <span class="badge ${group}">${escHtml(job.status || '')}</span></p>
-      <p><b>Price:</b> ${job.estimatedPrice ? '₦' + Number(job.estimatedPrice).toLocaleString() : 'TBD'}</p>
-      <p><b>Address:</b> ${escHtml(job.address || '—')}</p>
-      <p><b>Date:</b> ${job.createdAt ? new Date(job.createdAt).toLocaleString() : '—'}</p>
+      <p style="margin-top:12px;font-size:13.5px"><b>Description:</b> ${escHtml(job.description || '—')}</p>
+      ${group === 'completed' ? '<button class="btn-outline" id="histRateBtn" style="width:100%;margin-top:14px">⭐ Rate artisan</button>' : ''}
     `;
+    document.getElementById('histRateBtn')?.addEventListener('click', () => {
+      closeHistModal();
+      openRatingModal({ bookingId: id, artisanId: cached.artisanId, artisanName: name });
+    });
     document.getElementById('histModal').classList.add('open');
-  }catch(err){
-    if (window.FixaSystem) FixaSystem.showToast('Failed to load details', '', 'warning'); else alert('Failed to load details');
+  } catch {
+    toast('Failed to load details', '', 'warning');
   }
 }
 
@@ -2272,24 +2263,162 @@ async function openPayments() {
       </div>`).join('') : '<p style="color:var(--text-muted)">No payments yet.</p>';
   } catch { document.getElementById('sheetBody').innerHTML = '<p style="color:#ef4444">Could not load payments.</p>'; }
 }
+// ── generic loader for card-style buttons ──
+async function runWithLoader(btn, task) {
+  if (!btn || btn.dataset.busy) return;
+  btn.dataset.busy = '1'; btn.disabled = true; btn.style.opacity = '.7';
+  const chev = btn.querySelector('.material-icons');
+  const oldIcon = chev ? chev.textContent : '';
+  if (chev) chev.innerHTML = '<span class="btn-spinner" style="margin:0"></span>';
+  try { await task(); }
+  catch (err) { toast('Something went wrong', err.message || 'Please try again', 'warning'); }
+  finally {
+    delete btn.dataset.busy; btn.disabled = false; btn.style.opacity = '';
+    if (chev) { chev.innerHTML = ''; chev.textContent = oldIcon; }
+  }
+}
 
-document.getElementById('btnProfile').addEventListener('click', openProfile);
-document.getElementById('btnPayments').addEventListener('click', openPayments);
-document.getElementById('btnSecurity').addEventListener('click', openSecurity);
+async function openProfile() {
+  const res = await fetch(`${BASE_URL}/api/users/me`, { headers: authJson });
+  if (!res.ok) throw new Error('Could not load your profile');
+  const me = await res.json();
+  openSheet('Personal Information', `
+    <input id="pfName" style="${fieldCss}" placeholder="Username" value="${escHtml(me.username || user.username || '')}">
+    <input id="pfPhone" style="${fieldCss}" placeholder="Phone" value="${escHtml(me.phone || '')}">
+    <input id="pfAddress" style="${fieldCss}" placeholder="Address" value="${escHtml(me.address || '')}">
+    <input style="${fieldCss};opacity:.6" value="${escHtml(me.email || user.email || '')}" disabled>
+    <button style="${btnCss}" onclick="saveProfile(this)">Save changes</button>`);
+}
+
+async function saveProfile(btn) {
+  const body = {
+    username: document.getElementById('pfName').value.trim(),
+    phone: document.getElementById('pfPhone').value.trim(),
+    address: document.getElementById('pfAddress').value.trim()
+  };
+  if (!body.username) return toast('Name required', '', 'warning');
+  const restore = withLoadingState(btn, 'Saving…');
+  try {
+    const res = await fetch(`${BASE_URL}/api/users/me`, { method: 'PUT', headers: authJson, body: JSON.stringify(body) });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.message || 'Update failed');
+    Object.assign(user, body);
+    localStorage.setItem('user', JSON.stringify(user));
+    document.getElementById('profileName').textContent = body.username;
+    document.getElementById('usernameDisplay').textContent = body.username;
+    document.getElementById('profileInitial').textContent = body.username[0].toUpperCase();
+    closeSheet();
+    toast('Profile updated', '', 'success');
+  } catch (e) { toast('Failed', e.message, 'warning'); }
+  finally { restore(); }
+}
+
+function openSecurity() {
+  openSheet('Change Password', `
+    <input id="pwOld" type="password" style="${fieldCss}" placeholder="Current password">
+    <input id="pwNew" type="password" style="${fieldCss}" placeholder="New password (min 8 characters)">
+    <input id="pwNew2" type="password" style="${fieldCss}" placeholder="Confirm new password">
+    <button style="${btnCss}" onclick="changePassword(this)">Update password</button>`);
+}
+
+async function changePassword(btn) {
+  const currentPassword = document.getElementById('pwOld').value;
+  const newPassword = document.getElementById('pwNew').value;
+  if (!currentPassword) return toast('Missing', 'Enter your current password', 'warning');
+  if (newPassword.length < 8) return toast('Too short', 'Use at least 8 characters', 'warning');
+  if (newPassword !== document.getElementById('pwNew2').value) return toast('Mismatch', 'Passwords do not match', 'warning');
+  const restore = withLoadingState(btn, 'Updating…');
+  try {
+    const res = await fetch(`${BASE_URL}/api/users/change-password`, { method: 'PUT', headers: authJson, body: JSON.stringify({ currentPassword, newPassword }) });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.message || 'Failed');
+    closeSheet();
+    toast('Password updated', '', 'success');
+  } catch (e) { toast('Failed', e.message, 'warning'); }
+  finally { restore(); }
+}
+
+async function openPayments() {
+  const res = await fetch(`${BASE_URL}/api/bookings`, { headers: authJson });
+  if (!res.ok) throw new Error('Could not load payments');
+  const list = await res.json();
+  const paid = (Array.isArray(list) ? list : []).filter(b => ['escrowed', 'released', 'refunded'].includes(b.paymentStatus));
+  openSheet('Payment History', paid.length ? paid.map(b => `
+    <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.08)">
+      <div><div style="font-weight:700">${escHtml(b.category?.name || b.category || 'Service')}</div>
+      <div style="font-size:12px;color:var(--text-muted)">${new Date(b.createdAt).toLocaleDateString()} · ${escHtml(b.paymentStatus)}</div></div>
+      <div style="font-weight:700">₦${Number(b.estimatedPrice || 0).toLocaleString()}</div>
+    </div>`).join('') : '<p style="color:var(--text-muted)">No payments yet.</p>');
+}
+
+document.getElementById('btnProfile').addEventListener('click',  e => runWithLoader(e.currentTarget, openProfile));
+document.getElementById('btnPayments').addEventListener('click', e => runWithLoader(e.currentTarget, openPayments));
+document.getElementById('btnSecurity').addEventListener('click', e => runWithLoader(e.currentTarget, async () => openSecurity()));
+
+// ── Home page ──
+function goToServices(q) {
+  window.location.href = 'categories.html' + (q ? `?search=${encodeURIComponent(q)}` : '');
+}
+function initHomeButtons() {
+  document.querySelectorAll('.service-item[data-service]').forEach(el => {
+    const go = () => {
+      if (el.dataset.busy) return;
+      el.dataset.busy = '1';
+      el.querySelector('.icon-square').innerHTML = '<span class="btn-spinner" style="margin:0"></span>';
+      toast('Opening ' + el.dataset.service, 'Finding artisans…', 'system');
+      goToServices(el.dataset.service);
+    };
+    el.addEventListener('click', go);
+    el.addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
+  });
+  document.getElementById('homeSearch')?.addEventListener('keydown', e => {
+    if (e.key !== 'Enter') return;
+    const q = e.target.value.trim();
+    if (!q) return toast('Type a service', 'e.g. Plumber', 'warning');
+    goToServices(q);
+  });
+}
+async function loadHomeRecent() {
+  const box = document.getElementById('homeRecent');
+  if (!box) return;
+  try {
+    const res = await fetch(`${BASE_URL}/api/bookings`, { headers: { Authorization: `Bearer ${token}` } });
+    const data = res.ok ? await res.json() : [];
+    const jobs = (Array.isArray(data) ? data : []).slice(0, 3);
+    if (!jobs.length) {
+      box.innerHTML = '<div class="empty-state"><p>No bookings yet — pick a service above to get started.</p></div>';
+      return;
+    }
+    box.innerHTML = jobs.map(j => {
+      const name = j.artisanId?.name || j.artisanId?.user?.username || 'Assigning artisan…';
+      return `<div class="artisan-card">
+        <div class="artisan-avatar">${escHtml((name[0] || 'A').toUpperCase())}</div>
+        <div style="min-width:0"><h4 style="font-size:15px">${escHtml(j.category?.name || j.category || 'Service')}</h4>
+        <p style="font-size:12px;color:var(--text-muted)">${escHtml(name)} • ${escHtml(j.status || 'pending')}</p></div>
+        <button class="book-btn" onclick="switchPage('history')">View</button></div>`;
+    }).join('');
+  } catch {
+    box.innerHTML = '<div class="empty-state"><p>Could not load bookings.</p></div>';
+  }
+}
 // ──────────────────────────────────────────
 // INIT
 // ──────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   initSocket();
-
+  initHomeButtons();
+  loadHomeRecent();
   if (window.FixaSystem) {
     window.FixaSystem.init(socket, user, token, BASE_URL, 'customer');
   }
 
-  document.getElementById('banLogoutBtn')?.addEventListener('click', () => {
-    localStorage.clear();
-    window.location.href = 'SignIn.html';
-  });
+document.getElementById('logoutBtn').addEventListener('click', e => {
+  if (e.currentTarget.dataset.busy) return;
+  e.currentTarget.dataset.busy = '1';
+  withLoadingState(e.currentTarget, 'Logging out…');
+  toast('Logging out', 'See you soon 👋', 'system');
+  setTimeout(() => { localStorage.clear(); window.location.href = 'SignIn.html'; }, 700);
+});
 
   checkBanStatusOnLoad();
 
@@ -2396,21 +2525,6 @@ document.getElementById('ratingSubmitBtn')?.addEventListener('click', async () =
   handlePaymentReturn();
   // DOMContentLoaded, after the other chat controls:
 FixaChatUI.init({ messages: 'messages', footer: 'chatFooter', input: 'msgInput' });
-
-// openChat(): first lines
-FixaChatUI.enter();
-
-// closeChat(): first line
-FixaChatUI.exit();
-
-// switchPage(): first line
-FixaChatUI.exit();
-
-// sendTextMessage(): replace `input.value = '';` with
-FixaChatUI.resetInput();
-
-// appendMessage(): at the end, after computing nearBottom
-if (!nearBottom && !isMe) FixaChatUI.noteIncoming();
 
   // Pending chat from URL
   const urlParams = new URLSearchParams(window.location.search);
