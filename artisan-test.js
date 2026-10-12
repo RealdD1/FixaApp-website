@@ -425,7 +425,6 @@ socket.on('topUpRejected', () => {
 
     applyExecutionPanelState();
   }
-
   async function loadArtisanChatPhase(chatId) {
     if (!chatId) return;
     try {
@@ -1097,14 +1096,28 @@ async function submitTopUpRequest() {
       console.warn('openChat metadata:', e);
     }
 
-    await loadArtisanChatPhase(chatId);
+       await loadArtisanChatPhase(chatId);
 
     try {
       const res = await fetch(`${MESSAGE_API_URL}/${encodeURIComponent(chatId)}`, { headers: authHeaders() });
       if (!res.ok) throw new Error('Failed');
       const messages = await res.json();
+      const list = Array.isArray(messages) ? messages : [];
       if (container) container.innerHTML = '';
-      (Array.isArray(messages) ? messages : []).forEach(appendMessage);
+
+      const incoming = list.filter(m => !computeIsMe(m));
+      if (unreadAtOpen > 0 && incoming.length) {
+        const n = Math.min(unreadAtOpen, incoming.length);
+        newDividerCount = n;
+        const first = incoming[incoming.length - n];
+        newDividerBeforeId = String(first._id || first.id);
+      }
+      list.forEach(appendMessage);
+
+      const div = document.getElementById('newMsgDivider');
+      if (div) div.scrollIntoView({ block: 'center' });
+      else if (container) container.scrollTop = container.scrollHeight;
+      markChatRead(chatId);
     } catch (e) {
       console.error('openChat messages:', e);
       if (container) container.innerHTML = '<p style="text-align:center;color:#ef4444;padding:20px">Could not load messages</p>';
