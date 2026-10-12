@@ -827,6 +827,12 @@ html,body{background:var(--fixa-bg);color:var(--fixa-text);transition:background
   body.kb-open #artisanSecuredBanner,
   body.kb-open #artisanPaymentBanner{display:none !important}
 }
+#messages{height:auto !important}
+#individualChatView{overflow:hidden}
+@media (max-width:768px){
+  body.chat-open #jobsPage{bottom:auto !important}
+  body.chat-open #chatFooter{position:relative !important}
+}
 
   </style>
 </head>
@@ -1375,15 +1381,17 @@ html,body{background:var(--fixa-bg);color:var(--fixa-text);transition:background
   attachToSharedSocket();
 })();
 </script>
- <script>
+<script>
 (function () {
   const vv = window.visualViewport;
   if (!vv) return;
+  let base = vv.height;
   function sync() {
+    base = Math.max(base, vv.height);
     const root = document.documentElement.style;
     root.setProperty('--app-h', vv.height + 'px');
     root.setProperty('--app-top', vv.offsetTop + 'px');
-    const kb = window.innerHeight - vv.height > 150;
+    const kb = base - vv.height > 150;
     document.body.classList.toggle('kb-open', kb);
     if (document.body.classList.contains('chat-open')) {
       window.scrollTo(0, 0);
@@ -1393,6 +1401,7 @@ html,body{background:var(--fixa-bg);color:var(--fixa-text);transition:background
   }
   vv.addEventListener('resize', sync);
   vv.addEventListener('scroll', sync);
+  window.addEventListener('orientationchange', () => { base = 0; setTimeout(sync, 300); });
   sync();
   document.getElementById('msgInput')?.addEventListener('focus', () =>
     setTimeout(() => { const m = document.getElementById('messages'); if (m) m.scrollTop = m.scrollHeight; }, 300));

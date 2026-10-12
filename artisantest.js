@@ -454,31 +454,30 @@ document.getElementById('viewPayoutHistoryBtn')?.addEventListener('click', () =>
 
   async function loadArtisanChatPhase(chatId) {
     if (!chatId) return;
-try {
-  const res = await fetch(`${MESSAGE_API_URL}/${encodeURIComponent(chatId)}`, { headers: authHeaders() });
-  if (!res.ok) throw new Error('Failed');
-  const messages = await res.json();
-  const list = Array.isArray(messages) ? messages : [];
-  if (container) container.innerHTML = '';
-
-  const incoming = list.filter(m => !computeIsMe(m));
-  if (unreadAtOpen > 0 && incoming.length) {
-    const n = Math.min(unreadAtOpen, incoming.length);
-    newDividerCount = n;
-    const first = incoming[incoming.length - n];
-    newDividerBeforeId = String(first._id || first.id);
-  }
-  list.forEach(appendMessage);
-
-  const div = document.getElementById('newMsgDivider');
-  if (div) div.scrollIntoView({ block: 'center' });
-  else if (container) container.scrollTop = container.scrollHeight;
-  markChatRead(chatId);
-} catch (e) {
-  console.error('openChat messages:', e);
-  if (container) container.innerHTML = '<p style="text-align:center;color:#ef4444;padding:20px">Could not load messages</p>';
-}
-
+    try {
+      const chatRes = await fetch(`${BASE_URL}/api/chats/${chatId}`, { headers: authHeaders() });
+      if (chatRes.ok) {
+        const chat = await chatRes.json();
+        activeBooking = chat?.booking || null;
+        activeBookingId = activeBooking?._id || (typeof activeBooking === 'string' ? activeBooking : null);
+        activeChatStatus = chat?.status || 'intro';
+        activePaymentDeadline = activeBooking?.paymentDeadline || null;
+        if (activeBooking?.executionStatus) activeExecutionStatus = activeBooking.executionStatus;
+      }
+      if (activeBookingId) {
+        const statusRes = await fetch(`${BASE_URL}/api/payments/status`, {
+          method: 'POST', headers: authHeaders(true), body: JSON.stringify({ chatId })
+        });
+        if (statusRes.ok) {
+          const s = await statusRes.json();
+          activePaymentStatus = s.paid ? 'paid' : 'unpaid';
+        }
+      } else {
+        activePaymentStatus = 'unknown';
+      }
+    } catch (err) {
+      console.warn('[loadArtisanChatPhase]', err);
+    }
     applyArtisanChatStateToUI();
   }
 
@@ -1044,6 +1043,8 @@ el.addEventListener('click', () => {
   // OPEN CHAT — properly updates header with name & avatar
   // ═══════════════════════════════════════════════════════════
   async function openChat(chatId, peerName, unreadAtOpen = 0) {
+    document.documentElement.classList.add('chat-open');
+document.body.classList.add('chat-open');
     lastRenderedDateStr = null;
      newDividerBeforeId = null;
     activeChatId = chatId;
@@ -1108,9 +1109,21 @@ el.addEventListener('click', () => {
       const res = await fetch(`${MESSAGE_API_URL}/${encodeURIComponent(chatId)}`, { headers: authHeaders() });
       if (!res.ok) throw new Error('Failed');
       const messages = await res.json();
+      const list = Array.isArray(messages) ? messages : [];
       if (container) container.innerHTML = '';
 
-      (Array.isArray(messages) ? messages : []).forEach(appendMessage);
+      const incoming = list.filter(m => !computeIsMe(m));
+      if (unreadAtOpen > 0 && incoming.length) {
+        const n = Math.min(unreadAtOpen, incoming.length);
+        newDividerCount = n;
+        const first = incoming[incoming.length - n];
+        newDividerBeforeId = String(first._id || first.id);
+      }
+      list.forEach(appendMessage);
+
+      const div = document.getElementById('newMsgDivider');
+      if (div) div.scrollIntoView({ block: 'center' });
+      else if (container) container.scrollTop = container.scrollHeight;
       markChatRead(chatId);
     } catch (e) {
       console.error('openChat messages:', e);
@@ -1122,6 +1135,8 @@ el.addEventListener('click', () => {
   window.openChat = openChat;
 
   function closeChat() {
+    document.documentElement.classList.add('chat-open');
+document.body.classList.add('chat-open');
     FixaChatUI.exit();  
     if (activeChatId && socket?.connected) socket.emit('leaveChat', String(activeChatId));
     activeChatId = null;
@@ -1180,7 +1195,6 @@ if (msgId && newDividerBeforeId && String(msgId) === String(newDividerBeforeId))
   container.appendChild(d);
   newDividerBeforeId = null;
 }
-meta.classList.add('bubble-meta'); if (isMe) wrapper.classList.add('msg-row','sent')
     const wrapper = document.createElement('div');
     wrapper.dataset.msgId = msgId || `temp-${Date.now()}`;
     wrapper.style.cssText = `display:flex;flex-direction:column;align-items:${isMe ? 'flex-end' : 'flex-start'};margin-bottom:12px;padding:0 10px`;
@@ -1228,6 +1242,8 @@ meta.classList.add('bubble-meta'); if (isMe) wrapper.classList.add('msg-row','se
     meta.textContent = formatTimeShort(m.createdAt || Date.now());
     if (isMe) meta.textContent += (m.seenAt || m.seen) ? ' ✓✓' : (m.deliveredAt || m.delivered) ? ' ✓' : ' ·';
     bubble.appendChild(meta);
+        meta.classList.add('bubble-meta');
+    if (isMe) wrapper.classList.add('msg-row', 'sent');
        container.appendChild(wrapper);
     const nearBottom = (container.scrollHeight - container.clientHeight - container.scrollTop) < 120;
     if (!nearBottom && !isMe) FixaChatUI.noteIncoming();
@@ -1525,17 +1541,7 @@ window.showPage = showPage;
       e.preventDefault();
       sendTextMessage();
     });
-    const themeBtn = document.getElementById('themeToggleBtn');
-const themeLabel = document.getElementById('themeToggleLabel');
-function syncThemeLabel() {
-  if (themeLabel) themeLabel.textContent = window.FixaTheme.get() === 'dark' ? 'Dark mode' : 'Light mode';
-}  const T = window.FixaTheme || window.FixaLocalTheme;
-  if (themeLabel && T) themeLabel.textContent = T.get() === 'dark' ? 'Dark mode' : 'Light mode';
-themeBtn?.addEventListener('click', () => {
-  window.FixaTheme.toggle();
-  syncThemeLabel();
-});
-syncThemeLabel();
+
 
 // in wireUp()
 const txt = document.getElementById('msgInput');    if (txt) {
