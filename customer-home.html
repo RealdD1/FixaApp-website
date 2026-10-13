@@ -536,6 +536,7 @@ let _isCurrentlyBanned = false;
 let banCountdownInterval = null;
 let peerBanCountdownInterval = null;
 let _ratingContext = null;
+let _activeTopUp = null;
 let _selectedRating = 0;
 
 function openRatingModal({ bookingId, artisanId, artisanName }) {
@@ -853,6 +854,20 @@ socket.on('messagesRead', ({ chatId }) => {
     socket.on('artisan:locationUpdate', ({ lat, lng }) => {
       console.log('Artisan location:', lat, lng);
     });
+    socket.on('topUpRequested', ({ bookingId, topUpId, previousPrice, newPrice, amount, reason, artisanName }) => {
+  _activeTopUp = { bookingId, topUpId };
+  document.getElementById('topUpArtisanName').textContent = artisanName || 'Your artisan';
+  document.getElementById('topUpPrevPriceDisplay').textContent = `₦${Number(previousPrice).toLocaleString()}`;
+  document.getElementById('topUpNewPriceDisplay').textContent = `₦${Number(newPrice).toLocaleString()}`;
+  document.getElementById('topUpAmountDisplay').textContent = `₦${Number(amount).toLocaleString()}`;
+  document.getElementById('topUpReasonDisplay').textContent = reason;
+  document.getElementById('topUpApprovalModal').style.display = 'flex';
+  addNotification('💰 Price Update Requested', `${artisanName}: new price ₦${Number(newPrice).toLocaleString()}`, 'payment');
+});
+
+socket.on('topUpPaid', ({ amount }) => {
+  addNotification('Top-Up Paid ✅', `Additional ₦${amount.toLocaleString()} added to escrow`, 'success');
+});
 document.getElementById('topUpApproveBtn').addEventListener('click', async (e) => {
   if (!_activeTopUp) return;
   const restore = withLoadingState(e.currentTarget, 'Redirecting…');
