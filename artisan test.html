@@ -843,6 +843,104 @@ html,body{background:var(--fixa-bg);color:var(--fixa-text);transition:background
 #availSelect:disabled{opacity:.6}
 #availSpin{position:absolute;right:38px;margin:0;border-color:rgba(255,255,255,.3);border-top-color:#ffd700}
 
+/* FIXA: WhatsApp-style mobile keyboard and chat composer */
+@media (max-width: 768px) {
+  html.chat-open,
+  html.chat-open body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden !important;
+  }
+
+  body.chat-open #jobsPage {
+    position: fixed !important;
+    top: var(--app-top, 0px) !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: auto !important;
+    width: 100% !important;
+    height: var(--app-h, 100dvh) !important;
+    max-height: var(--app-h, 100dvh) !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  body.chat-open .messages-shell {
+    display: flex !important;
+    flex: 1 1 0 !important;
+    min-height: 0 !important;
+    height: 100% !important;
+    overflow: hidden !important;
+  }
+
+  body.chat-open #individualChatView {
+    display: flex !important;
+    flex: 1 1 0 !important;
+    flex-direction: column !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    height: 100% !important;
+    overflow: hidden !important;
+  }
+
+  body.chat-open #messages {
+    flex: 1 1 0 !important;
+    min-height: 0 !important;
+    height: auto !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    scroll-behavior: auto;
+  }
+
+  body.chat-open #typingIndicator {
+    flex-shrink: 0 !important;
+  }
+
+  body.chat-open #chatFooter {
+    position: relative !important;
+    inset: auto !important;
+    display: flex !important;
+    flex: 0 0 auto !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 8px 10px
+      calc(8px + env(safe-area-inset-bottom)) !important;
+    box-sizing: border-box !important;
+    background: var(--fixa-card, #0f2a44) !important;
+    z-index: 30 !important;
+  }
+
+  body.chat-open #chatFooter #msgInput {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    max-height: 100px !important;
+    overflow-y: auto !important;
+    font-size: 16px !important;
+    line-height: 1.4 !important;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    scroll-margin-bottom: 8px;
+  }
+
+  body.chat-open #executionPanel,
+  body.chat-open #topUpRequestBtn,
+  body.chat-open #artisanSecuredBanner,
+  body.chat-open #artisanPaymentBanner {
+    flex-shrink: 0;
+  }
+
+  body.chat-open.kb-open #executionPanel,
+  body.chat-open.kb-open #topUpRequestBtn,
+  body.chat-open.kb-open #artisanSecuredBanner,
+  body.chat-open.kb-open #artisanPaymentBanner {
+    display: none !important;
+  }
+}
+
   </style>
 </head>
 <body>
@@ -1406,31 +1504,109 @@ html,body{background:var(--fixa-bg);color:var(--fixa-text);transition:background
   attachToSharedSocket();
 })();
 </script>
+
 <script>
 (function () {
+  'use strict';
+
   const vv = window.visualViewport;
-  if (!vv) return;
-  let base = vv.height;
-  function sync() {
-    base = Math.max(base, vv.height);
-    const root = document.documentElement.style;
-    root.setProperty('--app-h', vv.height + 'px');
-    root.setProperty('--app-top', vv.offsetTop + 'px');
-    const kb = base - vv.height > 150;
-    document.body.classList.toggle('kb-open', kb);
-    if (document.body.classList.contains('chat-open')) {
-      window.scrollTo(0, 0);
-      const m = document.getElementById('messages');
-      if (kb && m) m.scrollTop = m.scrollHeight;
+  const root = document.documentElement;
+  const body = document.body;
+
+  let maxViewportHeight = window.innerHeight;
+  let scrollFrame = 0;
+
+  function scrollMessagesToBottom() {
+    cancelAnimationFrame(scrollFrame);
+
+    scrollFrame = requestAnimationFrame(function () {
+      const messages = document.getElementById('messages');
+
+      if (messages && messages.style.display !== 'none') {
+        messages.scrollTop = messages.scrollHeight;
+      }
+    });
+  }
+
+  function syncChatViewport() {
+    const viewportHeight = vv ? vv.height : window.innerHeight;
+    const viewportTop = vv ? vv.offsetTop : 0;
+
+    maxViewportHeight = Math.max(maxViewportHeight, viewportHeight);
+
+    root.style.setProperty('--app-h', viewportHeight + 'px');
+    root.style.setProperty('--app-top', viewportTop + 'px');
+
+    const keyboardOpen = maxViewportHeight - viewportHeight > 120;
+    body.classList.toggle('kb-open', keyboardOpen);
+
+    if (body.classList.contains('chat-open')) {
+      const footer = document.getElementById('chatFooter');
+      const input = document.getElementById('msgInput');
+
+      if (keyboardOpen && footer && input === document.activeElement) {
+        scrollMessagesToBottom();
+      }
     }
   }
-  vv.addEventListener('resize', sync);
-  vv.addEventListener('scroll', sync);
-  window.addEventListener('orientationchange', () => { base = 0; setTimeout(sync, 300); });
-  sync();
-  document.getElementById('msgInput')?.addEventListener('focus', () =>
-    setTimeout(() => { const m = document.getElementById('messages'); if (m) m.scrollTop = m.scrollHeight; }, 300));
+
+  if (vv) {
+    vv.addEventListener('resize', syncChatViewport);
+    vv.addEventListener('scroll', syncChatViewport);
+  }
+
+  window.addEventListener('resize', syncChatViewport);
+
+  window.addEventListener('orientationchange', function () {
+    maxViewportHeight = window.innerHeight;
+    setTimeout(syncChatViewport, 250);
+  });
+
+  document.addEventListener('focusin', function (event) {
+    if (event.target && event.target.id === 'msgInput') {
+      setTimeout(function () {
+        syncChatViewport();
+        scrollMessagesToBottom();
+      }, 250);
+    }
+  });
+
+  document.addEventListener('focusout', function (event) {
+    if (event.target && event.target.id === 'msgInput') {
+      setTimeout(syncChatViewport, 150);
+    }
+  });
+
+  document.addEventListener('click', function (event) {
+    if (event.target.closest('#sendBtn')) {
+      setTimeout(scrollMessagesToBottom, 100);
+    }
+  });
+
+  // Follow the latest message when new content is added.
+  const messages = document.getElementById('messages');
+
+  if (messages) {
+    const observer = new MutationObserver(function () {
+      const input = document.getElementById('msgInput');
+
+      if (
+        body.classList.contains('chat-open') &&
+        input === document.activeElement
+      ) {
+        scrollMessagesToBottom();
+      }
+    });
+
+    observer.observe(messages, {
+      childList: true,
+      subtree: true
+    });
+  }
+
+  syncChatViewport();
 })();
 </script>
+
 </body>
 </html>
