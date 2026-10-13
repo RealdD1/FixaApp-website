@@ -180,20 +180,29 @@ const picUrl = p => !p ? '' : /^(https?:|blob:|data:)/.test(p) ? p : `${BACKEND_
 const STATUS = { available: ['🟢','Available for jobs'], busy: ['🟠','Busy'], on_job: ['🔵','On a job'], break: ['🟣','On break'] };
 const statusOf = d => d.availabilityStatus || (d.available ? 'available' : 'busy');
 
-const categories = [
-  { name: "Painter", icon: "format_paint" }, { name: "Tiler", icon: "grid_on" },
-  { name: "Mechanic", icon: "build" }, { name: "Welder", icon: "construction" },
-  { name: "Generator Repairer", icon: "power" }, { name: "POP Installer", icon: "roofing" },
-  { name: "Fashion Designer", icon: "checkroom" }, { name: "Make-Up Artist", icon: "face_retouching_natural" },
-  { name: "CCTV Installer", icon: "videocam" }, { name: "Solar Panel Installer", icon: "solar_power" },
-  { name: "Cook/Caterer", icon: "restaurant" }, { name: "Handyman", icon: "handyman" },
-  { name: "Carpenter", icon: "chair" }, { name: "HVAC Technician", icon: "ac_unit" },
-  { name: "Mobile Mechanic", icon: "directions_car" }, { name: "Gardener", icon: "yard" },
-  { name: "Roof Repair Specialist", icon: "roofing" }, { name: "Tech Support", icon: "support" },
-  { name: "Appliance Repairer", icon: "settings" }, { name: "Interior Designer", icon: "home" },
-  { name: "Window Installer", icon: "window" }, { name: "Furniture Assembler", icon: "weekend" },
-  { name: "Nanny/House help", icon: "child_friendly" }, { name: "Massage Therapist", icon: "spa" }
-];
+    const categories = [
+      { name: "Electrician", icon: "lightbulb" },
+      { name: "Plumber", icon: "water" },
+      { name: "House Cleaner", icon: "cleaning_services" },
+      { name: "Janitor", icon: "cleaning_services" },
+      { name: "Painter", icon: "format_paint" },
+      { name: "Tiler", icon: "grid_on" },
+      { name: "Mechanic", icon: "build" },
+      { name: "Welder", icon: "construction" },
+      { name: "Generator Repairer", icon: "power" },
+      { name: "POP Installer", icon: "roofing" },
+      { name: "Fashion Designer", icon: "checkroom" },
+      { name: "Make-Up Artist", icon: "face_retouching_natural" },
+      { name: "CCTV Installer", icon: "videocam" },
+      { name: "Solar Panel", icon: "solar_power" },
+      { name: "Cook/Caterer", icon: "restaurant" },
+      { name: "Handyman", icon: "handyman" },
+      { name: "Carpenter", icon: "chair" },
+      { name: "HVAC Tech", icon: "ac_unit" },
+      { name: "Gardener", icon: "yard" },
+      { name: "Appliance Repair", icon: "settings" },
+      { name: "Nanny/House help", icon: "child_friendly" }
+    ];
 
 const categoryGrid = document.getElementById("categoryGrid");
 const categoryInput = document.getElementById("categoryInput");
