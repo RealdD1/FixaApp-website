@@ -173,7 +173,8 @@ const AVAIL = {
   available: { label: 'Available for jobs', color: '#22c55e' },
   busy:      { label: 'Busy',               color: '#f97316' },
   on_job:    { label: 'On a job',           color: '#3b82f6' },
-  break:     { label: 'On break',           color: '#a855f7' }
+  break:     { label: 'On break',           color: '#a855f7' },
+  offline:   {label: 'offline', color:'black'}
 };
 let currentAvailability = 'available';
 let availSaving = false;
