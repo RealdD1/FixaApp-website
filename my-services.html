@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <title>Fixa Services</title>
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src='config.js'></script>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -160,17 +162,24 @@
   <input type="text" placeholder="Click to select a service" id="categoryInput" readonly>
   <div class="category-grid" id="categoryGrid"></div>
 
-  <label for="availabilityToggle">Availability</label>
-  <div class="toggle-container">
-    <input type="checkbox" id="availabilityToggle" />
-    <label class="toggle-label" for="availabilityToggle"></label>
-  </div>
+<label for="availabilitySelect">Availability</label>
+<select id="availabilitySelect">
+  <option value="available">🟢 Available for jobs</option>
+  <option value="busy">🟠 Busy</option>
+  <option value="on_job">🔵 On a job</option>
+  <option value="break">🟣 On break</option>
+  <option value="offline">⚫ Offline</option>
+</select>
 
   <button class="btn" id="saveBtn">Save</button>
 </div>
 
 <script>
-const BACKEND_URL = "http://localhost:5000";
+const BACKEND_URL = window.FIXA_CONFIG.API_URL;
+const picUrl = p => !p ? '' : /^(https?:|blob:|data:)/.test(p) ? p : `${BACKEND_URL}/${String(p).replace(/^\//, '')}`;
+const STATUS = { available: ['🟢','Available for jobs'], busy: ['🟠','Busy'], on_job: ['🔵','On a job'], break: ['🟣','On break'] };
+const statusOf = d => d.availabilityStatus || (d.available ? 'available' : 'busy');
+
 const categories = [
   { name: "Painter", icon: "format_paint" }, { name: "Tiler", icon: "grid_on" },
   { name: "Mechanic", icon: "build" }, { name: "Welder", icon: "construction" },
@@ -235,49 +244,50 @@ document.addEventListener("click", e => {
   if (!categoryGrid.contains(e.target) && e.target !== categoryInput) categoryGrid.style.display = "none";
 });
 
-// Fetch profile
-async function fetchProfile() {
-  try {
-    const token = localStorage.getItem("token");
-    if (!token) return window.location.href = "SignIn.html";
-    const res = await fetch(`${BACKEND_URL}/api/artisans/me`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    if (!res.ok) throw new Error("Failed to load profile data.");
-    currentProfile = await res.json();
-    renderProfileCard(currentProfile);
-  } catch (err) { console.error(err); }
+function openForm(data) {
+  formSection.style.display = "block";
+  savedCard.style.display = "none";
+  categoryInput.value = data.category || "";
+  document.getElementById("availabilitySelect").value = statusOf(data);
+  if (data.profilePic) { profilePreview.src = picUrl(data.profilePic); profilePreview.style.display = "block"; removeImageBtn.style.display = "block"; }
+  else { profilePreview.style.display = "none"; removeImageBtn.style.display = "none"; }
 }
 
-// Render profile card
+async function fetchProfile() {
+  const token = localStorage.getItem("token");
+  if (!token) return (window.location.href = "SignIn.html");
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/artisans/me`, { headers: { Authorization: `Bearer ${token}` } });
+    if (res.status === 401) { localStorage.clear(); return (window.location.href = "SignIn.html"); }
+    if (!res.ok) throw new Error("Failed to load profile data.");
+    currentProfile = await res.json();
+    if (!currentProfile.category) openForm(currentProfile);   // first-time setup
+    else renderProfileCard(currentProfile);
+  } catch (err) {
+    console.error(err);
+    showNotification(err.message || "Could not load profile", "error");
+    formSection.style.display = "block";                      // never leave a blank page
+  }
+}
+
 function renderProfileCard(data) {
+  const st = STATUS[statusOf(data)];
   savedCard.innerHTML = `
     <div class="result-card">
-      ${data.profilePic ? `<img src="${data.profilePic}" alt="Profile" style="width:100px;height:100px;border-radius:50%;margin-bottom:10px;" />` : ""}
+      ${data.profilePic ? `<img src="${picUrl(data.profilePic)}" alt="Profile" style="width:100px;height:100px;border-radius:50%;object-fit:cover;margin-bottom:10px;" />` : ""}
       <h3>${data.category || "No Category"}</h3>
-      <p>Available: ${data.available ? "✅ Yes" : "❌ No"}</p>
-      <div class="card-buttons">
-        <button class="edit-btn" id="editBtn">Edit Profile</button>
-      </div>
-    </div>
-  `;
+      <p>Status: ${st[0]} ${st[1]}</p>
+      <div class="card-buttons"><button class="edit-btn" id="editBtn">Edit Profile</button></div>
+    </div>`;
   savedCard.style.display = "block";
-
-  document.getElementById("editBtn").onclick = () => {
-    formSection.style.display = "block";
-    savedCard.style.display = "none";
-    categoryInput.value = data.category || "";
-    document.getElementById("availabilityToggle").checked = data.available || false;
-    if (data.profilePic) { profilePreview.src = data.profilePic; profilePreview.style.display = "block"; removeImageBtn.style.display = "block"; }
-    else { profilePreview.style.display = "none"; removeImageBtn.style.display = "none"; }
-  };
+  document.getElementById("editBtn").onclick = () => openForm(data);
 }
 
 // File handling
 function handleFile(file) {
-  const allowed = ["image/jpeg", "image/png", "image/gif"];
+  const allowed =["image/jpeg", "image/png", "image/gif", "image/webp"];
   const maxSize = 5*1024*1024;
-  if (!allowed.includes(file.type)) return showNotification("Only JPEG, PNG, GIF allowed!", "error");
+  if (!allowed.includes(file.type)) return showNotification("Only JPEG, PNG, GIF, WebP allowed!", "error");
   if (file.size > maxSize) return showNotification("File size must be <= 5MB!", "error");
   selectedFile = file;
   const reader = new FileReader();
@@ -294,13 +304,18 @@ profilePicInput.addEventListener("change", e => handleFile(e.target.files[0]));
 removeImageBtn.addEventListener("click", () => { selectedFile=null; profilePreview.src=""; profilePreview.style.display="none"; removeImageBtn.style.display="none"; });
 
 // Save profile
-document.getElementById("saveBtn").addEventListener("click", async () => {
+document.getElementById("saveBtn").addEventListener("click", async (e) => {
+  const btn = e.currentTarget;
+  if (btn.disabled) return;
+  if (!categoryInput.value) return showNotification("Please select a service", "error");
+
+  const original = btn.innerHTML;
+  btn.disabled = true; btn.innerHTML = "Saving…";
   try {
-    // 1) Save the profile fields as before
     const formData = new FormData();
     if (selectedFile) formData.append("profilePic", selectedFile);
     formData.append("category", categoryInput.value);
-    formData.append("available", document.getElementById("availabilityToggle").checked ? "true" : "false");
+    formData.append("availabilityStatus", document.getElementById("availabilitySelect").value);
 
     const res = await fetch(`${BACKEND_URL}/api/artisans/profile`, {
       method: "PUT",
@@ -309,7 +324,6 @@ document.getElementById("saveBtn").addEventListener("click", async () => {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || "Failed to save profile.");
-
     // 2) NEW — also send their current location
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -346,6 +360,8 @@ document.getElementById("saveBtn").addEventListener("click", async () => {
   } catch (err) {
     console.error(err);
     showNotification(err.message || "A network error occurred.", "error");
+  } finally {
+    btn.disabled = false; btn.innerHTML = original;
   }
 });
 

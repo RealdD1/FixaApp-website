@@ -169,7 +169,45 @@ let newDividerCount = 0;
     }
   }
   window.showStatusMessage = showStatusMessage;
+const AVAIL = {
+  available: { label: 'Available for jobs', color: '#22c55e' },
+  busy:      { label: 'Busy',               color: '#f97316' },
+  on_job:    { label: 'On a job',           color: '#3b82f6' },
+  break:     { label: 'On break',           color: '#a855f7' }
+};
+let currentAvailability = 'available';
+let availSaving = false;
 
+function renderAvailability(status) {
+  const s = AVAIL[status] ? status : 'available';
+  currentAvailability = s;
+  const el = document.getElementById('availCurrent');
+  if (el) el.innerHTML = `You are currently: <strong style="color:${AVAIL[s].color}">${AVAIL[s].label}</strong>`;
+  document.querySelectorAll('.avail-chip').forEach(b => b.classList.toggle('active', b.dataset.status === s));
+}
+
+async function setAvailability(status, btn) {
+  if (availSaving || status === currentAvailability) return;
+  availSaving = true;
+  const chips = document.querySelectorAll('.avail-chip');
+  chips.forEach(c => c.disabled = true);
+  const restore = withLoadingState(btn, AVAIL[status].label);
+  try {
+    const res = await fetch(`${ARTISAN_API_URL}/availability`, {
+      method: 'PATCH', headers: authHeaders(true), body: JSON.stringify({ status })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.message || 'Could not update status');
+    renderAvailability(data.availabilityStatus);
+    showStatusMessage(`Status set to: ${AVAIL[currentAvailability].label}`, 'success');
+  } catch (err) {
+    showStatusMessage(err.message, 'error');
+  } finally {
+    restore();
+    chips.forEach(c => c.disabled = false);
+    availSaving = false;
+  }
+}
   // ═══════════════════════════════════════════════════════════
   // SOCKET
   // ═══════════════════════════════════════════════════════════
@@ -199,6 +237,7 @@ let newDividerCount = 0;
           showStatusMessage('Customer has been restricted', 'warning');
         }
       });
+      socket.on('artisanAvailabilityChanged', ({ status }) => renderAvailability(status));
 
       socket.on('newMessage', handleIncomingSocketMessage);
       
@@ -661,6 +700,7 @@ document.getElementById('viewPayoutHistoryBtn')?.addEventListener('click', () =>
       const res = await fetch(`${ARTISAN_API_URL}/me`, { headers: authHeaders() });
       if (!res.ok) throw new Error('Failed');
       const data = await res.json();
+      renderAvailability(data.availabilityStatus || (data.available ? 'available' : 'busy'));
       document.querySelectorAll('.usernameDisplay').forEach(el =>
         el.textContent = data.name || user.username || 'Artisan');
       const e = document.getElementById('emailDisplay');
@@ -1611,6 +1651,8 @@ const txt = document.getElementById('msgInput');    if (txt) {
         updateExecutionStatus(btn.dataset.status);
       });
     });
+    //Availability buttons
+    document.querySelectorAll('.avail-chip').forEach(b => b.addEventListener('click', () => setAvailability(b.dataset.status, b)));
 
     document.getElementById('uploadProofBtn')?.addEventListener('click', e => {
       e.preventDefault();

@@ -375,6 +375,21 @@
     <div class="spinner-ring front"></div>
   </div>
 <script>
+  (async function autoLogin() {
+  const t = localStorage.getItem('token');
+  let u = null;
+  try { u = JSON.parse(localStorage.getItem('user') || 'null'); } catch {}
+  if (!t || !u) return;
+  try {
+    const r = await fetch(`${FIXA_CONFIG.API_URL}/api/users/me/status`, { headers: { Authorization: `Bearer ${t}` } });
+    if (r.status === 401 || r.status === 403) {          // token dead: stay on the form
+      localStorage.removeItem('token'); localStorage.removeItem('user'); return;
+    }
+    if (!r.ok) return;
+  } catch { /* offline: still let them in */ }
+  location.replace(!u.role ? 'role-selection.html'
+    : u.role === 'customer' ? 'customer-home.html' : 'artisan test.html');
+})();
 
 const signinForm = document.getElementById('signinForm');
 const contactInput = document.getElementById('emailOrUsernameInput');

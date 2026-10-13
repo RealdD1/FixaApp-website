@@ -2,7 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content" />   <script src="config.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content" />
+   <script src="config.js"></script>
+   <script src="session.js"></script>
    <script src="fixa-push.js"></script>
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
   <title>Fixa - Artisan Dashboard</title>
@@ -833,6 +835,14 @@ html,body{background:var(--fixa-bg);color:var(--fixa-text);transition:background
   body.chat-open #jobsPage{bottom:auto !important}
   body.chat-open #chatFooter{position:relative !important}
 }
+.avail-chips{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:10px}
+.avail-chip{--c:#22c55e;padding:11px 8px;border-radius:10px;border:1.5px solid var(--c);background:transparent;color:var(--c);font-weight:700;font-size:13px;cursor:pointer}
+.avail-chip[data-status="busy"]{--c:#f97316}
+.avail-chip[data-status="on_job"]{--c:#3b82f6}
+.avail-chip[data-status="break"]{--c:#a855f7}
+.avail-chip[data-status="offline"]{--c:#6b7280}
+.avail-chip.active{background:var(--c);color:#041b2b}
+.avail-chip:disabled{opacity:.6;cursor:not-allowed}
 
   </style>
 </head>
@@ -845,7 +855,16 @@ html,body{background:var(--fixa-bg);color:var(--fixa-text);transition:background
       <p class="welcome">Welcome, <span class="usernameDisplay"></span>!</p>
 
       <div class="dashboard-summary-card">
-        <p style="color: #ffc107;">You are currently: <strong>Available for jobs</strong></p>
+        <div style="margin-bottom:12px">
+  <p id="availCurrent" style="margin:0;color:#ffc107">You are currently: <strong>…</strong></p>
+  <div class="avail-chips">
+    <button type="button" class="avail-chip" data-status="available">🟢 Available</button>
+    <button type="button" class="avail-chip" data-status="busy">🟠 Busy</button>
+    <button type="button" class="avail-chip" data-status="on_job">🔵 On a job</button>
+    <button type="button" class="avail-chip" data-status="break">🟣 On break</button>
+    <button type="button" class="avail-chip" data-status="offline">⚫ Offline</button>
+  </div>
+</div>
         <div class="summary-grid">
           <div class="summary-item">
             <strong>0</strong>
