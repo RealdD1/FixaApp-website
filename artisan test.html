@@ -835,14 +835,13 @@ html,body{background:var(--fixa-bg);color:var(--fixa-text);transition:background
   body.chat-open #jobsPage{bottom:auto !important}
   body.chat-open #chatFooter{position:relative !important}
 }
-.avail-chips{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:10px}
-.avail-chip{--c:#22c55e;padding:11px 8px;border-radius:10px;border:1.5px solid var(--c);background:transparent;color:var(--c);font-weight:700;font-size:13px;cursor:pointer}
-.avail-chip[data-status="busy"]{--c:#f97316}
-.avail-chip[data-status="on_job"]{--c:#3b82f6}
-.avail-chip[data-status="break"]{--c:#a855f7}
-.avail-chip[data-status="offline"]{--c:#6b7280}
-.avail-chip.active{background:var(--c);color:#041b2b}
-.avail-chip:disabled{opacity:.6;cursor:not-allowed}
+.avail-field{margin-bottom:12px}
+.avail-field label{display:block;font-size:11px;color:#9aa6b2;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.avail-select-wrap{position:relative;display:flex;align-items:center}
+.avail-dot{position:absolute;left:14px;width:10px;height:10px;border-radius:50%;background:#22c55e;pointer-events:none}
+#availSelect{width:100%;appearance:none;-webkit-appearance:none;padding:13px 40px 13px 34px;border-radius:12px;border:1.5px solid rgba(255,255,255,.15);background:#023850 url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M1 1l5 5 5-5' fill='none' stroke='%23ffd700' stroke-width='2' stroke-linecap='round'/></svg>") no-repeat right 14px center;color:#fff;font-size:16px;font-weight:700;font-family:inherit;cursor:pointer}
+#availSelect:disabled{opacity:.6}
+#availSpin{position:absolute;right:38px;margin:0;border-color:rgba(255,255,255,.3);border-top-color:#ffd700}
 
   </style>
 </head>
@@ -857,13 +856,20 @@ html,body{background:var(--fixa-bg);color:var(--fixa-text);transition:background
       <div class="dashboard-summary-card">
         <div style="margin-bottom:12px">
   <p id="availCurrent" style="margin:0;color:#ffc107">You are currently: <strong>…</strong></p>
-  <div class="avail-chips">
-    <button type="button" class="avail-chip" data-status="available">🟢 Available</button>
-    <button type="button" class="avail-chip" data-status="busy">🟠 Busy</button>
-    <button type="button" class="avail-chip" data-status="on_job">🔵 On a job</button>
-    <button type="button" class="avail-chip" data-status="break">🟣 On break</button>
-    <button type="button" class="avail-chip" data-status="offline">⚫ Offline</button>
+<div class="avail-field">
+  <label for="availSelect">Your status</label>
+  <div class="avail-select-wrap">
+    <span class="avail-dot" id="availDot"></span>
+    <select id="availSelect" aria-label="Availability status">
+      <option value="available">Available for jobs</option>
+      <option value="busy">Busy</option>
+      <option value="on_job">On a job</option>
+      <option value="break">On break</option>
+      <option value="offline">Offline</option>
+    </select>
+    <span class="btn-spinner" id="availSpin" style="display:none"></span>
   </div>
+</div>
 </div>
         <div class="summary-grid">
           <div class="summary-item">

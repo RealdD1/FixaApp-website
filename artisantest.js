@@ -61,6 +61,7 @@ let newDividerCount = 0;
   let recordingStart = 0;
   let recordingInterval = null;
 
+  const assetUrl = p => !p ? '' : /^(https?:|blob:|data:)/i.test(p) ? p : `${BASE_URL}/${String(p).replace(/^\/+/, '')}`;
   // ─── UTILITIES ─────────────────────────────────────────────
   function authHeaders(json = false) {
     const h = { Authorization: `Bearer ${token}` };
@@ -174,7 +175,7 @@ const AVAIL = {
   busy:      { label: 'Busy',               color: '#f97316' },
   on_job:    { label: 'On a job',           color: '#3b82f6' },
   break:     { label: 'On break',           color: '#a855f7' },
-  offline:   {label: 'offline', color:'black'}
+  offline:   { label: 'Offline',            color: '#6b7280' }
 };
 let currentAvailability = 'available';
 let availSaving = false;
@@ -182,17 +183,19 @@ let availSaving = false;
 function renderAvailability(status) {
   const s = AVAIL[status] ? status : 'available';
   currentAvailability = s;
-  const el = document.getElementById('availCurrent');
-  if (el) el.innerHTML = `You are currently: <strong style="color:${AVAIL[s].color}">${AVAIL[s].label}</strong>`;
-  document.querySelectorAll('.avail-chip').forEach(b => b.classList.toggle('active', b.dataset.status === s));
+  const sel = document.getElementById('availSelect');
+  if (sel) { sel.value = s; sel.style.borderColor = AVAIL[s].color; }
+  const dot = document.getElementById('availDot');
+  if (dot) dot.style.background = AVAIL[s].color;
 }
 
-async function setAvailability(status, btn) {
+async function setAvailability(status) {
   if (availSaving || status === currentAvailability) return;
   availSaving = true;
-  const chips = document.querySelectorAll('.avail-chip');
-  chips.forEach(c => c.disabled = true);
-  const restore = withLoadingState(btn, AVAIL[status].label);
+  const sel = document.getElementById('availSelect');
+  const spin = document.getElementById('availSpin');
+  if (sel) sel.disabled = true;
+  if (spin) spin.style.display = 'inline-block';
   try {
     const res = await fetch(`${ARTISAN_API_URL}/availability`, {
       method: 'PATCH', headers: authHeaders(true), body: JSON.stringify({ status })
@@ -202,10 +205,11 @@ async function setAvailability(status, btn) {
     renderAvailability(data.availabilityStatus);
     showStatusMessage(`Status set to: ${AVAIL[currentAvailability].label}`, 'success');
   } catch (err) {
+    renderAvailability(currentAvailability);      // snap the dropdown back
     showStatusMessage(err.message, 'error');
   } finally {
-    restore();
-    chips.forEach(c => c.disabled = false);
+    if (sel) sel.disabled = false;
+    if (spin) spin.style.display = 'none';
     availSaving = false;
   }
 }
@@ -708,8 +712,12 @@ document.getElementById('viewPayoutHistoryBtn')?.addEventListener('click', () =>
       if (e) e.textContent = data.email || user.email || '';
       const p = document.getElementById('phoneDisplay');
       if (p) p.textContent = data.phone || user.phone || '';
-      const img = document.querySelector('.profile-img');
-      if (img) img.src = data.profilePic || data.avatar || 'https://via.placeholder.com/80';
+const img = document.querySelector('.profile-img');
+if (img) {
+  const fallback = `${BASE_URL}/uploads/default-avatar.png`;
+  img.onerror = () => { img.onerror = null; img.src = fallback; };
+  img.src = assetUrl(data.profilePic || data.avatar) || fallback;
+}
     } catch (e) { console.error('loadArtisanProfile:', e); }
   }
 
@@ -1653,8 +1661,7 @@ const txt = document.getElementById('msgInput');    if (txt) {
       });
     });
     //Availability buttons
-    document.querySelectorAll('.avail-chip').forEach(b => b.addEventListener('click', () => setAvailability(b.dataset.status, b)));
-
+ document.getElementById('availSelect')?.addEventListener('change', e => setAvailability(e.target.value));
     document.getElementById('uploadProofBtn')?.addEventListener('click', e => {
       e.preventDefault();
       document.getElementById('proofPhotoInput')?.click();

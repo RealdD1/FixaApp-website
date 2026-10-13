@@ -7,13 +7,32 @@
   const atBottom = () => msgs && msgs.scrollHeight - msgs.clientHeight - msgs.scrollTop < 80;
   const toBottom = (smooth) => msgs && msgs.scrollTo({ top: msgs.scrollHeight, behavior: smooth ? 'smooth' : 'auto' });
 
-  function fit() {                       // follow the visible area (keyboard open/closed)
-    if (!active) return;
-    const wasBottom = atBottom();
-    root.style.setProperty('--app-h', (vv ? vv.height : w.innerHeight) + 'px');
-    root.style.setProperty('--app-top', (vv ? vv.offsetTop : 0) + 'px');
-    if (wasBottom) toBottom(false);
+ let baseH = 0;
+
+function fit() {
+  if (!active) return;
+  const wasBottom = atBottom();
+  const h = vv ? vv.height : w.innerHeight;
+  const top = vv ? vv.offsetTop : 0;
+  baseH = Math.max(baseH, h);
+  const kb = baseH - h > 150;                     // keyboard is open
+
+  root.style.setProperty('--app-h', h + 'px');
+  root.style.setProperty('--app-top', top + 'px');
+  document.body.classList.toggle('kb-open', kb);
+
+  if (mq.matches) {                               // inline !important so no stylesheet can override it
+    const page = document.querySelector('#jobsPage.active, #messagesPage.active');
+    if (page) {
+      const set = (p, v) => page.style.setProperty(p, v, 'important');
+      set('position', 'fixed'); set('left', '0'); set('right', '0');
+      set('top', top + 'px'); set('height', h + 'px'); set('max-height', h + 'px');
+      page.querySelector('.messages-shell')?.style.setProperty('height', '100%', 'important');
+    }
   }
+  if (wasBottom || kb) toBottom(false);
+}
+
 
   function updateFab() {
     if (!fab) return;
@@ -42,7 +61,7 @@
     msgs.addEventListener('scroll', updateFab, { passive: true });
     if (input) {
       input.addEventListener('input', grow);
-      input.addEventListener('focus', () => setTimeout(() => toBottom(false), 300));
+     input.addEventListener('focus', () => [100, 350, 700].forEach(t => setTimeout(() => { fit(); toBottom(false); }, t)));
     }
 
     const parent = footer.parentElement;
@@ -63,8 +82,8 @@
     send && send.addEventListener('pointerdown', (e) => e.preventDefault());
 
     if (vv) { vv.addEventListener('resize', fit); vv.addEventListener('scroll', fit); }
-    w.addEventListener('orientationchange', () => setTimeout(fit, 250));
-
+w.addEventListener('orientationchange', () => { baseH = 0; setTimeout(fit, 300); });
+w.addEventListener('resize', fit);
     // Rigid page: block rubber-banding everywhere except real scroll areas
     document.addEventListener('touchmove', (e) => {
       if (!active || !mq.matches) return;
@@ -73,17 +92,27 @@
     }, { passive: false });
   }
 
-  function enter() {
-    active = true; unread = 0;
-    root.classList.add('chat-open'); document.body.classList.add('chat-open');
-    fit(); w.scrollTo(0, 0);
-    setTimeout(() => { toBottom(false); updateFab(); }, 60);
-  }
-  function exit() {
-    active = false;
-    root.classList.remove('chat-open'); document.body.classList.remove('chat-open');
-    if (fab) fab.style.display = 'none';
-  }
+function release() {                              // undo everything when the chat closes
+  document.body.classList.remove('kb-open');
+  document.querySelectorAll('#jobsPage, #messagesPage').forEach(page => {
+    ['position', 'left', 'right', 'top', 'height', 'max-height'].forEach(p => page.style.removeProperty(p));
+    page.querySelector('.messages-shell')?.style.removeProperty('height');
+  });
+}
+
+function enter() {
+  active = true; unread = 0;
+  baseH = vv ? vv.height : w.innerHeight;
+  root.classList.add('chat-open'); document.body.classList.add('chat-open');
+  fit(); w.scrollTo(0, 0);
+  setTimeout(() => { fit(); toBottom(false); updateFab(); }, 60);
+}
+function exit() {
+  active = false;
+  root.classList.remove('chat-open'); document.body.classList.remove('chat-open');
+  release();
+  if (fab) fab.style.display = 'none';
+}
   function noteIncoming() { if (!atBottom()) { unread++; updateFab(); } }
   function resetInput() { if (input) { input.value = ''; input.style.height = ''; } }
 

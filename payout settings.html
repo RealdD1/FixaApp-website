@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="config.js"></script>
 <title>Payout Settings - Fixa</title>
 <style>
   body {
@@ -83,138 +84,129 @@
 <div id="statusMsg" style="display:none;margin-top:10px;padding:10px;border-radius:6px;font-size:13px"></div>
 
 <script>
-const BASE_URL = 'http://localhost:5000';
+const BASE_URL = window.FIXA_CONFIG.API_URL;
 const token = localStorage.getItem('token');
-if (!token) window.location.href = 'SignIn.html';
+if (!token) window.location.replace('SignIn.html');
 
-const bankSelect = document.getElementById('bank');
-const accNumInput = document.getElementById('accountNumber');
-const accNameInput = document.getElementById('accountName');
-const freqSelect = document.getElementById('frequency');
-const saveBtn = document.getElementById('saveSettingsBtn');
+const $ = id => document.getElementById(id);
+const bankSelect = $('bank'), accNumInput = $('accountNumber'), accNameInput = $('accountName');
+const freqSelect = $('frequency'), saveBtn = $('saveSettingsBtn');
+const auth = { Authorization: `Bearer ${token}` };
+const authJson = { ...auth, 'Content-Type': 'application/json' };
 
-let bankList = [];
-let resolvedName = '';
+let resolvedName = '', resolveSeq = 0, saving = false, hideTimer = null, hasSaved = false;
 
 function showStatus(msg, isError) {
-  const el = document.getElementById('statusMsg');
+  const el = $('statusMsg');
   el.style.display = 'block';
   el.style.background = isError ? '#dc2626' : '#16a34a';
   el.style.color = '#fff';
   el.textContent = msg;
+  clearTimeout(hideTimer);
+  hideTimer = setTimeout(() => { el.style.display = 'none'; }, 4500);
+}
+
+async function api(path, opts = {}) {
+  const res = await fetch(`${BASE_URL}/api/payouts${path}`, { ...opts, headers: opts.body ? authJson : auth });
+  if (res.status === 401) { localStorage.clear(); location.replace('SignIn.html'); throw new Error('Session expired'); }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || 'Request failed');
+  return data;
+}
+
+function showView(card) {
+  $('payoutCardView').style.display = card ? 'block' : 'none';
+  $('payoutFormView').style.display = card ? 'none' : 'block';
+  $('cancelChangeBtn').style.display = hasSaved && !card ? 'block' : 'none';
 }
 
 async function loadBanks() {
   try {
-    const res = await fetch(`${BASE_URL}/api/payouts/banks`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    bankList = await res.json();
+    const data = await api('/banks');
+    const list = (Array.isArray(data) ? data : (data.banks || data.data || []))
+      .slice().sort((a, b) => a.name.localeCompare(b.name));
     bankSelect.innerHTML = '<option value="">-- Select Your Bank --</option>' +
-      bankList.map(b => `<option value="${b.code}">${b.name}</option>`).join('');
-  } catch {
-    showStatus('Could not load bank list', true);
-  }
+      list.map(b => `<option value="${b.code}">${b.name}</option>`).join('');
+  } catch (e) { showStatus('Could not load bank list', true); }
 }
 
 async function loadPayoutSettings() {
-  const cardView = document.getElementById('payoutCardView');
-  const formView = document.getElementById('payoutFormView');
-
   try {
-    const res = await fetch(`${BASE_URL}/api/payouts/settings`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    const p = await res.json();
-
+    const p = await api('/settings');
     if (p?.recipientCode) {
-      document.getElementById('cardBankName').textContent = p.bankName;
-      document.getElementById('cardAccountLine').textContent = `${p.accountName} •••• ${p.accountNumber.slice(-4)}`;
-      document.getElementById('cardFrequency').textContent =
-        `Paid out ${p.frequency.charAt(0).toUpperCase() + p.frequency.slice(1)}`;
-      cardView.style.display = 'block';
-      formView.style.display = 'none';
-
-      bankSelect.value = p.bankCode;
-      accNumInput.value = p.accountNumber;
-      accNameInput.value = p.accountName;
-      resolvedName = p.accountName;
-      freqSelect.value = p.frequency;
-    } else {
-      cardView.style.display = 'none';
-      formView.style.display = 'block';
-    }
-  } catch (e) {
-    console.error('loadPayoutSettings:', e);
-    cardView.style.display = 'none';
-    formView.style.display = 'block';
-  }
+      hasSaved = true;
+      const last4 = String(p.accountNumber || '').slice(-4);
+      $('cardBankName').textContent = p.bankName || '';
+      $('cardAccountLine').textContent = `${p.accountName || ''} •••• ${last4}`;
+      const f = p.frequency || 'weekly';
+      $('cardFrequency').textContent = `Paid out ${f.charAt(0).toUpperCase() + f.slice(1)}`;
+      bankSelect.value = p.bankCode || '';
+      accNumInput.value = p.accountNumber || '';
+      accNameInput.value = resolvedName = p.accountName || '';
+      freqSelect.value = f;
+      showView(true);
+    } else { hasSaved = false; showView(false); }
+  } catch (e) { console.error('loadPayoutSettings:', e); showView(false); }
 }
 
 async function tryResolve() {
-  const bankCode = bankSelect.value;
-  const accountNumber = accNumInput.value.trim();
-  if (!bankCode || accountNumber.length !== 10) return;
+  const seq = ++resolveSeq;                       // invalidates any request still in flight
+  const bankCode = bankSelect.value, accountNumber = accNumInput.value.trim();
+  resolvedName = ''; accNameInput.value = '';
+  if (!bankCode || accountNumber.length !== 10) { saveBtn.disabled = false; return; }
 
-  accNameInput.value = 'Verifying...';
+  accNameInput.value = 'Verifying…';
+  saveBtn.disabled = true;
   try {
-    const res = await fetch(`${BASE_URL}/api/payouts/resolve-account`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ accountNumber, bankCode })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message);
+    const data = await api('/resolve-account', { method: 'POST', body: JSON.stringify({ accountNumber, bankCode }) });
+    if (seq !== resolveSeq) return;
     resolvedName = data.accountName;
     accNameInput.value = resolvedName;
   } catch (err) {
+    if (seq !== resolveSeq) return;
     accNameInput.value = '';
-    resolvedName = '';
     showStatus(err.message || 'Could not verify account', true);
+  } finally {
+    if (seq === resolveSeq) saveBtn.disabled = false;
   }
 }
 
 bankSelect.addEventListener('change', tryResolve);
-accNumInput.addEventListener('blur', tryResolve);
+accNumInput.addEventListener('input', () => {
+  accNumInput.value = accNumInput.value.replace(/\D/g, '').slice(0, 10);
+  tryResolve();                                    // verifies as soon as 10 digits are typed
+});
 
-saveBtn.addEventListener('click', async (e) => {
-  e.preventDefault();
+saveBtn.addEventListener('click', async () => {
+  if (saving) return;
   const bankCode = bankSelect.value;
   const bankName = bankSelect.options[bankSelect.selectedIndex]?.text;
   const accountNumber = accNumInput.value.trim();
-
   if (!bankCode || accountNumber.length !== 10 || !resolvedName) {
-    showStatus('Select a bank and enter a valid account number to verify first', true);
-    return;
+    return showStatus('Select a bank and enter a valid account number to verify first', true);
   }
-
+  saving = true;
+  const original = saveBtn.innerHTML;
+  saveBtn.disabled = true;
+  saveBtn.innerHTML = '<span class="spin"></span>Saving…';
   try {
-    const res = await fetch(`${BASE_URL}/api/payouts/settings`, {
+    await api('/settings', {
       method: 'PUT',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        bankCode, bankName, accountNumber,
-        accountName: resolvedName,
-        frequency: freqSelect.value
-      })
+      body: JSON.stringify({ bankCode, bankName, accountNumber, accountName: resolvedName, frequency: freqSelect.value })
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message);
     showStatus('Payout settings saved ✓', false);
     await loadPayoutSettings();
   } catch (err) {
     showStatus(err.message || 'Failed to save', true);
+  } finally {
+    saving = false; saveBtn.disabled = false; saveBtn.innerHTML = original;
   }
 });
 
-document.getElementById('changePayoutBtn')?.addEventListener('click', () => {
-  document.getElementById('payoutCardView').style.display = 'none';
-  document.getElementById('payoutFormView').style.display = 'block';
-});
+$('changePayoutBtn').addEventListener('click', () => showView(false));
+$('cancelChangeBtn').addEventListener('click', () => showView(true));
 
-document.addEventListener('DOMContentLoaded', () => {
-  loadBanks().then(loadPayoutSettings);
-});
+document.addEventListener('DOMContentLoaded', () => { loadBanks().then(loadPayoutSettings); });
 </script>
 
 </body>
