@@ -953,9 +953,7 @@ html,body{background:var(--fixa-bg);color:var(--fixa-text);transition:background
 
       <div class="dashboard-summary-card">
         <div style="margin-bottom:12px">
-  <p id="availCurrent" style="margin:0;color:#ffc107">You are currently: <strong>…</strong></p>
-<div class="avail-field">
-  <label for="availSelect">Your status</label>
+  <p id="availCurrent" style="margin:0;color:#ffc107">You are currently: <strong><div class="avail-field">
   <div class="avail-select-wrap">
     <span class="avail-dot" id="availDot"></span>
     <select id="availSelect" aria-label="Availability status">
@@ -966,7 +964,8 @@ html,body{background:var(--fixa-bg);color:var(--fixa-text);transition:background
       <option value="offline">Offline</option>
     </select>
     <span class="btn-spinner" id="availSpin" style="display:none"></span>
-  </div>
+  </div></strong></p>
+
 </div>
 </div>
         <div class="summary-grid">
