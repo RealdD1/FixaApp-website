@@ -40,32 +40,18 @@
       background: gold; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;
     }
     #loader.failed #retryBtn { display: inline-block; }
-
-    .pin-wrap { position: relative; width: 44px; height: 54px; }
-    .artisan-pin {
-      position: absolute; top: 0; left: 2px;
-      width: 40px; height: 40px;
-      background: gold;
-      border-radius: 50% 50% 50% 0;
-      transform: rotate(-45deg);
-      box-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
-      overflow: hidden;
-    }
-    .pin-wrap:not(.offline) .artisan-pin { animation: pulse 2s infinite; }
-    .artisan-pin img {
-      position: absolute; top: 50%; left: 50%;
-      width: 70%; height: 70%;
-      border-radius: 50%;
-      transform: translate(-50%, -50%) rotate(45deg);
-      border: 2px solid white;
-      object-fit: cover;
-    }
-    .pin-wrap.offline { opacity: 0.45; filter: grayscale(0.6); }
-    @keyframes pulse {
-      0%   { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.6); }
-      70%  { box-shadow: 0 0 0 20px rgba(255, 215, 0, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0); }
-    }
+.artisan-pin{ background: var(--sc, gold); }                       /* was: background: gold */
+.pin-wrap:not(.offline) .artisan-pin{ animation: pulse 2s infinite; }   /* DELETE this rule */
+.pin-wrap.available:not(.dim) .artisan-pin{ animation: pulse 2s infinite; }
+.pin-wrap.offline{ opacity:.45; filter:grayscale(.6); }            /* DELETE this one too */
+.pin-wrap.dim{ opacity:.55; }
+@keyframes pulse{
+  0%{box-shadow:0 0 0 0 rgba(34,197,94,.6)} 70%{box-shadow:0 0 0 20px rgba(34,197,94,0)} 100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}
+}
+.pin-status{position:absolute;top:-3px;right:-3px;width:14px;height:14px;border-radius:50%;background:var(--sc,gold);border:2px solid #fff;z-index:2}
+.avail-badge{display:inline-block;margin-top:6px;padding:4px 12px;border-radius:12px;border:1px solid;font-size:.8rem;font-weight:700}
+#legend{position:fixed;left:10px;bottom:24px;z-index:999;background:rgba(0,23,43,.88);color:#fff;padding:8px 10px;border-radius:10px;font-size:11px;line-height:1.7}
+#legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px}
 
     .customer-dot {
       width: 16px; height: 16px;
@@ -161,6 +147,7 @@
           <span id="badgeText"></span>
         </div>
       </div>
+      <div id="availBadge" class="avail-badge"></div>
       <p id="artisanDetails"></p>
 
       <div class="guide">
@@ -210,6 +197,21 @@
       '<path d="M15 80c4-20 20-26 30-26s26 6 30 26z" fill="#FFD700"/></svg>'
     );
 
+    const assetUrl = (p) => !p ? '' : /^(https?:|blob:|data:)/i.test(p) ? p : `${API_URL}/${String(p).replace(/^\/+/, '')}`;
+
+const STATUS = {
+  available: { label: 'Available', color: '#22c55e' },
+  busy:      { label: 'Busy',      color: '#f97316' },
+  on_job:    { label: 'On a job',  color: '#3b82f6' },
+  break:     { label: 'On break',  color: '#a855f7' },
+  offline:   { label: 'Offline',   color: '#6b7280' }
+};
+const statusKey = (a) => {
+  const s = a.availabilityStatus || (a.available ? 'available' : 'busy');
+  return STATUS[s] ? s : 'available';
+};
+document.getElementById('legend').innerHTML =
+  Object.values(STATUS).map(s => `<div><i style="background:${s.color}"></i>${s.label}</div>`).join('');
     const baseRates = {
       "Electrician": 5000, "Painter": 3000, "Tiler": 4000, "Mechanic": 6000, "Welder": 4500,
       "Generator Repairer": 5000, "POP Installer": 7000, "Fashion Designer": 4000, "Make-Up Artist": 3500,
@@ -270,23 +272,7 @@ L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_M
   attribution: 'Tiles &copy; Esri &mdash; Source: Esri, DeLorme, NAVTEQ, USGS, Intermap, iPC, NRCAN, Esri Japan, METI, Esri China (Hong Kong), Esri (Thailand), TomTom, 2012',
   maxZoom: 19,
 }).addTo(map);
-    function buildPinElement(artisan, online) {
-      const wrap = document.createElement('div');
-      wrap.className = 'pin-wrap' + (online ? '' : ' offline');
-
-      const pin = document.createElement('div');
-      pin.className = 'artisan-pin';
-
-      const img = document.createElement('img');
-      img.alt = artisan.name || 'Artisan';
-      img.src = artisan.profilePic || DEFAULT_AVATAR;
-      img.onerror = () => { img.onerror = null; img.src = DEFAULT_AVATAR; };
-
-      pin.appendChild(img);
-      wrap.appendChild(pin);
-      return wrap;
-    }
-
+  
     function pinIcon(artisan, online) {
       const el = buildPinElement(artisan, online);
       return L.divIcon({
@@ -296,18 +282,58 @@ L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_M
         iconAnchor: [22, 54],
       });
     }
+    function buildPinElement(artisan, online) {
+  const key = statusKey(artisan);
+  const wrap = document.createElement('div');
+  wrap.className = 'pin-wrap ' + key + (online ? '' : ' dim');
+  wrap.style.setProperty('--sc', STATUS[key].color);
 
-    function addArtisanMarker(artisan, online) {
-      const coords = artisan.location?.coordinates;
-      if (!Array.isArray(coords) || coords.length !== 2) return;
-      const [lng, lat] = coords;
-      if (typeof lat !== 'number' || typeof lng !== 'number') return;
-      if (lat === 0 && lng === 0) return;
+  const pin = document.createElement('div');
+  pin.className = 'artisan-pin';
+  const img = document.createElement('img');
+  img.alt = artisan.name || 'Artisan';
+  img.src = assetUrl(artisan.profilePic) || DEFAULT_AVATAR;
+  img.onerror = () => { img.onerror = null; img.src = DEFAULT_AVATAR; };
+  pin.appendChild(img);
 
-      const marker = L.marker([lat, lng], { icon: pinIcon(artisan, online) }).addTo(map);
-      marker.on('click', () => showArtisanProfile(artisan, [lat, lng]));
-      markersByArtisan.set(String(artisan._id), { marker, artisan, online });
-    }
+  const dot = document.createElement('span');
+  dot.className = 'pin-status';
+  wrap.appendChild(pin);
+  wrap.appendChild(dot);
+  return wrap;
+}
+
+function addArtisanMarker(artisan, online) {
+  const coords = artisan.location?.coordinates;
+  if (!Array.isArray(coords) || coords.length !== 2) return;
+  const [lng, lat] = coords;
+  if (typeof lat !== 'number' || typeof lng !== 'number') return;
+  if (lat === 0 && lng === 0) return;
+
+  const marker = L.marker([lat, lng], { icon: pinIcon(artisan, online) }).addTo(map);
+  marker.on('click', () => {
+    const e = markersByArtisan.get(String(artisan._id));      // always read the latest state
+    showArtisanProfile(e ? e.artisan : artisan, [lat, lng], e ? e.online : online);
+  });
+  markersByArtisan.set(String(artisan._id), { marker, artisan, online });
+}
+
+function renderStatusBadge(artisan, online) {
+  const key = statusKey(artisan), st = STATUS[key];
+  const el = $('availBadge');
+  el.textContent = st.label + (online || key === 'offline' ? '' : ' · not online now');
+  el.style.background = st.color + '22';
+  el.style.color = st.color;
+  el.style.borderColor = st.color;
+
+  const ok = key === 'available';
+  const book = $('bookBtn');
+  book.disabled = !ok;
+  book.textContent = ok ? '📅 Book' : `Unavailable: ${st.label}`;
+  book.style.opacity = ok ? '1' : '.5';
+  book.style.cursor = ok ? 'pointer' : 'not-allowed';
+}
+
 
     function setMarkerOnline(entry, online) {
       entry.online = online;
@@ -417,10 +443,21 @@ L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_M
           _id: artisanId,
           user: userId,
           name, profilePic, category,
+          availabilityStatus: data.availabilityStatus || 'available',
           location: { coordinates },
         }, true);
       });
     }
+    socket.on('artisanAvailabilityUpdated', ({ artisanId, status }) => {
+  const entry = markersByArtisan.get(String(artisanId));
+  if (!entry) return;
+  entry.artisan.availabilityStatus = status;
+  entry.artisan.available = status === 'available';
+  setMarkerOnline(entry, entry.online);                        // redraws the pin colour
+  if (currentArtisan && String(currentArtisan._id) === String(artisanId) && artisanModal.style.display === 'flex') {
+    renderStatusBadge(entry.artisan, entry.online);
+  }
+});
 
     function showArtisanProfile(artisan, latlng) {
       map.flyTo(latlng, 15, { duration: 0.8 });
@@ -435,8 +472,7 @@ L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_M
 
       const pic = $('artisanPic');
       pic.onerror = () => { pic.onerror = null; pic.src = DEFAULT_AVATAR; };
-      pic.src = artisan.profilePic || DEFAULT_AVATAR;
-
+pic.src = assetUrl(artisan.profilePic) || DEFAULT_AVATAR;
       $('badgeText').textContent = isVerified ? 'Verified' : 'Not Verified';
       $('badgeIcon').textContent = isVerified ? '✓' : '✕';
       $('verificationBadge').className = 'verification-badge ' + (isVerified ? 'verified' : 'not-verified');
@@ -446,6 +482,7 @@ L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_M
       complexityInput.value = '1';
       updateEstimator();
 
+      renderStatusBadge(artisan, online);
       artisanModal.style.display = 'flex';
     }
 
@@ -489,6 +526,7 @@ L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_M
       if (!currentArtisan) return alert('No artisan selected');
       if (estimatedPrice <= 0) return alert('Please enter a valid price estimate.');
 
+      if (currentArtisan && statusKey(currentArtisan) !== 'available') return alert('This artisan is not available right now.');
       localStorage.setItem('bookingData', JSON.stringify({
         artisanId: currentArtisan._id,
         artisanName: currentArtisan.name,

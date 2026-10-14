@@ -290,7 +290,7 @@
   <span class="material-icons" style="color:var(--gold);font-size:20px">search</span>
   <input id="homeSearch" type="search" enterkeyhint="search" placeholder="Search for a service..."/>
 </div>
-...
+
 <div class="services-grid">
   <div class="service-item" data-service="Electrician" role="button" tabindex="0"><div class="icon-square">⚡</div><span>Electrician</span></div>
   <div class="service-item" data-service="Plumber" role="button" tabindex="0"><div class="icon-square">🔧</div><span>Plumber</span></div>
@@ -537,6 +537,7 @@ let banCountdownInterval = null;
 let peerBanCountdownInterval = null;
 let _ratingContext = null;
 let _activeTopUp = null;
+let _proposalBookingId = null;
 let _selectedRating = 0;
 
 function openRatingModal({ bookingId, artisanId, artisanName }) {
@@ -547,7 +548,98 @@ function openRatingModal({ bookingId, artisanId, artisanName }) {
   document.querySelectorAll('#starRow .star').forEach(s => s.style.color = '#4a5568');
   document.getElementById('fixaRatingModal').style.display = 'flex';
 }
+const $id = id => document.getElementById(id);
+const money = n => `₦${Number(n || 0).toLocaleString()}`;
 
+function showProposalModal({ bookingId, previousPrice, newPrice, reason, artisanName }) {
+  _proposalBookingId = bookingId;
+  $id('proposalArtisanName').textContent = artisanName || 'Your artisan';
+  $id('proposalPrevPrice').textContent = money(previousPrice);
+  $id('proposalNewPrice').textContent = money(newPrice);
+  $id('proposalReason').textContent = reason || '';
+  $id('priceProposalBanner').style.display = 'flex';
+}
+function hideProposalModal() { $id('priceProposalBanner').style.display = 'none'; }
+
+function showTopUpModal({ bookingId, topUpId, previousPrice, newPrice, amount, reason, artisanName }) {
+  _activeTopUp = { bookingId, topUpId };
+  $id('topUpArtisanName').textContent = artisanName || 'Your artisan';
+  $id('topUpPrevPriceDisplay').textContent = money(previousPrice);
+  $id('topUpNewPriceDisplay').textContent = money(newPrice);
+  $id('topUpAmountDisplay').textContent = money(amount);
+  $id('topUpReasonDisplay').textContent = reason || '';
+  $id('topUpApprovalModal').style.display = 'flex';
+}
+
+async function approveProposal(btn) {
+  if (!_proposalBookingId) return;
+  const restore = withLoadingState(btn, 'Accepting…');
+  try {
+    const res = await fetch(`${BASE_URL}/api/bookings/${_proposalBookingId}/price-proposal/approve`, {
+      method: 'PUT', headers: authHeaders()
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.message || 'Could not accept the new price');
+    if (activeBooking && String(activeBooking._id) === String(_proposalBookingId)) {
+      activeBooking.estimatedPrice = data.estimatedPrice;
+    }
+    hideProposalModal();
+    toast('Price updated', `New price: ${money(data.estimatedPrice)}`, 'success');
+  } catch (err) { toast('Failed', err.message, 'warning'); }
+  finally { restore(); }
+}
+
+async function rejectProposal(btn) {
+  if (!_proposalBookingId) return;
+  const restore = withLoadingState(btn, 'Declining…');
+  try {
+    const res = await fetch(`${BASE_URL}/api/bookings/${_proposalBookingId}/price-proposal/reject`, {
+      method: 'PUT', headers: authHeaders()
+    });
+    if (!res.ok) throw new Error('Could not decline');
+    hideProposalModal();
+    toast('Proposal declined', 'The artisan has been notified', 'success');
+  } catch (err) { toast('Failed', err.message, 'warning'); }
+  finally { restore(); }
+}
+
+// Buttons are wired here, NOT inside initSocket, so they work even if the socket is down
+function wireModals() {
+  $id('proposalApproveBtn')?.addEventListener('click', e => approveProposal(e.currentTarget));
+  $id('proposalRejectBtn')?.addEventListener('click', e => rejectProposal(e.currentTarget));
+
+  $id('topUpApproveBtn')?.addEventListener('click', async (e) => {
+    if (!_activeTopUp) return;
+    const restore = withLoadingState(e.currentTarget, 'Redirecting…');
+    try {
+      const res = await fetch(`${BASE_URL}/api/bookings/${_activeTopUp.bookingId}/top-up/${_activeTopUp.topUpId}/approve`, {
+        method: 'POST', headers: authHeaders(true)
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || 'Could not approve');
+      localStorage.setItem('pendingTopUp', JSON.stringify({
+        bookingId: _activeTopUp.bookingId, topUpId: _activeTopUp.topUpId, reference: data.reference
+      }));
+      $id('topUpApprovalModal').style.display = 'none';
+      window.location.href = data.authorizationUrl;
+    } catch (err) { restore(); toast('Failed', err.message, 'warning'); }
+  });
+
+  $id('topUpRejectBtn')?.addEventListener('click', async (e) => {
+    if (!_activeTopUp) return;
+    const restore = withLoadingState(e.currentTarget, 'Rejecting…');
+    try {
+      const res = await fetch(`${BASE_URL}/api/bookings/${_activeTopUp.bookingId}/top-up/${_activeTopUp.topUpId}/reject`, {
+        method: 'POST', headers: authHeaders()
+      });
+      if (!res.ok) throw new Error('Could not reject');
+      $id('topUpApprovalModal').style.display = 'none';
+      _activeTopUp = null;
+      toast('Request rejected', 'The artisan has been notified', 'success');
+    } catch (err) { toast('Failed', err.message, 'warning'); }
+    finally { restore(); }
+  });
+}
 // Chat list state for unread tracking
 const chatListState = new Map();
 // Add near your other state variables
@@ -854,69 +946,17 @@ socket.on('messagesRead', ({ chatId }) => {
     socket.on('artisan:locationUpdate', ({ lat, lng }) => {
       console.log('Artisan location:', lat, lng);
     });
-    socket.on('topUpRequested', ({ bookingId, topUpId, previousPrice, newPrice, amount, reason, artisanName }) => {
-  _activeTopUp = { bookingId, topUpId };
-  document.getElementById('topUpArtisanName').textContent = artisanName || 'Your artisan';
-  document.getElementById('topUpPrevPriceDisplay').textContent = `₦${Number(previousPrice).toLocaleString()}`;
-  document.getElementById('topUpNewPriceDisplay').textContent = `₦${Number(newPrice).toLocaleString()}`;
-  document.getElementById('topUpAmountDisplay').textContent = `₦${Number(amount).toLocaleString()}`;
-  document.getElementById('topUpReasonDisplay').textContent = reason;
-  document.getElementById('topUpApprovalModal').style.display = 'flex';
-  addNotification('💰 Price Update Requested', `${artisanName}: new price ₦${Number(newPrice).toLocaleString()}`, 'payment');
+   
+    socket.on('topUpRequested', (d) => {
+  showTopUpModal(d);
+  addNotification('💰 Price Update Requested', `${d.artisanName || 'Your artisan'}: new price ${money(d.newPrice)}`, null);
 });
-
-socket.on('topUpPaid', ({ amount }) => {
-  addNotification('Top-Up Paid ✅', `Additional ₦${amount.toLocaleString()} added to escrow`, 'success');
+socket.on('priceProposalRequested', (d) => {
+  showProposalModal(d);                       // shows instantly, whichever page the customer is on
+  addNotification('💬 New Price Proposed', `${d.artisanName || 'Your artisan'}: ${money(d.newPrice)}`, null);
 });
-document.getElementById('topUpApproveBtn').addEventListener('click', async (e) => {
-  if (!_activeTopUp) return;
-  const restore = withLoadingState(e.currentTarget, 'Redirecting…');
-  try {
-    const res = await fetch(`${BASE_URL}/api/bookings/${_activeTopUp.bookingId}/top-up/${_activeTopUp.topUpId}/approve`, {
-      method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.message || 'Could not approve');
-    localStorage.setItem('pendingTopUp', JSON.stringify({
-      bookingId: _activeTopUp.bookingId, topUpId: _activeTopUp.topUpId, reference: data.reference
-    }));
-    document.getElementById('topUpApprovalModal').style.display = 'none';
-    window.location.href = data.authorizationUrl;
-  } catch (err) {
-    restore();
-    toast('Failed', err.message, 'warning');
-  }
-});
-
-document.getElementById('topUpRejectBtn').addEventListener('click', async (e) => {
-  if (!_activeTopUp) return;
-  const restore = withLoadingState(e.currentTarget, 'Rejecting…');
-  try {
-    const res = await fetch(`${BASE_URL}/api/bookings/${_activeTopUp.bookingId}/top-up/${_activeTopUp.topUpId}/reject`, {
-      method: 'POST', headers: { Authorization: `Bearer ${token}` }
-    });
-    if (!res.ok) throw new Error('Could not reject');
-    document.getElementById('topUpApprovalModal').style.display = 'none';
-    _activeTopUp = null;
-    toast('Request rejected', 'The artisan has been notified', 'success');
-  } catch (err) {
-    toast('Failed', err.message, 'warning');
-  } finally { restore(); }
-});
-socket.on('bookingStatusUpdated', ({ status, artisanName, bookingId, artisanId }) => {
-       const msgs = {
-        accepted:   `Your booking was accepted by ${artisanName || 'your artisan'}.`,
-        rejected:   'Your booking was declined.',
-        completed:  'Your job has been marked complete. Please confirm and rate your artisan.',
-        verifying:  'Job completion is being verified.',
-        cancelled:  'Booking was cancelled.'
-      };
-      const msg = msgs[status] || `Booking status updated: ${status}`;
-  addNotification('Booking Update', msgs[status] || `Booking status: ${status}`);
-  if (status === 'completed' && bookingId && artisanId) {
-    openRatingModal({ bookingId, artisanId, artisanName });
-  }
-  if (activeBooking && String(activeBooking._id) === String(bookingId)) { activeBooking.status = 'completed'; hideJobStatusUI(); }
+socket.on('priceProposalApproved', ({ bookingId, newPrice }) => {
+  if (activeBooking && String(activeBooking._id) === String(bookingId)) activeBooking.estimatedPrice = newPrice;
 });
 
     socket.on('bookingCancelled', async ({ bookingId, reason }) => {
@@ -1354,13 +1394,14 @@ async function loadChatBookingAndPaymentStatus(chatId) {
     if (chatRes.ok) {
       const chat = await chatRes.json();
       activeBooking = chat?.booking || null;
-      if (activeBooking?.priceProposal?.status === 'pending') {
-  document.getElementById('proposalPrevPrice').textContent = `₦${activeBooking.priceProposal.previousPrice.toLocaleString()}`;
-  document.getElementById('proposalNewPrice').textContent = `₦${activeBooking.priceProposal.newPrice.toLocaleString()}`;
-  document.getElementById('proposalReason').textContent = activeBooking.priceProposal.reason;
-  document.getElementById('priceProposalBanner').style.display = 'flex';
+  if (activeBooking?.priceProposal?.status === 'pending') {
+  showProposalModal({ bookingId: activeBooking._id, ...activeBooking.priceProposal, artisanName: $id('convName')?.textContent });
 } else {
-  document.getElementById('priceProposalBanner').style.display = 'none';
+  hideProposalModal();
+}
+const pendingTopUp = (activeBooking?.topUps || []).find(t => t.status === 'pending');
+if (pendingTopUp) {
+  showTopUpModal({ bookingId: activeBooking._id, topUpId: pendingTopUp._id, ...pendingTopUp, artisanName: $id('convName')?.textContent });
 }
       activeBookingId = activeBooking?._id || (typeof activeBooking === 'string' ? activeBooking : null);
       activeChatStatus = chat?.status || 'intro';
@@ -2421,6 +2462,7 @@ async function loadHomeRecent() {
 // INIT
 // ──────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
+  wireModals();
   initSocket();
   initHomeButtons();
   loadHomeRecent();
