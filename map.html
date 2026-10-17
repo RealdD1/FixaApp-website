@@ -413,78 +413,78 @@ function renderStatusBadge(artisan, online) {
       );
     }
 
-    function initSocket() {
-      const socket = io(API_URL, {
-        auth: { token: customerToken },
-        transports: ['websocket', 'polling'],
-      });
+function initSocket() {
+  const socket = io(API_URL, {
+    auth: { token: customerToken },
+    transports: ['websocket', 'polling'],
+  });
 
-      socket.on('connect_error', (err) => console.warn('[Socket]', err.message));
+  socket.on('connect_error', (err) => console.warn('[Socket]', err.message));
 
-      socket.on('artisanOffline', ({ artisanId }) => {
-        const entry = markersByArtisan.get(String(artisanId));
-        if (entry) setMarkerOnline(entry, false);
-      });
+  socket.on('artisanOffline', ({ artisanId }) => {
+    const entry = markersByArtisan.get(String(artisanId));
+    if (entry) setMarkerOnline(entry, false);
+  });
 
-      socket.on('artisanOnline', (data) => {
-        const { artisanId, userId, coordinates, category, name, profilePic } = data || {};
-        if (!artisanId) return;
+  socket.on('artisanOnline', (data) => {
+    const { artisanId, userId, coordinates, category, name, profilePic } = data || {};
+    if (!artisanId) return;
 
-        const existing = markersByArtisan.get(String(artisanId));
-        if (existing) {
-          setMarkerOnline(existing, true);
-          return;
-        }
-
-        if (selectedCategory && category !== selectedCategory) return;
-        if (!Array.isArray(coordinates) || coordinates.length !== 2) return;
-
-        addArtisanMarker({
-          _id: artisanId,
-          user: userId,
-          name, profilePic, category,
-          availabilityStatus: data.availabilityStatus || 'available',
-          location: { coordinates },
-        }, true);
-      });
+    const existing = markersByArtisan.get(String(artisanId));
+    if (existing) {
+      setMarkerOnline(existing, true);
+      return;
     }
-    socket.on('artisanAvailabilityUpdated', ({ artisanId, status }) => {
-  const entry = markersByArtisan.get(String(artisanId));
-  if (!entry) return;
-  entry.artisan.availabilityStatus = status;
-  entry.artisan.available = status === 'available';
-  setMarkerOnline(entry, entry.online);                        // redraws the pin colour
-  if (currentArtisan && String(currentArtisan._id) === String(artisanId) && artisanModal.style.display === 'flex') {
-    renderStatusBadge(entry.artisan, entry.online);
-  }
-});
 
-    function showArtisanProfile(artisan, latlng) {
-      map.flyTo(latlng, 15, { duration: 0.8 });
+    if (selectedCategory && category !== selectedCategory) return;
+    if (!Array.isArray(coordinates) || coordinates.length !== 2) return;
 
-      const rating = typeof artisan.rating === 'number' ? artisan.rating.toFixed(1) : 'N/A';
-      const isVerified = !!artisan.verification;
+    addArtisanMarker({
+      _id: artisanId,
+      user: userId,
+      name, profilePic, category,
+      availabilityStatus: data.availabilityStatus || 'available',
+      location: { coordinates },
+    }, true);
+  });
 
-      $('artisanName').textContent       = artisan.name || '';
-      $('artisanOccupation').textContent = artisan.category || '';
-      $('artisanDetails').textContent    = artisan.bio || 'No details available.';
-      $('artisanRating').textContent     = `⭐ ${rating} / 5`;
-
-      const pic = $('artisanPic');
-      pic.onerror = () => { pic.onerror = null; pic.src = DEFAULT_AVATAR; };
-pic.src = assetUrl(artisan.profilePic) || DEFAULT_AVATAR;
-      $('badgeText').textContent = isVerified ? 'Verified' : 'Not Verified';
-      $('badgeIcon').textContent = isVerified ? '✓' : '✕';
-      $('verificationBadge').className = 'verification-badge ' + (isVerified ? 'verified' : 'not-verified');
-
-      currentArtisan = artisan;
-      hoursInput.value = '';
-      complexityInput.value = '1';
-      updateEstimator();
-
-      renderStatusBadge(artisan, online);
-      artisanModal.style.display = 'flex';
+  socket.on('artisanAvailabilityUpdated', ({ artisanId, status }) => {
+    const entry = markersByArtisan.get(String(artisanId));
+    if (!entry) return;
+    entry.artisan.availabilityStatus = status;
+    entry.artisan.available = status === 'available';
+    setMarkerOnline(entry, entry.online);
+    if (currentArtisan && String(currentArtisan._id) === String(artisanId) && artisanModal.style.display === 'flex') {
+      renderStatusBadge(entry.artisan, entry.online);
     }
+  });
+}
+function showArtisanProfile(artisan, latlng, online) {
+  map.flyTo(latlng, 15, { duration: 0.8 });
+
+  const rating = typeof artisan.rating === 'number' ? artisan.rating.toFixed(1) : 'N/A';
+  const isVerified = !!artisan.verification;
+
+  $('artisanName').textContent       = artisan.name || '';
+  $('artisanOccupation').textContent = artisan.category || '';
+  $('artisanDetails').textContent    = artisan.bio || 'No details available.';
+  $('artisanRating').textContent     = `⭐ ${rating} / 5`;
+
+  const pic = $('artisanPic');
+  pic.onerror = () => { pic.onerror = null; pic.src = DEFAULT_AVATAR; };
+  pic.src = assetUrl(artisan.profilePic) || DEFAULT_AVATAR;
+  $('badgeText').textContent = isVerified ? 'Verified' : 'Not Verified';
+  $('badgeIcon').textContent = isVerified ? '✓' : '✕';
+  $('verificationBadge').className = 'verification-badge ' + (isVerified ? 'verified' : 'not-verified');
+
+  currentArtisan = artisan;
+  hoursInput.value = '';
+  complexityInput.value = '1';
+  updateEstimator();
+
+  renderStatusBadge(artisan, online);
+  artisanModal.style.display = 'flex';
+}
 
     function closeArtisanModal() { artisanModal.style.display = 'none'; }
 
