@@ -62,7 +62,7 @@
     .section-title{padding:0 20px 12px;display:flex;justify-content:space-between;align-items:center}
     .section-title h3{font-size:18px;font-weight:700}
     .section-title a{color:var(--gold);font-weight:600;font-size:14px;text-decoration:none}
-    .services-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;padding:0 20px}
+    .services-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;padding:0 20px;margin-top:1rem}
     .service-item{display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;transition:all .3s}
     .service-item:hover{transform:translateY(-5px)}
     .icon-square{width:70px;height:70px;background:var(--bg-card);border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:28px;border:1px solid rgba(255,215,0,.1);transition:all .4s cubic-bezier(.34,1.56,.64,1)}
@@ -412,6 +412,7 @@
       <div class="tab" onclick="filterCustomer('ongoing', event)">Active</div>
       <div class="tab" onclick="filterCustomer('completed', event)">Completed</div>
       <div class="tab" onclick="filterCustomer('cancelled', event)">Cancelled</div>
+      <div class="tab" onclick="filterCustomer('expired',event)">Expired</div>
     </div>
 
     <div id="customerList">
@@ -2089,6 +2090,9 @@ function histStatusGroup(status){
   if (s === 'completed') return 'completed';
   if (s === 'rejected' || s === 'cancelled') return 'cancelled';
   return 'ongoing';
+  if (s === 'expired') {return 'expired';
+    
+  }
 }
 
 async function loadHistory(){
