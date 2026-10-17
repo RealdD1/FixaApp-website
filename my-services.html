@@ -179,10 +179,11 @@ const BACKEND_URL = window.FIXA_CONFIG.API_URL;
 const picUrl = p => !p ? '' : /^(https?:|blob:|data:)/.test(p) ? p : `${BACKEND_URL}/${String(p).replace(/^\//, '')}`;
 const STATUS = { available: ['🟢','Available for jobs'], busy: ['🟠','Busy'], on_job: ['🔵','On a job'], break: ['🟣','On break'] };
 const statusOf = d => d.availabilityStatus || (d.available ? 'available' : 'busy');
-
-    const categories = [
+ const categories = [
       { name: "Electrician", icon: "lightbulb" },
       { name: "Plumber", icon: "water" },
+      {name: "Massage Therapist", icon: "spa"},
+      {name: "Hair Dresser", icon: "hair_salon" },
       { name: "House Cleaner", icon: "cleaning_services" },
       { name: "Janitor", icon: "cleaning_services" },
       { name: "Painter", icon: "format_paint" },
@@ -203,7 +204,6 @@ const statusOf = d => d.availabilityStatus || (d.available ? 'available' : 'busy
       { name: "Appliance Repair", icon: "settings" },
       { name: "Nanny/House help", icon: "child_friendly" }
     ];
-
 const categoryGrid = document.getElementById("categoryGrid");
 const categoryInput = document.getElementById("categoryInput");
 const savedCard = document.getElementById("savedCard");
