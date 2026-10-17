@@ -1,381 +1,498 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Fixa Services</title>
-  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script src='config.js'></script>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #00172b;
-      color: #fff;
-      padding: 20px;
-      margin: 0;
-    }
-    input, textarea, button {
-      width: 100%;
-      padding: 10px;
-      font-size: 16px;
-      border-radius: 6px;
-      border: none;
-      margin-bottom: 15px;
-    }
-    .btn {
-      background: gold;
-      color: #00172b;
-      font-weight: bold;
-      cursor: pointer;
-    }
-    .toggle-container {
-      position: relative;
-      width: 60px;
-      height: 30px;
-      margin: 10px auto;
-    }
-    .toggle-container input { display: none; }
-    .toggle-label {
-      position: absolute;
-      cursor: pointer;
-      background: #555;
-      border-radius: 30px;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      transition: 0.3s;
-    }
-    .toggle-label::after {
-      content: "";
-      position: absolute;
-      background: #fff;
-      width: 24px; height: 24px;
-      border-radius: 50%;
-      top: 3px; left: 3px;
-      transition: 0.3s;
-    }
-    .toggle-container input:checked + .toggle-label { background: gold; }
-    .toggle-container input:checked + .toggle-label::after { transform: translateX(30px); }
-    .category-grid {
-      display: none;
-      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-      gap: 20px;
-      max-height: 300px;
-      overflow-y: auto;
-      margin-bottom: 20px;
-    }
-    .category-card {
-      background: #002b45;
-      border-radius: 10px;
-      padding: 15px;
-      text-align: center;
-      transition: 0.3s ease;
-    }
-    .category-card:hover {
-      background: #003a5c;
-      transform: scale(1.03);
-      cursor: pointer;
-    }
-    .material-icons { font-size: 36px; color: gold; }
-    .category-name { margin-top: 10px; }
-    .result-card {
-      margin-top: 20px;
-      text-align: center;
-      background: #0a2c44;
-      padding: 20px;
-      border-radius: 10px;
-    }
-    .result-card h3 { color: gold; }
-    .card-buttons {
-      display: flex;
-      justify-content: center;
-      gap: 10px;
-      margin-top: 15px;
-    }
-    .edit-btn {
-      background: #ffc107;
-      color: #000;
-      padding: 8px 12px;
-      border-radius: 6px;
-      border: none;
-      cursor: pointer;
-    }
-    #dropArea {
-      border: 2px dashed #555;
-      border-radius: 10px;
-      padding: 20px;
-      text-align: center;
-      cursor: pointer;
-      margin-bottom: 15px;
-    }
-    #dropArea.hover {
-      border-color: gold;
-      background: #002b45;
-    }
-    #profilePreview {
-      display: block;
-      max-width: 120px;
-      border-radius: 50%;
-      margin: 10px auto;
-    }
-    #removeImageBtn {
-      display: block;
-      margin: 5px auto 15px;
-      background: #ff4444;
-      color: #fff;
-      border: none;
-      padding: 5px 10px;
-      border-radius: 6px;
-      cursor: pointer;
-    }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="theme-color" content="#041b2b">
+<title>My Services | Fixa</title>
+<script src="config.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script>
+  // follow the theme the artisan picked on the dashboard
+  try { document.documentElement.setAttribute('data-theme', localStorage.getItem('fixa-theme') === 'light' ? 'light' : 'dark'); } catch (e) {}
+</script>
+<style>
+  :root {
+    --bg: #041b2b;
+    --card: #0b2a44;
+    --card-2: #103453;
+    --line: rgba(255, 255, 255, .10);
+    --text: #ffffff;
+    --muted: #9fb0c3;
+    --gold: #ffd700;
+    --gold-ink: #1a1400;
+    --danger: #ef4444;
+  }
+  html[data-theme="light"] {
+    --bg: #ffffff;
+    --card: #f5f8fc;
+    --card-2: #e9f0f8;
+    --line: rgba(11, 42, 74, .14);
+    --text: #111111;
+    --muted: #555f6d;
+  }
 
-    /* Notification */
-    .notification {
-      display: none;
-      padding: 15px;
-      border-radius: 8px;
-      text-align: center;
-      margin: 20px auto;
-      font-weight: bold;
-      max-width: 500px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-      opacity: 0;
-      transition: opacity 0.5s ease-in-out;
-    }
-    .notification.success { background-color: gold; color: #00172B; }
-    .notification.error { background-color: #e74c3c; color: white; }
-  </style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  [hidden] { display: none !important; }
+
+  html, body { background: var(--bg); color: var(--text); }
+  body {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    min-height: 100vh;
+    padding: calc(16px + env(safe-area-inset-top)) 16px calc(112px + env(safe-area-inset-bottom));
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 520px; margin: 0 auto; }
+
+  button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+  /* ── header ── */
+  .top { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+  .back {
+    width: 40px; height: 40px; flex-shrink: 0; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--card); border: 1px solid var(--line);
+    color: var(--gold); text-decoration: none; font-size: 18px; font-weight: 700;
+  }
+  h1 { font-size: 21px; font-weight: 800; letter-spacing: -.2px; }
+  .top p { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+  /* ── cards ── */
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 16px; margin-bottom: 14px; }
+  .card h2 { font-size: 15px; font-weight: 700; }
+  .card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+  .selected-label { font-size: 13px; font-weight: 700; color: var(--gold); text-align: right; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  html[data-theme="light"] .selected-label { color: #8a6700; }
+  .hint { font-size: 12.5px; color: var(--muted); margin-top: 10px; line-height: 1.45; }
+
+  /* ── summary ── */
+  .sum-top { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+  .avatar { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; border: 2px solid var(--gold); background: #0b3a5c; flex-shrink: 0; }
+  .avatar.big { width: 88px; height: 88px; }
+  .sum-service { display: flex; align-items: center; gap: 8px; font-size: 18px; font-weight: 800; line-height: 1.2; }
+  .sum-service .ico { font-size: 22px; }
+  .pill {
+    --c: #22c55e;
+    display: inline-flex; align-items: center; gap: 7px; margin-top: 8px;
+    padding: 5px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 700;
+    color: var(--c); border: 1px solid var(--c);
+    background: color-mix(in srgb, var(--c) 14%, transparent);
+  }
+  .pill::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
+
+  /* ── photo ── */
+  .photo-row { display: flex; align-items: center; gap: 16px; }
+  .avatar-btn { position: relative; border-radius: 50%; flex-shrink: 0; }
+  .avatar-btn.drag .avatar { border-style: dashed; filter: brightness(1.15); }
+  .cam {
+    position: absolute; right: -2px; bottom: -2px; width: 30px; height: 30px; border-radius: 50%;
+    background: var(--gold); color: var(--gold-ink); font-size: 14px;
+    display: flex; align-items: center; justify-content: center; border: 2px solid var(--card);
+  }
+  .photo-help p { font-size: 13.5px; font-weight: 600; line-height: 1.4; }
+  .photo-help small { display: block; font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .link { color: var(--danger); font-size: 13px; font-weight: 700; margin-top: 6px; padding: 4px 0; }
+
+  /* ── fields ── */
+  .field, select {
+    width: 100%; height: 48px; padding: 0 14px; border-radius: 12px;
+    border: 1.5px solid var(--line); background: var(--card-2); color: var(--text);
+    font: inherit; font-size: 16px; outline: none;
+  }
+  .field:focus, select:focus { border-color: var(--gold); }
+  .field::placeholder { color: var(--muted); }
+  option { background: #0b2a44; color: #fff; }
+  html[data-theme="light"] option { background: #fff; color: #111; }
+
+  /* ── service tiles ── */
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; }
+  @media (min-width: 480px) { .grid { grid-template-columns: repeat(4, 1fr); } }
+  .tile {
+    position: relative; min-height: 88px; padding: 12px 6px 10px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px;
+    border-radius: 14px; background: var(--card-2); border: 1.5px solid transparent;
+    font-size: 12px; font-weight: 600; line-height: 1.25; text-align: center; overflow-wrap: anywhere;
+    transition: border-color .12s, background-color .12s;
+  }
+  .tile .ico { font-size: 27px; line-height: 1; }
+  .tile:active { transform: scale(.97); }
+  .tile[aria-pressed="true"] { border-color: var(--gold); background: color-mix(in srgb, var(--gold) 13%, var(--card-2)); }
+  .tile[aria-pressed="true"]::after {
+    content: "\2713"; position: absolute; top: 6px; right: 6px; width: 17px; height: 17px; border-radius: 50%;
+    background: var(--gold); color: var(--gold-ink); font-size: 10px; font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .empty { text-align: center; color: var(--muted); font-size: 13.5px; padding: 22px 0 8px; }
+
+  /* ── availability select ── */
+  .select-wrap { position: relative; }
+  .dot { position: absolute; left: 15px; top: 50%; width: 10px; height: 10px; margin-top: -5px; border-radius: 50%; pointer-events: none; z-index: 1; }
+  select {
+    appearance: none; -webkit-appearance: none; cursor: pointer; font-weight: 600;
+    padding-left: 36px; padding-right: 42px;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M1 1l5 5 5-5' fill='none' stroke='%23ffd700' stroke-width='2' stroke-linecap='round'/></svg>");
+    background-repeat: no-repeat; background-position: right 15px center;
+  }
+
+  /* ── buttons ── */
+  .btn {
+    height: 50px; padding: 0 20px; border-radius: 14px; font-weight: 700; font-size: 15px;
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .btn:disabled { opacity: .65; cursor: not-allowed; }
+  .btn-gold { background: var(--gold); color: var(--gold-ink); }
+  .btn-ghost { background: color-mix(in srgb, var(--text) 8%, transparent); border: 1px solid var(--line); }
+  .btn-block { width: 100%; }
+  .spin { width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgba(26, 20, 0, .25); border-top-color: var(--gold-ink); animation: sp .6s linear infinite; }
+  .spin.light { border-color: rgba(255, 255, 255, .25); border-top-color: var(--gold); }
+  @keyframes sp { to { transform: rotate(360deg); } }
+
+  .actions {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
+    padding: 14px 16px calc(12px + env(safe-area-inset-bottom));
+    background: linear-gradient(to top, var(--bg) 72%, transparent);
+  }
+  .actions .inner { max-width: 520px; margin: 0 auto; display: flex; gap: 10px; }
+  .actions .btn-gold { flex: 1; }
+
+  /* ── states ── */
+  .state { text-align: center; padding: 34px 16px; color: var(--muted); font-size: 14px; }
+  .state .spin { margin: 0 auto 12px; width: 26px; height: 26px; }
+  .state h2 { color: var(--text); margin-bottom: 6px; }
+  .state .btn { margin-top: 16px; }
+
+  /* ── toast ── */
+  .toast {
+    position: fixed; left: 50%; top: calc(14px + env(safe-area-inset-top)); z-index: 50;
+    max-width: min(92vw, 420px); padding: 12px 16px; border-radius: 12px;
+    font-size: 14px; font-weight: 700; text-align: center; pointer-events: none;
+    transform: translate(-50%, -160%); transition: transform .25s ease;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .35);
+  }
+  .toast.show { transform: translate(-50%, 0); }
+  .toast.success { background: var(--gold); color: var(--gold-ink); }
+  .toast.error { background: var(--danger); color: #fff; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition: none !important; animation-duration: .01ms !important; }
+  }
+</style>
 </head>
 <body>
+<div class="wrap">
 
-<div id="notificationArea" class="notification"></div>
+  <header class="top">
+    <a class="back" href="artisan test.html" aria-label="Back to dashboard">&larr;</a>
+    <div>
+      <h1>My services</h1>
+      <p>What you offer and when you’re available</p>
+    </div>
+  </header>
 
-<div id="savedCard" style="display: none;"></div>
+  <section id="loading" class="card state" aria-live="polite">
+    <div class="spin light"></div>
+    Loading your profile…
+  </section>
 
-<div id="formSection" style="display: none; text-align:center;">
-  <h2 style="font-size:0.9rem">Edit Profile</h2>
+  <section id="error" class="card state" hidden>
+    <h2>We couldn’t load your profile</h2>
+    <p>Check your connection and try again.</p>
+    <button type="button" id="retryBtn" class="btn btn-gold">Try again</button>
+  </section>
 
-  <div id="dropArea">Drag & Drop Image or Click to Select</div>
-  <input type="file" id="profilePicInput" accept="image/*" style="display:none;" />
-  <img id="profilePreview" style="display:none;" alt="Preview" />
-  <button id="removeImageBtn" style="display:none;">Remove Image</button>
+  <!-- saved profile -->
+  <section id="summary" class="card" hidden>
+    <div class="sum-top">
+      <img id="sumPic" class="avatar" alt="Your profile photo">
+      <div>
+        <div class="sum-service"><span id="sumIcon" class="ico"></span><span id="sumCat"></span></div>
+        <div id="sumStatus" class="pill"></div>
+      </div>
+    </div>
+    <button type="button" id="editBtn" class="btn btn-ghost btn-block">Edit profile</button>
+  </section>
 
-  <input type="text" placeholder="Click to select a service" id="categoryInput" readonly>
-  <div class="category-grid" id="categoryGrid"></div>
+  <!-- edit form -->
+  <div id="form" hidden>
+    <section class="card">
+      <div class="card-head"><h2>Profile photo</h2></div>
+      <div class="photo-row">
+        <button type="button" id="photoBtn" class="avatar-btn" aria-label="Choose a profile photo">
+          <img id="photoPreview" class="avatar big" alt="">
+          <span class="cam" aria-hidden="true">&#128247;</span>
+        </button>
+        <div class="photo-help">
+          <p>Tap the photo to change it. A clear face photo gets more bookings.</p>
+          <small>JPG, PNG, GIF or WebP, up to 5 MB</small>
+          <button type="button" id="discardPhoto" class="link" hidden>Discard new photo</button>
+        </div>
+      </div>
+      <input type="file" id="photoInput" accept="image/*" hidden>
+    </section>
 
-<label for="availabilitySelect">Availability</label>
-<select id="availabilitySelect">
-  <option value="available">🟢 Available for jobs</option>
-  <option value="busy">🟠 Busy</option>
-  <option value="on_job">🔵 On a job</option>
-  <option value="break">🟣 On break</option>
-  <option value="offline">⚫ Offline</option>
-</select>
+    <section class="card">
+      <div class="card-head">
+        <h2>Your service</h2>
+        <span id="selectedLabel" class="selected-label">None selected</span>
+      </div>
+      <input id="catSearch" class="field" type="search" placeholder="Search services" autocomplete="off" enterkeyhint="search" aria-label="Search services">
+      <div id="catGrid" class="grid"></div>
+      <p id="catEmpty" class="empty" hidden>No service matches your search.</p>
+    </section>
 
-  <button class="btn" id="saveBtn">Save</button>
+    <section class="card">
+      <div class="card-head"><h2>Availability</h2></div>
+      <div class="select-wrap">
+        <span id="availDot" class="dot"></span>
+        <select id="availSelect" aria-label="Availability status">
+          <option value="available">Available for jobs</option>
+          <option value="busy">Busy</option>
+          <option value="on_job">On a job</option>
+          <option value="break">On break</option>
+          <option value="offline">Offline</option>
+        </select>
+      </div>
+      <p id="availHint" class="hint"></p>
+    </section>
+  </div>
 </div>
 
+<div id="actions" class="actions" hidden>
+  <div class="inner">
+    <button type="button" id="cancelBtn" class="btn btn-ghost">Cancel</button>
+    <button type="button" id="saveBtn" class="btn btn-gold">Save changes</button>
+  </div>
+</div>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
 <script>
-const BACKEND_URL = window.FIXA_CONFIG.API_URL;
-const picUrl = p => !p ? '' : /^(https?:|blob:|data:)/.test(p) ? p : `${BACKEND_URL}/${String(p).replace(/^\//, '')}`;
-const STATUS = { available: ['🟢','Available for jobs'], busy: ['🟠','Busy'], on_job: ['🔵','On a job'], break: ['🟣','On break'] };
-const statusOf = d => d.availabilityStatus || (d.available ? 'available' : 'busy');
-const categories = [
-      { name: "Electrician", icon: "lightbulb" },
-      { name: "Plumber", icon: "water" },
-      { name: "Massage Therapist", icon: "spa" },
-      { name: "Nail Technician", icon: "finger" },
-      { name: "Hair Dresser", icon: "hair_dressing" },
-      { name: "House Cleaner/Janitor", icon: "cleaning_services" },
-      { name: "Janitor", icon: "cleaning_services" },
-      { name: "Painter", icon: "format_paint" },
-      { name: "Tiler", icon: "grid_on" },
-      { name: "Mechanic", icon: "build" },
-      { name: "Welder", icon: "construction" },
-      { name: "Generator Repairer", icon: "power" },
-      { name: "POP Installer", icon: "roofing" },
-      { name: "Fashion Designer", icon: "checkroom" },
-      { name: "Make-Up Artist", icon: "face_retouching_natural" },
-      { name: "CCTV Installer", icon: "videocam" },
-      { name: "Solar Panel", icon: "solar_power" },
-      { name: "Cook/Caterer", icon: "restaurant" },
-      { name: "Handyman", icon: "handyman" },
-      { name: "Carpenter", icon: "chair" },
-      { name: "HVAC Tech", icon: "ac_unit" },
-      { name: "Gardener", icon: "yard" },
-      { name: "Appliance Repair", icon: "settings" },
-      { name: "Nanny/House help", icon: "child_friendly" }
-    ];
-const categoryGrid = document.getElementById("categoryGrid");
-const categoryInput = document.getElementById("categoryInput");
-const savedCard = document.getElementById("savedCard");
-const profilePicInput = document.getElementById("profilePicInput");
-const dropArea = document.getElementById("dropArea");
-const profilePreview = document.getElementById("profilePreview");
-const removeImageBtn = document.getElementById("removeImageBtn");
-const formSection = document.getElementById("formSection");
-const notificationArea = document.getElementById("notificationArea");
+(function () {
+  'use strict';
 
-let currentProfile = {};
-let selectedFile = null;
+  var API = window.FIXA_CONFIG.API_URL;
+  var token = localStorage.getItem('token');
+  if (!token) { location.replace('SignIn.html'); return; }
 
-// Notification
-function showNotification(message, type) {
-  notificationArea.textContent = message;
-  notificationArea.className = `notification ${type}`;
-  notificationArea.style.display = "block";
+  // Names must match exactly what customers search for and what the price estimator uses.
+  var CATEGORIES = [
+    ['Electrician', '\u26A1'], ['Plumber', '\uD83D\uDEB0'], ['Massage Therapist', '\uD83D\uDC86'],
+    ['Nail Technician', '\uD83D\uDC85'], ['Hair Dresser', '\uD83D\uDC87'], ['House Cleaner/Janitor', '\uD83E\uDDF9'],
+    ['Janitor', '\uD83E\uDDFD'], ['Painter', '\uD83C\uDFA8'], ['Tiler', '\uD83E\uDDF1'],
+    ['Mechanic', '\uD83D\uDD27'], ['Welder', '\uD83D\uDD25'], ['Generator Repairer', '\uD83D\uDD0C'],
+    ['POP Installer', '\uD83C\uDFE0'], ['Fashion Designer', '\uD83E\uDDF5'], ['Make-Up Artist', '\uD83D\uDC84'],
+    ['CCTV Installer', '\uD83D\uDCF9'], ['Solar Panel', '\u2600\uFE0F'], ['Cook/Caterer', '\uD83C\uDF73'],
+    ['Handyman', '\uD83D\uDEE0\uFE0F'], ['Carpenter', '\uD83E\uDE9A'], ['HVAC Tech', '\u2744\uFE0F'],
+    ['Gardener', '\uD83C\uDF3F'], ['Appliance Repair', '\uD83E\uDDF0'], ['Nanny/House help', '\uD83D\uDC76']
+  ];
 
-  // fade in
-  setTimeout(() => { notificationArea.style.opacity = 1; }, 10);
-
-  // hide after 3s with fade out
-  setTimeout(() => {
-    notificationArea.style.opacity = 0;
-    setTimeout(() => { notificationArea.style.display = "none"; }, 500);
-  }, 3000);
-}
-
-// Render categories
-categories.forEach(cat => {
-  const div = document.createElement("div");
-  div.className = "category-card";
-  div.innerHTML = `<span class="material-icons">${cat.icon}</span><div class="category-name">${cat.name}</div>`;
-  div.onclick = () => {
-    categoryInput.value = cat.name;
-    categoryGrid.style.display = "none";
+  var STATUS = {
+    available: { label: 'Available for jobs', color: '#22c55e' },
+    busy:      { label: 'Busy',               color: '#f97316' },
+    on_job:    { label: 'On a job',           color: '#3b82f6' },
+    break:     { label: 'On break',           color: '#a855f7' },
+    offline:   { label: 'Offline',            color: '#6b7280' }
   };
-  categoryGrid.appendChild(div);
-});
 
-categoryInput.onclick = () => {
-  categoryGrid.style.display = categoryGrid.style.display === "grid" ? "none" : "grid";
-};
+  var AVATAR = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 90 90"><rect width="90" height="90" fill="#0b3a5c"/>' +
+    '<circle cx="45" cy="34" r="16" fill="#FFD700"/><path d="M15 80c4-20 20-26 30-26s26 6 30 26z" fill="#FFD700"/></svg>');
 
-document.addEventListener("click", e => {
-  if (!categoryGrid.contains(e.target) && e.target !== categoryInput) categoryGrid.style.display = "none";
-});
+  var $ = function (id) { return document.getElementById(id); };
+  var profile = {}, hasProfile = false, selectedFile = null, selectedCat = '', saving = false, toastTimer = null;
 
-function openForm(data) {
-  formSection.style.display = "block";
-  savedCard.style.display = "none";
-  categoryInput.value = data.category || "";
-  document.getElementById("availabilitySelect").value = statusOf(data);
-  if (data.profilePic) { profilePreview.src = picUrl(data.profilePic); profilePreview.style.display = "block"; removeImageBtn.style.display = "block"; }
-  else { profilePreview.style.display = "none"; removeImageBtn.style.display = "none"; }
-}
-
-async function fetchProfile() {
-  const token = localStorage.getItem("token");
-  if (!token) return (window.location.href = "SignIn.html");
-  try {
-    const res = await fetch(`${BACKEND_URL}/api/artisans/me`, { headers: { Authorization: `Bearer ${token}` } });
-    if (res.status === 401) { localStorage.clear(); return (window.location.href = "SignIn.html"); }
-    if (!res.ok) throw new Error("Failed to load profile data.");
-    currentProfile = await res.json();
-    if (!currentProfile.category) openForm(currentProfile);   // first-time setup
-    else renderProfileCard(currentProfile);
-  } catch (err) {
-    console.error(err);
-    showNotification(err.message || "Could not load profile", "error");
-    formSection.style.display = "block";                      // never leave a blank page
+  function picUrl(p) {
+    if (!p) return '';
+    return /^(https?:|blob:|data:)/i.test(p) ? p : API + '/' + String(p).replace(/^\/+/, '');
   }
-}
-
-function renderProfileCard(data) {
-  const st = STATUS[statusOf(data)];
-  savedCard.innerHTML = `
-    <div class="result-card">
-      ${data.profilePic ? `<img src="${picUrl(data.profilePic)}" alt="Profile" style="width:100px;height:100px;border-radius:50%;object-fit:cover;margin-bottom:10px;" />` : ""}
-      <h3>${data.category || "No Category"}</h3>
-      <p>Status: ${st[0]} ${st[1]}</p>
-      <div class="card-buttons"><button class="edit-btn" id="editBtn">Edit Profile</button></div>
-    </div>`;
-  savedCard.style.display = "block";
-  document.getElementById("editBtn").onclick = () => openForm(data);
-}
-
-// File handling
-function handleFile(file) {
-  const allowed =["image/jpeg", "image/png", "image/gif", "image/webp"];
-  const maxSize = 5*1024*1024;
-  if (!allowed.includes(file.type)) return showNotification("Only JPEG, PNG, GIF, WebP allowed!", "error");
-  if (file.size > maxSize) return showNotification("File size must be <= 5MB!", "error");
-  selectedFile = file;
-  const reader = new FileReader();
-  reader.onload = e => { profilePreview.src = e.target.result; profilePreview.style.display = "block"; removeImageBtn.style.display = "block"; };
-  reader.readAsDataURL(file);
-}
-
-// Drag & drop
-dropArea.addEventListener("click", () => profilePicInput.click());
-dropArea.addEventListener("dragover", e => { e.preventDefault(); dropArea.classList.add("hover"); });
-dropArea.addEventListener("dragleave", e => { dropArea.classList.remove("hover"); });
-dropArea.addEventListener("drop", e => { e.preventDefault(); dropArea.classList.remove("hover"); if(e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]); });
-profilePicInput.addEventListener("change", e => handleFile(e.target.files[0]));
-removeImageBtn.addEventListener("click", () => { selectedFile=null; profilePreview.src=""; profilePreview.style.display="none"; removeImageBtn.style.display="none"; });
-
-// Save profile
-document.getElementById("saveBtn").addEventListener("click", async (e) => {
-  const btn = e.currentTarget;
-  if (btn.disabled) return;
-  if (!categoryInput.value) return showNotification("Please select a service", "error");
-
-  const original = btn.innerHTML;
-  btn.disabled = true; btn.innerHTML = "Saving…";
-  try {
-    const formData = new FormData();
-    if (selectedFile) formData.append("profilePic", selectedFile);
-    formData.append("category", categoryInput.value);
-    formData.append("availabilityStatus", document.getElementById("availabilitySelect").value);
-
-    const res = await fetch(`${BACKEND_URL}/api/artisans/profile`, {
-      method: "PUT",
-      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-      body: formData
+  function statusOf(d) {
+    var s = d.availabilityStatus || (d.available ? 'available' : 'busy');
+    return STATUS[s] ? s : 'available';
+  }
+  function iconOf(name) {
+    for (var i = 0; i < CATEGORIES.length; i++) if (CATEGORIES[i][0] === name) return CATEGORIES[i][1];
+    return '\uD83D\uDEE0\uFE0F';
+  }
+  function setImg(img, src) {
+    img.onerror = function () { img.onerror = null; img.src = AVATAR; };
+    img.src = src || AVATAR;
+  }
+  function toast(msg, type) {
+    var t = $('toast');
+    t.textContent = msg;
+    t.className = 'toast show ' + (type || 'success');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.classList.remove('show'); }, 3200);
+  }
+  function show(which) {
+    ['loading', 'error', 'summary', 'form', 'actions'].forEach(function (id) {
+      $(id).hidden = which.indexOf(id) === -1;
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || "Failed to save profile.");
-    // 2) NEW — also send their current location
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        async (pos) => {
-          try {
-            await fetch(`${BACKEND_URL}/api/artisans/location`, {
-              method: "PUT",
-              headers: {
-                Authorization: `Bearer ${localStorage.getItem("token")}`,
-                "Content-Type": "application/json"
-              },
-              body: JSON.stringify({
-                location: {
-                  type: "Point",
-                  coordinates: [pos.coords.longitude, pos.coords.latitude]
-                }
-              })
-            });
-            console.log("[Location] saved", pos.coords);
-          } catch (err) {
-            console.warn("Location update failed:", err);
-          }
-        },
-        (err) => console.warn("Geolocation denied:", err.message),
-        { enableHighAccuracy: true, timeout: 10000 }
-      );
-    }
-
-    showNotification("Profile updated successfully!", "success");
-    currentProfile = data;
-    renderProfileCard(currentProfile);
-    formSection.style.display = "none";
-    selectedFile = null;
-  } catch (err) {
-    console.error(err);
-    showNotification(err.message || "A network error occurred.", "error");
-  } finally {
-    btn.disabled = false; btn.innerHTML = original;
   }
-});
+  function authFail() { localStorage.clear(); location.replace('SignIn.html'); }
 
-fetchProfile();
+  /* ── views ── */
+  function renderSummary() {
+    var st = STATUS[statusOf(profile)];
+    setImg($('sumPic'), picUrl(profile.profilePic));
+    $('sumIcon').textContent = iconOf(profile.category);
+    $('sumCat').textContent = profile.category || 'No service selected';
+    var pill = $('sumStatus');
+    pill.textContent = st.label;
+    pill.style.setProperty('--c', st.color);
+    show(['summary']);
+  }
+
+  function openForm() {
+    selectedFile = null;
+    selectedCat = profile.category || '';
+    setImg($('photoPreview'), picUrl(profile.profilePic));
+    $('discardPhoto').hidden = true;
+    $('availSelect').value = statusOf(profile);
+    paintAvail();
+    $('catSearch').value = '';
+    renderGrid();
+    $('cancelBtn').hidden = !hasProfile;   // first-time setup has nothing to go back to
+    show(['form', 'actions']);
+    window.scrollTo(0, 0);
+  }
+
+  function renderGrid() {
+    var q = $('catSearch').value.trim().toLowerCase();
+    var list = CATEGORIES.slice();
+    var known = list.some(function (c) { return c[0] === selectedCat; });
+    if (selectedCat && !known) list.unshift([selectedCat, '\uD83D\uDEE0\uFE0F']);   // keep an old custom category visible
+    list = list.filter(function (c) { return c[0].toLowerCase().indexOf(q) !== -1; });
+
+    var grid = $('catGrid');
+    grid.textContent = '';
+    list.forEach(function (c) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'tile';
+      b.setAttribute('aria-pressed', String(c[0] === selectedCat));
+      var i = document.createElement('span'); i.className = 'ico'; i.textContent = c[1];
+      var n = document.createElement('span'); n.textContent = c[0];
+      b.appendChild(i); b.appendChild(n);
+      b.addEventListener('click', function () { selectedCat = c[0]; renderGrid(); });
+      grid.appendChild(b);
+    });
+    $('catEmpty').hidden = list.length > 0;
+    $('selectedLabel').textContent = selectedCat || 'None selected';
+  }
+
+  function paintAvail() {
+    var key = $('availSelect').value, st = STATUS[key];
+    $('availDot').style.background = st.color;
+    $('availSelect').style.borderColor = st.color;
+    $('availHint').textContent = key === 'available'
+      ? 'Customers can book you right now.'
+      : 'Customers will see you as “' + st.label + '”.';
+  }
+
+  /* ── photo ── */
+  function handleFile(file) {
+    if (!file) return;
+    if (['image/jpeg', 'image/png', 'image/gif', 'image/webp'].indexOf(file.type) === -1) {
+      return toast('Only JPG, PNG, GIF or WebP images are allowed', 'error');
+    }
+    if (file.size > 5 * 1024 * 1024) return toast('The image must be 5 MB or smaller', 'error');
+    selectedFile = file;
+    var r = new FileReader();
+    r.onload = function (e) { $('photoPreview').src = e.target.result; };
+    r.readAsDataURL(file);
+    $('discardPhoto').hidden = false;
+  }
+
+  /* ── network ── */
+  async function load() {
+    show(['loading']);
+    try {
+      var res = await fetch(API + '/api/artisans/me', { headers: { Authorization: 'Bearer ' + token } });
+      if (res.status === 401) return authFail();
+      if (!res.ok) throw new Error('Could not load your profile');
+      profile = await res.json();
+      hasProfile = !!profile.category;
+      if (hasProfile) renderSummary(); else openForm();
+    } catch (err) {
+      console.error(err);
+      show(['error']);
+    }
+  }
+
+  function sendLocation() {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(async function (pos) {
+      try {
+        await fetch(API + '/api/artisans/location', {
+          method: 'PUT',
+          headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ location: { type: 'Point', coordinates: [pos.coords.longitude, pos.coords.latitude] } })
+        });
+      } catch (e) { console.warn('Location update failed:', e); }
+    }, function (e) { console.warn('Geolocation unavailable:', e.message); }, { enableHighAccuracy: true, timeout: 10000 });
+  }
+
+  async function save() {
+    if (saving) return;
+    if (!selectedCat) return toast('Select a service first', 'error');
+    saving = true;
+    var btn = $('saveBtn'), cancel = $('cancelBtn'), original = btn.innerHTML;
+    btn.disabled = true; cancel.disabled = true;
+    btn.innerHTML = '<span class="spin"></span>Saving…';
+    var status = $('availSelect').value;
+    try {
+      var fd = new FormData();
+      if (selectedFile) fd.append('profilePic', selectedFile);
+      fd.append('category', selectedCat);
+      fd.append('availabilityStatus', status);
+
+      var res = await fetch(API + '/api/artisans/profile', {
+        method: 'PUT', headers: { Authorization: 'Bearer ' + token }, body: fd
+      });
+      if (res.status === 401) return authFail();
+      var data = await res.json().catch(function () { return {}; });
+      if (!res.ok) throw new Error(data.message || 'Could not save your profile');
+
+      profile = Object.assign({}, profile, data, { availabilityStatus: data.availabilityStatus || status });
+      hasProfile = !!profile.category;
+      sendLocation();
+      renderSummary();
+      toast('Changes saved');
+    } catch (err) {
+      console.error(err);
+      toast(err.message || 'Network error. Try again.', 'error');
+    } finally {
+      saving = false; btn.disabled = false; cancel.disabled = false; btn.innerHTML = original;
+    }
+  }
+
+  /* ── wiring ── */
+  $('editBtn').addEventListener('click', openForm);
+  $('cancelBtn').addEventListener('click', renderSummary);
+  $('saveBtn').addEventListener('click', save);
+  $('retryBtn').addEventListener('click', load);
+  $('catSearch').addEventListener('input', renderGrid);
+  $('availSelect').addEventListener('change', paintAvail);
+
+  $('photoBtn').addEventListener('click', function () { $('photoInput').click(); });
+  $('photoInput').addEventListener('change', function (e) { handleFile(e.target.files[0]); e.target.value = ''; });
+  $('discardPhoto').addEventListener('click', function () {
+    selectedFile = null;
+    setImg($('photoPreview'), picUrl(profile.profilePic));
+    $('discardPhoto').hidden = true;
+  });
+  var pb = $('photoBtn');
+  pb.addEventListener('dragover', function (e) { e.preventDefault(); pb.classList.add('drag'); });
+  pb.addEventListener('dragleave', function () { pb.classList.remove('drag'); });
+  pb.addEventListener('drop', function (e) {
+    e.preventDefault(); pb.classList.remove('drag');
+    if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+  });
+
+  load();
+})();
 </script>
 </body>
 </html>
