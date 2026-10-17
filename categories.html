@@ -30,12 +30,15 @@
       -webkit-tap-highlight-color: transparent;
     }
 
+    [hidden] { display: none !important; }
+
     body {
       font-family: 'Plus Jakarta Sans', sans-serif;
       background: var(--bg-dark);
       color: var(--text-white);
       margin: 0;
       padding: 0;
+      min-height: 100vh;
       display: flex;
       justify-content: center;
     }
@@ -48,7 +51,7 @@
 
     .header-box {
       text-align: left;
-      margin-bottom: 2rem;
+      margin-bottom: 1.5rem;
     }
 
     .header-box h2 {
@@ -64,12 +67,14 @@
       font-size: 0.9rem;
     }
 
-    /* Sharp Search Box */
+    /* Search box: the bar now has its own backdrop, so tiles no longer show through around it while scrolling */
     .search-container {
       position: sticky;
-      top: 1rem;
+      top: 0;
       z-index: 100;
-      margin-bottom: 2rem;
+      margin: 0 -1.5rem 1.25rem;
+      padding: 0.75rem 1.5rem;
+      background: linear-gradient(var(--bg-dark) 80%, rgba(0, 23, 43, 0));
     }
 
     .search-box {
@@ -88,9 +93,12 @@
       border: none;
       background: transparent;
       color: white;
+      font-family: inherit;
       font-size: 1rem;
       outline: none;
     }
+
+    #searchInput::placeholder { color: var(--text-grey); }
 
     .search-box .material-icons {
       color: var(--gold);
@@ -107,6 +115,7 @@
       background: var(--bg-card);
       border-radius: 20px;
       padding: 1.5rem 1rem;
+      min-height: 124px;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -128,7 +137,29 @@
       box-shadow: 0 0 20px rgba(255, 215, 0, 0.15);
     }
 
+    /* check badge on the chosen tile */
+    .category-item.selected::after {
+      content: "\2713";
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--gold);
+      color: var(--bg-dark);
+      font-size: 12px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* The fixed box stops an unknown icon name or a slow font from printing raw text and stretching the tile */
     .category-item .material-icons {
+      width: 1em;
+      height: 1em;
+      overflow: hidden;
       font-size: 32px;
       margin-bottom: 12px;
       color: var(--gold);
@@ -138,7 +169,9 @@
     .category-item span.cat-name {
       font-weight: 600;
       font-size: 0.9rem;
+      line-height: 1.3;
       color: var(--text-white);
+      overflow-wrap: anywhere;
     }
 
     /* Hidden Radio */
@@ -146,22 +179,32 @@
       display: none;
     }
 
-    /* Floating Next Button */
+    .no-results {
+      text-align: center;
+      color: var(--text-grey);
+      font-size: 0.95rem;
+      padding: 2.5rem 1rem;
+      margin: 0;
+    }
+
+    /* Floating Next Button: the gradient strip no longer blocks taps on tiles behind it */
     .footer-action {
       position: fixed;
       bottom: 0;
       left: 0;
       right: 0;
-      padding: 2rem;
+      padding: 2rem 1.5rem calc(1.25rem + env(safe-area-inset-bottom));
       background: linear-gradient(transparent, var(--bg-dark) 40%);
       display: flex;
       justify-content: center;
       z-index: 1000;
+      pointer-events: none;
     }
 
     .next-btn {
       background: var(--gold);
       color: var(--bg-dark);
+      font-family: inherit;
       font-weight: 800;
       font-size: 1.1rem;
       padding: 1.2rem;
@@ -176,13 +219,20 @@
       justify-content: center;
       gap: 10px;
       transition: var(--transition);
+      pointer-events: auto;
     }
 
     .next-btn:disabled {
-      background: #4a5568;
-      color: #2d3748;
+      background: rgba(255, 255, 255, 0.12);
+      color: var(--text-grey);
       box-shadow: none;
       cursor: not-allowed;
+    }
+
+    .next-btn .material-icons {
+      width: 1em;
+      height: 1em;
+      overflow: hidden;
     }
 
     /* Loader Styles */
@@ -228,6 +278,8 @@
     <div class="category-grid" id="categoryList">
       </div>
 
+    <p class="no-results" id="noResults" hidden>No service matches your search.</p>
+
     <div class="footer-action">
       <button id="nextBtn" class="next-btn" disabled>
         Proceed 
@@ -242,13 +294,15 @@
   </div>
 
   <script>
+    // Service names are unchanged. Only three icon names were replaced, because
+    // "water", "nail_polish" and "hair_dressing" do not exist in Material Icons.
     const categories = [
       { name: "Electrician", icon: "lightbulb" },
-      { name: "Plumber", icon: "water" },
+      { name: "Plumber", icon: "plumbing" },
       { name: "House Cleaner/Janitor", icon: "cleaning_services" },
       { name: "Massage Therapist", icon: "spa" },
-      { name: "Nail Technician", icon: "nail_polish" },
-      { name: "Hair Dresser", icon: "hair_dressing" },
+      { name: "Nail Technician", icon: "pan_tool" },
+      { name: "Hair Dresser", icon: "content_cut" },
       { name: "Painter", icon: "format_paint" },
       { name: "Tiler", icon: "grid_on" },
       { name: "Mechanic", icon: "build" },
@@ -272,11 +326,13 @@
     const categoryList = document.getElementById('categoryList');
     const searchInput = document.getElementById('searchInput');
     const nextBtn = document.getElementById('nextBtn');
+    const noResults = document.getElementById('noResults');
     let selectedCategory = null;
 
     function renderCategories(filter = '') {
       categoryList.innerHTML = '';
       const filtered = categories.filter(c => c.name.toLowerCase().includes(filter.toLowerCase()));
+      noResults.hidden = filtered.length > 0;
 
       filtered.forEach(category => {
         const item = document.createElement('div');

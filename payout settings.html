@@ -2,212 +2,420 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="theme-color" content="#041b2b">
+<title>Payout Settings | Fixa</title>
 <script src="config.js"></script>
-<title>Payout Settings - Fixa</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script>
+  // follow the theme the artisan picked on the dashboard
+  try { document.documentElement.setAttribute('data-theme', localStorage.getItem('fixa-theme') === 'light' ? 'light' : 'dark'); } catch (e) {}
+</script>
 <style>
+  :root {
+    --bg: #041b2b;
+    --card: #0b2a44;
+    --card-2: #103453;
+    --line: rgba(255, 255, 255, .10);
+    --text: #ffffff;
+    --muted: #9fb0c3;
+    --gold: #ffd700;
+    --gold-ink: #1a1400;
+    --link: #ffd700;
+    --ok: #22c55e;
+    --danger: #ef4444;
+  }
+  html[data-theme="light"] {
+    --bg: #ffffff;
+    --card: #f5f8fc;
+    --card-2: #e9f0f8;
+    --line: rgba(11, 42, 74, .14);
+    --text: #111111;
+    --muted: #555f6d;
+    --link: #8a6700;
+    --ok: #15803d;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  [hidden] { display: none !important; }
+
+  html, body { background: var(--bg); color: var(--text); }
   body {
-    background-color: rgb(0,23,43);
-    color: white;
-    font-family: Arial, sans-serif;
-    padding: 20px;
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    min-height: 100vh;
+    padding: calc(16px + env(safe-area-inset-top)) 16px calc(112px + env(safe-area-inset-bottom));
+    -webkit-font-smoothing: antialiased;
   }
-  h1 {
-    color: gold;
-    text-align: center;
+  .wrap { max-width: 520px; margin: 0 auto; }
+
+  button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+  /* header */
+  .top { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+  .back {
+    width: 40px; height: 40px; flex-shrink: 0; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--card); border: 1px solid var(--line);
+    color: var(--link); text-decoration: none; font-size: 18px; font-weight: 700;
   }
-  label {
-    display: block;
-    margin: 15px 0 5px;
+  h1 { font-size: 21px; font-weight: 800; letter-spacing: -.2px; }
+  .top p { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+  /* cards */
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 16px; margin-bottom: 14px; }
+
+  /* saved account */
+  .bank-row { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+  .bank-ico {
+    width: 48px; height: 48px; flex-shrink: 0; border-radius: 14px; font-size: 24px;
+    display: flex; align-items: center; justify-content: center;
+    background: color-mix(in srgb, var(--gold) 14%, transparent);
   }
-  input, select {
-    width: 100%;
-    padding: 10px;
-    border: none;
-    border-radius: 6px;
-    margin-bottom: 10px;
-    box-sizing: border-box;
+  .bank-info { min-width: 0; }
+  .bank-name { font-size: 17px; font-weight: 800; line-height: 1.25; overflow-wrap: anywhere; }
+  .bank-acc { font-size: 14px; margin-top: 3px; opacity: .88; overflow-wrap: anywhere; }
+  .bank-freq { font-size: 12.5px; color: var(--muted); margin-top: 4px; }
+
+  /* fields */
+  label { display: block; font-size: 13.5px; font-weight: 600; margin-bottom: 8px; }
+  .field-group + .field-group { margin-top: 16px; }
+  .field, select {
+    width: 100%; height: 48px; padding: 0 14px; border-radius: 12px;
+    border: 1.5px solid var(--line); background: var(--card-2); color: var(--text);
+    font: inherit; font-size: 16px; outline: none;
   }
-  button {
-    background-color: gold;
-    border: none;
-    padding: 12px;
-    font-size: 16px;
-    border-radius: 6px;
-    cursor: pointer;
-    width: 100%;
-    margin-top: 10px;
+  .field:focus, select:focus { border-color: var(--gold); }
+  .field::placeholder { color: var(--muted); }
+  .field[readonly] { opacity: .9; }
+  select {
+    appearance: none; -webkit-appearance: none; cursor: pointer; padding-right: 42px;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M1 1l5 5 5-5' fill='none' stroke='%23ffd700' stroke-width='2' stroke-linecap='round'/></svg>");
+    background-repeat: no-repeat; background-position: right 15px center;
+  }
+  option { background: #0b2a44; color: #fff; }
+  html[data-theme="light"] option { background: #fff; color: #111; }
+
+  .link { color: var(--link); font-size: 13px; font-weight: 700; padding: 8px 0 0; }
+
+  /* verification line */
+  .verify { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; margin-top: 8px; line-height: 1.4; }
+  .verify::before {
+    content: ""; flex-shrink: 0; width: 16px; height: 16px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800;
+  }
+  .verify.ok { color: var(--ok); }
+  .verify.ok::before { content: "\2713"; background: var(--ok); color: #04210f; }
+  .verify.bad { color: var(--danger); }
+  .verify.bad::before { content: "!"; background: var(--danger); color: #fff; }
+  .verify.busy { color: var(--muted); }
+  .verify.busy::before { border: 2px solid var(--line); border-top-color: var(--gold); animation: sp .6s linear infinite; }
+
+  /* buttons */
+  .btn {
+    height: 50px; padding: 0 20px; border-radius: 14px; font-weight: 700; font-size: 15px;
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .btn:disabled { opacity: .6; cursor: not-allowed; }
+  .btn-gold { background: var(--gold); color: var(--gold-ink); }
+  .btn-ghost { background: color-mix(in srgb, var(--text) 8%, transparent); border: 1px solid var(--line); }
+  .btn-block { width: 100%; }
+  .spin { width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgba(26, 20, 0, .25); border-top-color: var(--gold-ink); animation: sp .6s linear infinite; }
+  .spin.light { border-color: rgba(255, 255, 255, .25); border-top-color: var(--gold); }
+  @keyframes sp { to { transform: rotate(360deg); } }
+
+  .actions {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
+    padding: 14px 16px calc(12px + env(safe-area-inset-bottom));
+    background: linear-gradient(to top, var(--bg) 72%, transparent);
+  }
+  .actions .inner { max-width: 520px; margin: 0 auto; display: flex; gap: 10px; }
+  .actions .btn-gold { flex: 1; }
+
+  .state { text-align: center; padding: 34px 16px; color: var(--muted); font-size: 14px; }
+  .state .spin { margin: 0 auto 12px; width: 26px; height: 26px; }
+
+  /* toast */
+  .toast {
+    position: fixed; left: 50%; top: calc(14px + env(safe-area-inset-top)); z-index: 50;
+    max-width: min(92vw, 420px); padding: 12px 16px; border-radius: 12px;
+    font-size: 14px; font-weight: 700; text-align: center; pointer-events: none;
+    transform: translate(-50%, -160%); transition: transform .25s ease;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .35);
+  }
+  .toast.show { transform: translate(-50%, 0); }
+  .toast.success { background: var(--gold); color: var(--gold-ink); }
+  .toast.error { background: var(--danger); color: #fff; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition: none !important; animation-duration: .01ms !important; }
   }
 </style>
 </head>
 <body>
+<div class="wrap">
 
-<div id="payoutCardView" style="display:none">
-  <div style="background:rgba(255,215,0,.08);border:1px solid rgba(255,215,0,.25);border-radius:16px;padding:20px">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start">
-      <div>
-        <div style="font-size:12px;color:#9aa6b2;text-transform:uppercase">Payout Method</div>
-        <div id="cardBankName" style="font-size:18px;font-weight:700;margin-top:4px"></div>
-        <div id="cardAccountLine" style="font-size:13px;color:#cbd5e1;margin-top:2px"></div>
-        <div id="cardFrequency" style="font-size:12px;color:#9aa6b2;margin-top:6px"></div>
-      </div>
-      <button type="button" id="changePayoutBtn" style="width:auto;margin-top:0;background:gold;color:#000;border:none;padding:8px 16px;border-radius:8px;font-weight:700;cursor:pointer">Change</button>
+  <header class="top">
+    <a class="back" href="artisan test.html" aria-label="Back to dashboard">&larr;</a>
+    <div>
+      <h1>Payout settings</h1>
+      <p>Where your earnings are sent</p>
     </div>
+  </header>
+
+  <section id="loading" class="card state" aria-live="polite">
+    <div class="spin light"></div>
+    Loading your payout details…
+  </section>
+
+  <!-- saved account -->
+  <section id="payoutCardView" class="card" hidden>
+    <div class="bank-row">
+      <div class="bank-ico" aria-hidden="true">&#127974;</div>
+      <div class="bank-info">
+        <div id="cardBankName" class="bank-name"></div>
+        <div id="cardAccountLine" class="bank-acc"></div>
+        <div id="cardFrequency" class="bank-freq"></div>
+      </div>
+    </div>
+    <button type="button" id="changePayoutBtn" class="btn btn-ghost btn-block">Change payout account</button>
+  </section>
+
+  <!-- add or change account -->
+  <div id="payoutFormView" hidden>
+    <section class="card">
+      <div class="field-group">
+        <label for="bank">Bank</label>
+        <select id="bank">
+          <option value="">Select your bank</option>
+        </select>
+        <button type="button" id="reloadBanks" class="link" hidden>Couldn’t load banks. Try again</button>
+      </div>
+
+      <div class="field-group">
+        <label for="accountNumber">Account number</label>
+        <input type="text" id="accountNumber" class="field" inputmode="numeric" maxlength="10" autocomplete="off" placeholder="10-digit account number">
+      </div>
+
+      <div class="field-group">
+        <label for="accountName">Account holder</label>
+        <input type="text" id="accountName" class="field" placeholder="Filled in after verification" readonly>
+        <p id="verifyState" class="verify" hidden></p>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="field-group">
+        <label for="frequency">Payout frequency</label>
+        <select id="frequency">
+          <option value="daily">Daily</option>
+          <option value="weekly" selected>Weekly</option>
+          <option value="monthly">Monthly</option>
+        </select>
+      </div>
+    </section>
   </div>
 </div>
 
-<div id="payoutFormView">
-  <h1>Payout Settings</h1>
-  <p>Set up how you receive your artisan earnings.</p>
-
-  <label for="bank">Bank Name</label>
-  <select id="bank">
-    <option value="">-- Select Your Bank --</option>
-  </select>
-
-  <label for="accountNumber">Account Number</label>
-  <input type="text" id="accountNumber" placeholder="Enter your account number">
-
-  <label for="accountName">Account Holder Name</label>
-  <input type="text" id="accountName" placeholder="Auto-filled after verification" readonly>
-
-  <label for="frequency">Payment Frequency</label>
-  <select id="frequency">
-    <option value="daily">Daily</option>
-    <option value="weekly">Weekly</option>
-    <option value="monthly">Monthly</option>
-  </select>
-
-  <button type="button" id="saveSettingsBtn">Save Settings</button>
+<div id="actions" class="actions" hidden>
+  <div class="inner">
+    <button type="button" id="cancelChangeBtn" class="btn btn-ghost" hidden>Cancel</button>
+    <button type="button" id="saveSettingsBtn" class="btn btn-gold">Save payout details</button>
+  </div>
 </div>
 
-<div id="statusMsg" style="display:none;margin-top:10px;padding:10px;border-radius:6px;font-size:13px"></div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script>
-const BASE_URL = window.FIXA_CONFIG.API_URL;
-const token = localStorage.getItem('token');
-if (!token) window.location.replace('SignIn.html');
+(function () {
+  'use strict';
 
-const $ = id => document.getElementById(id);
-const bankSelect = $('bank'), accNumInput = $('accountNumber'), accNameInput = $('accountName');
-const freqSelect = $('frequency'), saveBtn = $('saveSettingsBtn');
-const auth = { Authorization: `Bearer ${token}` };
-const authJson = { ...auth, 'Content-Type': 'application/json' };
+  var BASE_URL = window.FIXA_CONFIG.API_URL;
+  var token = localStorage.getItem('token');
+  if (!token) { location.replace('SignIn.html'); return; }
 
-let resolvedName = '', resolveSeq = 0, saving = false, hideTimer = null, hasSaved = false;
+  var $ = function (id) { return document.getElementById(id); };
+  var bankSelect = $('bank'), accNumInput = $('accountNumber'), accNameInput = $('accountName');
+  var freqSelect = $('frequency'), saveBtn = $('saveSettingsBtn');
+  var auth = { Authorization: 'Bearer ' + token };
+  var authJson = { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' };
 
-function showStatus(msg, isError) {
-  const el = $('statusMsg');
-  el.style.display = 'block';
-  el.style.background = isError ? '#dc2626' : '#16a34a';
-  el.style.color = '#fff';
-  el.textContent = msg;
-  clearTimeout(hideTimer);
-  hideTimer = setTimeout(() => { el.style.display = 'none'; }, 4500);
-}
+  var resolvedName = '', resolveSeq = 0, verifying = false, saving = false, hasSaved = false, toastTimer = null;
 
-async function api(path, opts = {}) {
-  const res = await fetch(`${BASE_URL}/api/payouts${path}`, { ...opts, headers: opts.body ? authJson : auth });
-  if (res.status === 401) { localStorage.clear(); location.replace('SignIn.html'); throw new Error('Session expired'); }
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.message || 'Request failed');
-  return data;
-}
-
-function showView(card) {
-  $('payoutCardView').style.display = card ? 'block' : 'none';
-  $('payoutFormView').style.display = card ? 'none' : 'block';
-  $('cancelChangeBtn').style.display = hasSaved && !card ? 'block' : 'none';
-}
-
-async function loadBanks() {
-  try {
-    const data = await api('/banks');
-    const list = (Array.isArray(data) ? data : (data.banks || data.data || []))
-      .slice().sort((a, b) => a.name.localeCompare(b.name));
-    bankSelect.innerHTML = '<option value="">-- Select Your Bank --</option>' +
-      list.map(b => `<option value="${b.code}">${b.name}</option>`).join('');
-  } catch (e) { showStatus('Could not load bank list', true); }
-}
-
-async function loadPayoutSettings() {
-  try {
-    const p = await api('/settings');
-    if (p?.recipientCode) {
-      hasSaved = true;
-      const last4 = String(p.accountNumber || '').slice(-4);
-      $('cardBankName').textContent = p.bankName || '';
-      $('cardAccountLine').textContent = `${p.accountName || ''} •••• ${last4}`;
-      const f = p.frequency || 'weekly';
-      $('cardFrequency').textContent = `Paid out ${f.charAt(0).toUpperCase() + f.slice(1)}`;
-      bankSelect.value = p.bankCode || '';
-      accNumInput.value = p.accountNumber || '';
-      accNameInput.value = resolvedName = p.accountName || '';
-      freqSelect.value = f;
-      showView(true);
-    } else { hasSaved = false; showView(false); }
-  } catch (e) { console.error('loadPayoutSettings:', e); showView(false); }
-}
-
-async function tryResolve() {
-  const seq = ++resolveSeq;                       // invalidates any request still in flight
-  const bankCode = bankSelect.value, accountNumber = accNumInput.value.trim();
-  resolvedName = ''; accNameInput.value = '';
-  if (!bankCode || accountNumber.length !== 10) { saveBtn.disabled = false; return; }
-
-  accNameInput.value = 'Verifying…';
-  saveBtn.disabled = true;
-  try {
-    const data = await api('/resolve-account', { method: 'POST', body: JSON.stringify({ accountNumber, bankCode }) });
-    if (seq !== resolveSeq) return;
-    resolvedName = data.accountName;
-    accNameInput.value = resolvedName;
-  } catch (err) {
-    if (seq !== resolveSeq) return;
-    accNameInput.value = '';
-    showStatus(err.message || 'Could not verify account', true);
-  } finally {
-    if (seq === resolveSeq) saveBtn.disabled = false;
+  function toast(msg, type) {
+    var t = $('toast');
+    t.textContent = msg;
+    t.className = 'toast show ' + (type || 'success');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.classList.remove('show'); }, 3600);
   }
-}
 
-bankSelect.addEventListener('change', tryResolve);
-accNumInput.addEventListener('input', () => {
-  accNumInput.value = accNumInput.value.replace(/\D/g, '').slice(0, 10);
-  tryResolve();                                    // verifies as soon as 10 digits are typed
-});
-
-saveBtn.addEventListener('click', async () => {
-  if (saving) return;
-  const bankCode = bankSelect.value;
-  const bankName = bankSelect.options[bankSelect.selectedIndex]?.text;
-  const accountNumber = accNumInput.value.trim();
-  if (!bankCode || accountNumber.length !== 10 || !resolvedName) {
-    return showStatus('Select a bank and enter a valid account number to verify first', true);
+  function setVerify(kind, msg) {
+    var el = $('verifyState');
+    if (!kind) { el.hidden = true; return; }
+    el.hidden = false;
+    el.className = 'verify ' + kind;
+    el.textContent = msg;
   }
-  saving = true;
-  const original = saveBtn.innerHTML;
-  saveBtn.disabled = true;
-  saveBtn.innerHTML = '<span class="spin"></span>Saving…';
-  try {
-    await api('/settings', {
-      method: 'PUT',
-      body: JSON.stringify({ bankCode, bankName, accountNumber, accountName: resolvedName, frequency: freqSelect.value })
+
+  function updateSaveState() { saveBtn.disabled = saving || verifying; }
+
+  async function api(path, opts) {
+    opts = opts || {};
+    var res = await fetch(BASE_URL + '/api/payouts' + path, Object.assign({}, opts, { headers: opts.body ? authJson : auth }));
+    if (res.status === 401) { localStorage.clear(); location.replace('SignIn.html'); throw new Error('Session expired'); }
+    var data = await res.json().catch(function () { return {}; });
+    if (!res.ok) throw new Error(data.message || 'Request failed');
+    return data;
+  }
+
+  function show(which) {
+    ['loading', 'payoutCardView', 'payoutFormView', 'actions'].forEach(function (id) {
+      $(id).hidden = which.indexOf(id) === -1;
     });
-    showStatus('Payout settings saved ✓', false);
-    await loadPayoutSettings();
-  } catch (err) {
-    showStatus(err.message || 'Failed to save', true);
-  } finally {
-    saving = false; saveBtn.disabled = false; saveBtn.innerHTML = original;
   }
-});
+  function showSaved() { show(['payoutCardView']); }
+  function showForm() {
+    $('cancelChangeBtn').hidden = !hasSaved;   // first-time setup has nothing to go back to
+    show(['payoutFormView', 'actions']);
+    window.scrollTo(0, 0);
+  }
 
-$('changePayoutBtn').addEventListener('click', () => showView(false));
-$('cancelChangeBtn').addEventListener('click', () => showView(true));
+  async function loadBanks() {
+    $('reloadBanks').hidden = true;
+    try {
+      var data = await api('/banks');
+      var list = (Array.isArray(data) ? data : (data.banks || data.data || []))
+        .slice().sort(function (a, b) { return a.name.localeCompare(b.name); });
+      if (!list.length) throw new Error('No banks returned');
 
-document.addEventListener('DOMContentLoaded', () => { loadBanks().then(loadPayoutSettings); });
+      bankSelect.textContent = '';
+      var ph = document.createElement('option');
+      ph.value = ''; ph.textContent = 'Select your bank';
+      bankSelect.appendChild(ph);
+      list.forEach(function (b) {
+        var o = document.createElement('option');
+        o.value = b.code; o.textContent = b.name;
+        bankSelect.appendChild(o);
+      });
+      return true;
+    } catch (e) {
+      console.error('loadBanks:', e);
+      toast('Could not load the bank list', 'error');
+      $('reloadBanks').hidden = false;
+      return false;
+    }
+  }
+
+  async function loadSettings() {
+    try {
+      var p = await api('/settings');
+      if (p && p.recipientCode) {
+        hasSaved = true;
+        var num = String(p.accountNumber || '');
+        var f = p.frequency || 'weekly';
+
+        $('cardBankName').textContent = p.bankName || 'Bank account';
+        $('cardAccountLine').textContent = (p.accountName || '') + ' \u2022\u2022\u2022\u2022 ' + num.slice(-4);
+        $('cardFrequency').textContent = 'Paid out ' + f;
+
+        // Prefill the form so "Change" starts from what is saved.
+        // If the server only sends a masked number, leave it empty so it is re-entered and re-verified.
+        var full = /^\d{10}$/.test(num);
+        bankSelect.value = p.bankCode || '';
+        accNumInput.value = full ? num : '';
+        accNameInput.value = resolvedName = full ? (p.accountName || '') : '';
+        freqSelect.value = f;
+        setVerify(full && resolvedName ? 'ok' : null, 'Account verified');
+        showSaved();
+      } else {
+        hasSaved = false;
+        showForm();
+      }
+    } catch (e) {
+      console.error('loadSettings:', e);
+      hasSaved = false;
+      showForm();
+    }
+  }
+
+  async function tryResolve() {
+    var seq = ++resolveSeq;                     // makes any request still in flight stale
+    var bankCode = bankSelect.value, accountNumber = accNumInput.value.trim();
+    resolvedName = ''; accNameInput.value = '';
+
+    if (!bankCode || accountNumber.length !== 10) {
+      verifying = false; setVerify(null); updateSaveState();
+      return;
+    }
+    verifying = true;
+    setVerify('busy', 'Verifying account…');
+    updateSaveState();
+    try {
+      var data = await api('/resolve-account', {
+        method: 'POST',
+        body: JSON.stringify({ accountNumber: accountNumber, bankCode: bankCode })
+      });
+      if (seq !== resolveSeq) return;
+      resolvedName = data.accountName || '';
+      accNameInput.value = resolvedName;
+      setVerify(resolvedName ? 'ok' : 'bad', resolvedName ? 'Account verified' : 'We couldn’t find a name for this account');
+    } catch (err) {
+      if (seq !== resolveSeq) return;
+      setVerify('bad', err.message || 'Could not verify this account');
+    } finally {
+      if (seq === resolveSeq) { verifying = false; updateSaveState(); }
+    }
+  }
+
+  async function save() {
+    if (saving || verifying) return;
+    var bankCode = bankSelect.value;
+    var opt = bankSelect.options[bankSelect.selectedIndex];
+    var bankName = opt ? opt.text : '';
+    var accountNumber = accNumInput.value.trim();
+
+    if (!bankCode || accountNumber.length !== 10 || !resolvedName) {
+      return toast('Choose your bank and enter a 10-digit account number so we can verify it', 'error');
+    }
+    saving = true;
+    var original = saveBtn.innerHTML;
+    $('cancelChangeBtn').disabled = true;
+    saveBtn.innerHTML = '<span class="spin"></span>Saving…';
+    updateSaveState();
+    try {
+      await api('/settings', {
+        method: 'PUT',
+        body: JSON.stringify({
+          bankCode: bankCode, bankName: bankName, accountNumber: accountNumber,
+          accountName: resolvedName, frequency: freqSelect.value
+        })
+      });
+      toast('Payout details saved');
+      await loadSettings();
+    } catch (err) {
+      toast(err.message || 'Could not save your payout details', 'error');
+    } finally {
+      saving = false;
+      saveBtn.innerHTML = original;
+      $('cancelChangeBtn').disabled = false;
+      updateSaveState();
+    }
+  }
+
+  /* wiring */
+  bankSelect.addEventListener('change', tryResolve);
+  accNumInput.addEventListener('input', function () {
+    accNumInput.value = accNumInput.value.replace(/\D/g, '').slice(0, 10);
+    tryResolve();                                // verifies as soon as 10 digits are typed
+  });
+  saveBtn.addEventListener('click', save);
+  $('changePayoutBtn').addEventListener('click', showForm);
+  $('cancelChangeBtn').addEventListener('click', function () { loadSettings(); });   // reloads saved values, dropping unsaved edits
+  $('reloadBanks').addEventListener('click', loadBanks);
+
+  loadBanks().then(loadSettings);
+})();
 </script>
-
 </body>
 </html>
