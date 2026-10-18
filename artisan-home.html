@@ -594,17 +594,66 @@ html,body{background:var(--fixa-bg);color:var(--fixa-text);transition:background
 }
 
 /* WhatsApp-style composer: it is part of the chat flex column, NOT fixed to the viewport */
-   .chat-footer textarea {
-  flex: 1 1 auto; min-width: 0;                    /* the fix for the cut-off Send button */
-  background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.1); color: #fff;
-  border-radius: 22px; padding: 10px 16px; font-family: inherit;
-  font-size: 16px; line-height: 1.35;              /* 16px stops the iOS zoom-on-focus */
-  height: 42px; max-height: 120px; resize: none; outline: none; overflow-y: auto;
+#chatFooter.chat-footer{
+  position:relative !important;
+  left:auto !important;
+  right:auto !important;
+  bottom:auto !important;
+  width:100%;
+  box-sizing:border-box;
+  flex:0 0 auto;
+  display:flex;
+  align-items:flex-end;
+  gap:6px;
+  background:var(--fixa-card);
+  border-top:1px solid var(--fixa-border);
+  z-index:20;
+  padding:8px 10px calc(8px + env(safe-area-inset-bottom));
 }
-.chat-footer textarea:focus { border-color: rgba(255,215,0,.4); }
-.chat-footer { align-items: flex-end; padding: 8px 10px calc(8px + env(safe-area-inset-bottom)); }
-.send-btn, .chat-icon-btn { flex: 0 0 auto; }
-.send-btn:disabled { opacity: .6; }
+#chatFooter .chat-icon-btn{
+  width:40px;
+  min-width:40px;
+  height:42px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:var(--fixa-muted) !important;
+  border-radius:50%;
+  font-size:19px !important;
+}
+#chatFooter .chat-icon-btn:hover{background:rgba(255,215,0,.10);color:var(--fixa-gold) !important}
+#chatFooter #msgInput{
+  flex:1 1 auto;
+  min-width:0;
+  width:auto;
+  height:42px;
+  min-height:42px;
+  max-height:120px;
+  box-sizing:border-box;
+  background:var(--fixa-surface);
+  border:1px solid var(--fixa-border);
+  color:var(--fixa-text);
+  caret-color:var(--fixa-gold);
+  border-radius:22px;
+  padding:10px 15px;
+  font-size:16px;
+  line-height:1.35;
+}
+#chatFooter #msgInput::placeholder{color:var(--fixa-muted);opacity:.9}
+#chatFooter #msgInput:focus{
+  border-color:rgba(255,215,0,.55);
+  box-shadow:0 0 0 2px rgba(255,215,0,.08);
+  outline:none;
+}
+#chatFooter #sendBtn{
+  min-width:58px;
+  height:42px;
+  padding:0 14px !important;
+  background:var(--fixa-gold) !important;
+  color:#07131d !important;
+  box-shadow:0 3px 10px rgba(0,0,0,.15);
+}
+#chatFooter #sendBtn:active{transform:scale(.97)}
 
 /* Message bubbles */
 #messages .fixa-msg-row{
