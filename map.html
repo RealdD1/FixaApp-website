@@ -462,8 +462,14 @@ function initSocket() {
 function showArtisanProfile(artisan, latlng, online) {
   map.flyTo(latlng, 15, { duration: 0.8 });
 
-  const rating = typeof artisan.rating === 'number' ? artisan.rating.toFixed(1) : 'N/A';
-  const isVerified = !!artisan.verification;
+const avg = typeof artisan.averageRating === 'number' ? artisan.averageRating
+          : typeof artisan.rating === 'number' ? artisan.rating
+          : null;
+const reviewCount = artisan.reviewCount || 0;
+
+$('artisanRating').textContent = avg !== null
+  ? `⭐ ${avg.toFixed(1)} / 5 (${reviewCount} review${reviewCount === 1 ? '' : 's'})`
+  : '⭐ No reviews yet';  const isVerified = !!artisan.verification;
 
   $('artisanName').textContent       = artisan.name || '';
   $('artisanOccupation').textContent = artisan.category || '';
