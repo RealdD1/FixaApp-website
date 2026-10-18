@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Welcome to Fixa</title>
   <script>if (localStorage.getItem("hasVisited")) {
-      window.location.href = "SignIn.html"; // or SignIn.html if you prefer
+      window.location.href = "/signin"; // or /signin if you prefer
     }</script>
   <style>
     body {
@@ -186,7 +186,7 @@
     </ul>
 
     <a href="fixa landing page.html" class="btn" onclick="markVisited()">Get Started</a>
-    <a href="SignIn.html" class="signin-link" onclick="markVisited()">Already have an account? Sign In</a>
+    <a href="/signin" class="signin-link" onclick="markVisited()">Already have an account? Sign In</a>
   </div>
 
   <script>

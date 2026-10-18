@@ -1,6 +1,6 @@
 /**
  * FIXA — Notification + Dispute + Rating System
- * Shared module for artisan-home.js and customer (index.html)
+ * Shared module for artisan-home.js and customer (/)
  * Drop-in: <script src="fixa-notification-system.js"></script>
  * Call FixaSystem.init(socket, user, token, BASE_URL, role) after socket is ready
  */
@@ -794,7 +794,7 @@ fileInput.addEventListener('change', _renderEvidencePreview);
         <div class="fixa-suspended-contact">
           Questions? Contact <a href="mailto:support@fixaapp.net">support@fixaapp.net</a>
         </div>
-        <button onclick="localStorage.clear();location.href='SignIn.html'"
+        <button onclick="localStorage.clear();location.href='/signin'"
           style="margin-top:20px;padding:12px 28px;border-radius:12px;border:none;background:#ef4444;color:#fff;font-weight:700;cursor:pointer">Sign out</button>
         <button onclick="FixaSystem.checkAccess().then(r=>{ if(r && !r.isSuspended) location.reload(); })"
           style="margin:20px 0 0 10px;padding:12px 28px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:transparent;color:#fff;font-weight:700;cursor:pointer">Check status</button>
@@ -888,7 +888,7 @@ new Notification(`Fixa — ${title}`, { body, icon: '/icons/icon-192.png' }); } 
       b.onclick = () => {
         document.getElementById('fixaAdminAlert').classList.remove('open');
         if (primaryAction === 'logout') {
-          localStorage.clear(); window.location.href = 'SignIn.html';
+          localStorage.clear(); window.location.href = '/signin';
         } else if (typeof primaryAction === 'function') primaryAction();
       };
       btns.appendChild(b);
@@ -1131,7 +1131,7 @@ _socket.on('disputeResolved', (data = {}) => {
         title: 'Verification Not Approved',
         body: reason,
         primaryBtn: 'Re-submit Documents',
-        primaryAction: () => { window.location.href = 'verification.html'; },
+        primaryAction: () => { window.location.href = '/verification'; },
         secondaryBtn: 'OK',
         secondaryAction: () => {}
       });
@@ -1371,7 +1371,7 @@ async function checkAccess() {
   try {
     const res = await fetch(`${_base}/api/users/me/status`, { headers: authH() });
     const data = await res.json().catch(() => ({}));
-    if (res.status === 401) { localStorage.clear(); location.href = 'SignIn.html'; return null; }
+    if (res.status === 401) { localStorage.clear(); location.href = '/signin'; return null; }
     if (res.status === 403 || data.isSuspended) {
       showSuspensionScreen(data.reason || data.message);
       return { ...data, isSuspended: true };

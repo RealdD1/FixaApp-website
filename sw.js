@@ -119,13 +119,13 @@ self.addEventListener('push', (e) => {
     badge: '/icons/icon-192.png',
     tag: d.tag || 'fixa',
     renotify: true,
-    data: { url: d.url || '/SignIn.html' },
+    data: { url: d.url || '/signin' },
   }));
 });
 
 self.addEventListener('notificationclick', (e) => {
   e.notification.close();
-  const target = new URL(e.notification.data?.url || '/SignIn.html', self.location.origin).href;
+  const target = new URL(e.notification.data?.url || '/signin', self.location.origin).href;
   e.waitUntil((async () => {
     const list = await clients.matchAll({ type: 'window', includeUncontrolled: true });
     for (const c of list) {

@@ -723,14 +723,14 @@ const BASE     = BASE_URL + '/api';
 let token = localStorage.getItem('adminToken') || '';
 let notificationHistory = [];
 
-if (!token) window.location.href = 'adminlogin.html';   // no token = every call will 401
+if (!token) window.location.href = '/adminlogin';   // no token = every call will 401
 
 function api(path, opts = {}) {
   return fetch(BASE + path, {
     ...opts,
     headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', ...(opts.headers || {}) }
   }).then(async r => {
-    if (r.status === 401) { localStorage.clear(); window.location.href = 'adminlogin.html'; }
+    if (r.status === 401) { localStorage.clear(); window.location.href = '/adminlogin'; }
     if (!r.ok) {
       const err = await r.json().catch(() => ({}));
       throw new Error(err.message || `HTTP ${r.status}`);
@@ -1792,7 +1792,7 @@ function closeConfirm() { document.getElementById('confirm-modal').classList.rem
 
 function handleLogout() {
   openConfirm('👋','Sign out?','You will be returned to the login screen.','btn-danger','Sign out',()=>{
-    localStorage.clear(); window.location.href='adminlogin.html';
+    localStorage.clear(); window.location.href='/adminlogin';
   });
 }
 

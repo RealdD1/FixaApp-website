@@ -65,7 +65,7 @@ document.getElementById('signupForm').addEventListener('submit', function (e) {
   account.create(Appwrite.ID.unique(), emailPhone, password)
     .then(response => {
       alert("Signup successful!");
-      window.location.href = "signin.html"; // ✅ Redirect to sign-in page
+      window.location.href = "/signin"; // ✅ Redirect to sign-in page
     })
     .catch(error => {
       alert("Signup failed: " + error.message);

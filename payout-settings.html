@@ -156,7 +156,7 @@
 <div class="wrap">
 
   <header class="top">
-    <a class="back" href="artisan test.html" aria-label="Back to dashboard">&larr;</a>
+    <a class="back" href="/artisan-home" aria-label="Back to dashboard">&larr;</a>
     <div>
       <h1>Payout settings</h1>
       <p>Where your earnings are sent</p>
@@ -232,7 +232,7 @@
 
   var BASE_URL = window.FIXA_CONFIG.API_URL;
   var token = localStorage.getItem('token');
-  if (!token) { location.replace('SignIn.html'); return; }
+  if (!token) { location.replace('/signin'); return; }
 
   var $ = function (id) { return document.getElementById(id); };
   var bankSelect = $('bank'), accNumInput = $('accountNumber'), accNameInput = $('accountName');
@@ -263,7 +263,7 @@
   async function api(path, opts) {
     opts = opts || {};
     var res = await fetch(BASE_URL + '/api/payouts' + path, Object.assign({}, opts, { headers: opts.body ? authJson : auth }));
-    if (res.status === 401) { localStorage.clear(); location.replace('SignIn.html'); throw new Error('Session expired'); }
+    if (res.status === 401) { localStorage.clear(); location.replace('/signin'); throw new Error('Session expired'); }
     var data = await res.json().catch(function () { return {}; });
     if (!res.ok) throw new Error(data.message || 'Request failed');
     return data;

@@ -21,7 +21,7 @@ const BASE_URL        = window.FIXA_CONFIG.API_URL;
 
   if (!user || !token || user.role !== 'artisan') {
     console.warn('Auth missing — redirecting');
-    window.location = 'SignIn.html';
+    window.location = '/signin';
     return;
   }
   user._id = user._id || user.id || user.userId || '';
@@ -569,7 +569,7 @@ document.getElementById('viewPayoutHistoryBtn')?.addEventListener('click', () =>
         logoutBtn.style.borderColor = 'rgba(255,59,92,0.3)';
         logoutBtn.onclick = () => {
           localStorage.clear();
-          window.location.href = 'SignIn.html';
+          window.location.href = '/signin';
         };
       }
     }
@@ -1645,11 +1645,11 @@ const txt = document.getElementById('msgInput');    if (txt) {
 
     document.getElementById('logout-btn')?.addEventListener('click', () => {
       localStorage.clear();
-      window.location = 'SignIn.html';
+      window.location = '/signin';
     });
     document.getElementById('banLogoutBtn')?.addEventListener('click', () => {
       localStorage.clear();
-      window.location = 'SignIn.html';
+      window.location = '/signin';
     });
 
     // Execution buttons

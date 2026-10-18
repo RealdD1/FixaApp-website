@@ -183,7 +183,7 @@
 <div class="wrap">
 
   <header class="top">
-    <a class="back" href="artisan test.html" aria-label="Back to dashboard">&larr;</a>
+    <a class="back" href="/artisan-home" aria-label="Back to dashboard">&larr;</a>
     <div>
       <h1>My services</h1>
       <p>What you offer and when you’re available</p>
@@ -273,7 +273,7 @@
 
   var API = window.FIXA_CONFIG.API_URL;
   var token = localStorage.getItem('token');
-  if (!token) { location.replace('SignIn.html'); return; }
+  if (!token) { location.replace('/signin'); return; }
 
   // Names must match exactly what customers search for and what the price estimator uses.
   var CATEGORIES = [
@@ -330,7 +330,7 @@
       $(id).hidden = which.indexOf(id) === -1;
     });
   }
-  function authFail() { localStorage.clear(); location.replace('SignIn.html'); }
+  function authFail() { localStorage.clear(); location.replace('/signin'); }
 
   /* ── views ── */
   function renderSummary() {

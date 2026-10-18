@@ -2,7 +2,7 @@
   "name": "Fixa",
   "short_name": "Fixa",
   "description": "Book trusted artisans with escrow-protected payments",
-  "start_url": "/SignIn.html",
+  "start_url": "/signin",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",

@@ -85,7 +85,7 @@
      data-width="320">
 </div>
   <p class="signin-link">
-      Already have an account? <a href="SignIn.html" id="signInLink">Sign In</a>
+      Already have an account? <a href="/signin" id="signInLink">Sign In</a>
     </p>
   </div>
   
@@ -249,7 +249,7 @@ const response = await fetch(`${FIXA_CONFIG.API_URL}/api/users/register`, {
             messageDisplay.style.color = 'green';
             signupForm.reset();
             setTimeout(() => {
-                window.location.href = 'SignIn.html';
+                window.location.href = '/signin';
             }, 2000);
         } else {
             messageDisplay.textContent = data.message || 'Registration failed.';
@@ -301,11 +301,11 @@ const res = await fetch(`${FIXA_CONFIG.API_URL}/api/users/google-auth`, {
 
     setTimeout(() => {
       if (data.needsRoleSelection || !data.user.role) {
-        window.location.href = 'role-selection.html';
+        window.location.href = '/role-selection';
       } else if (data.user.role === 'customer') {
-        window.location.href = 'customer-home.html';
+        window.location.href = '/customer-home';
       } else if (data.user.role === 'artisan') {
-        window.location.href = 'artisan test.html';
+        window.location.href = '/artisan-home';
       }
     }, 1000);
   } catch (err) {

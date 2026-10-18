@@ -118,7 +118,7 @@ const artisanBtn = document.getElementById("artisanBtn");
 
 // If no user, go back to login
 if (!user || !token) {
-  window.location.href = "SignIn.html";
+  window.location.href = "/signin";
 }
 
 // If role already chosen, redirect automatically
@@ -194,11 +194,11 @@ async function setRole(role) {
 
 function redirectToDashboard(role) {
   if (role === "customer") {
-    window.location.href = "customer-home.html";
+    window.location.href = "/customer-home";
   } else if (role === "artisan") {
-    window.location.href = "artisan test.html";
+    window.location.href = "/artisan-home";
   } else {
-    window.location.href = "SignIn.html";
+    window.location.href = "/signin";
   }
 }
 

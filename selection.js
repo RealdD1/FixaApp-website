@@ -17,6 +17,6 @@ document.getElementById('professionalBtn').addEventListener('click', function() 
   document.querySelectorAll('.role-btn').forEach(btn => btn.disabled = true);
 
   setTimeout(() => {
-    window.location.href = 'customer-home.html';
+    window.location.href = '/customer-home';
   }, 2000);
 });

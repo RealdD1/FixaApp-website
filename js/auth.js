@@ -3,7 +3,7 @@ export function getCurrentUser() {
   const token = localStorage.getItem('token');
 
   if (!user || !token) {
-    window.location = 'SignIn.html';
+    window.location = '/signin';
     return null;
   }
 

@@ -9,10 +9,10 @@
     const token = localStorage.getItem("token");
         
     if (!user || !token) {
-        window.location.href = "SignIn.html";
+        window.location.href = "/signin";
         return;
     } else if (user.role !== "customer") {
-        window.location.href = "SignIn.html";
+        window.location.href = "/signin";
         return;
     } else {
         user._id = user._id || user.id;
@@ -81,7 +81,7 @@ if (emailEl) emailEl.textContent = user.email || '';
     document.getElementById("logoutBtn")?.addEventListener("click", () => {
         localStorage.clear();
         alert('Logout Successfully');
-        window.location.href = "SignIn.html";
+        window.location.href = "/signin";
     });
 
   // customer-home.js — Full page chat like artisan version
@@ -97,7 +97,7 @@ if (emailEl) emailEl.textContent = user.email || '';
     const token = localStorage.getItem('token');
   
     if (!user || !token || user.role !== 'customer') {
-      window.location = "SignIn.html";
+      window.location = "/signin";
     }
   
     user._id = user._id || user.id;
@@ -1202,6 +1202,6 @@ msgsEl.scrollTop = msgsEl.scrollHeight;
         sendMessage();
       });
       document.getElementById('newChatBtn')?.addEventListener('click', ()=> showStatusMessage('New chat flow not implemented', 'info'));
-      document.getElementById('logout-btn')?.addEventListener('click', ()=> { localStorage.removeItem('token'); localStorage.removeItem('user'); window.location='signin.html'; });
+      document.getElementById('logout-btn')?.addEventListener('click', ()=> { localStorage.removeItem('token'); localStorage.removeItem('user'); window.location='/signin'; });
     }
   

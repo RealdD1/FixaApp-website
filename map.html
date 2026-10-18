@@ -230,7 +230,7 @@ document.getElementById('legend').innerHTML =
 
     if (!customerId || !customerToken) {
       alert('You must be logged in to view the map.');
-      window.location.href = 'SignIn.html';
+      window.location.href = '/signin';
       return;
     }
 
@@ -357,7 +357,7 @@ function renderStatusBadge(artisan, online) {
 
         if (res.status === 401) {
           localStorage.removeItem('token');
-          window.location.href = 'SignIn.html';
+          window.location.href = '/signin';
           return;
         }
         if (!res.ok) throw new Error('Failed to load artisans');
@@ -537,7 +537,7 @@ function showArtisanProfile(artisan, latlng, online) {
         hours: hoursInput.value,
         difficulty: complexityInput.value,
       }));
-      window.location.href = 'booking.html';
+      window.location.href = '/booking';
     });
 
 

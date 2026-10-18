@@ -365,7 +365,7 @@
 </div>
 
     <p class="signup-link">
-      Don't have an account? <a href="Signup.html" id="signUpLink">Sign Up</a>
+      Don't have an account? <a href="/signup" id="signUpLink">Sign Up</a>
     </p>
   </div>
 
@@ -387,8 +387,8 @@
     }
     if (!r.ok) return;
   } catch { /* offline: still let them in */ }
-  location.replace(!u.role ? 'role-selection.html'
-    : u.role === 'customer' ? 'customer-home.html' : 'artisan test.html');
+  location.replace(!u.role ? '/role-selection'
+    : u.role === 'customer' ? '/customer-home' : '/artisan-home');
 })();
 
 const signinForm = document.getElementById('signinForm');
@@ -451,11 +451,11 @@ if (data.user.role === "customer") {
 // --- Redirection Logic ---
 
 if (!data.user.role || data.user.role.trim() === "") {
-    window.location.href = "role-selection.html"; 
+    window.location.href = "/role-selection"; 
 } else if (data.user.role === "customer") {
-    window.location.href = "customer-home.html"; 
+    window.location.href = "/customer-home"; 
 } else if (data.user.role === "artisan") {
-    window.location.href = "artisan test.html"; 
+    window.location.href = "/artisan-home"; 
 }
         } else {
             messageDisplay.textContent = data.message || 'Login failed.';
@@ -510,11 +510,11 @@ async function handleGoogleAuth(response) {
 
     // Redirect based on role
     if (data.needsRoleSelection || !data.user.role) {
-      window.location.href = 'role-selection.html';
+      window.location.href = '/role-selection';
     } else if (data.user.role === 'customer') {
-      window.location.href = 'customer-home.html';
+      window.location.href = '/customer-home';
     } else if (data.user.role === 'artisan') {
-      window.location.href = 'artisan test.html';
+      window.location.href = '/artisan-home';
     }
   } catch (err) {
     console.error('[Google sign-in]', err);
@@ -552,7 +552,7 @@ function updateNetworkStatus() {
 }
 document.getElementById('forgotPasswordLink').addEventListener('click', (e) => {
   e.preventDefault();
-  window.location.href = 'forgot-password.html';
+  window.location.href = '/forgot-password';
 });
 // Attach event listeners to the window
 window.addEventListener('online', updateNetworkStatus);

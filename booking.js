@@ -126,7 +126,7 @@ if (bookingData) {
     getAddressFromGeolocation();
 } else {
     showMessage("❌ No booking data found. Redirecting...", "error");
-    setTimeout(() => { window.location.href = "map.html"; }, 2000); 
+    setTimeout(() => { window.location.href = "/map"; }, 2000); 
 }
 
 // ✅ Booking submission
@@ -205,7 +205,7 @@ if (chatId) {
     name: bookingData.artisanName
   }));
   setTimeout(() => {
-    window.location.href = "customer-home.html?openMessages=true";
+    window.location.href = "/customer-home?openMessages=true";
   }, 1800);
 } else {
   setTimeout(() => {
@@ -216,7 +216,7 @@ if (chatId) {
         } else {
             if (res.status === 401) {
                 showMessage("❌ Session expired. Please log in again.", "error");
-                setTimeout(() => (window.location.href = "SignIn.html"), 2000);
+                setTimeout(() => (window.location.href = "/signin"), 2000);
             } else {
                 showMessage("❌ " + (data.message || "Booking failed."), "error");
             }

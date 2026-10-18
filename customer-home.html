@@ -482,7 +482,7 @@ const user = _raw ? JSON.parse(_raw) : null;
 const token = localStorage.getItem('token');
 
 if (!user || !token) {
-  window.location.replace('SignIn.html');
+  window.location.replace('/signin');
   throw new Error('Not signed in');
 }
 user._id = user._id || user.id || user.userId || '';
@@ -1966,7 +1966,7 @@ function showBanOverlay(data) {
       logoutBtn.style.borderColor = 'rgba(255,59,92,0.3)';
       logoutBtn.onclick = () => {
         localStorage.clear();
-        window.location.href = 'SignIn.html';
+        window.location.href = '/signin';
       };
     }
   }
@@ -2102,7 +2102,7 @@ async function loadHistory(){
     const res = await fetch(`${BASE_URL}/api/bookings`, {
       headers:{ Authorization:`Bearer ${token}` }
     });
-    if (res.status === 401){ window.location.href = 'SignIn.html'; return; }
+    if (res.status === 401){ window.location.href = '/signin'; return; }
     const data = await res.json();
     if (!Array.isArray(data)){
       list.innerHTML = '<div class="empty-state">No bookings found yet.</div>';
@@ -2418,7 +2418,7 @@ document.getElementById('btnSecurity').addEventListener('click', e => runWithLoa
 
 // ── Home page ──
 function goToServices(q) {
-  window.location.href = 'categories.html' + (q ? `?search=${encodeURIComponent(q)}` : '');
+  window.location.href = '/categories' + (q ? `?search=${encodeURIComponent(q)}` : '');
 }
 function initHomeButtons() {
   document.querySelectorAll('.service-item[data-service]').forEach(el => {
@@ -2479,7 +2479,7 @@ document.getElementById('logoutBtn').addEventListener('click', e => {
   e.currentTarget.dataset.busy = '1';
   withLoadingState(e.currentTarget, 'Logging out…');
   toast('Logging out', 'See you soon 👋', 'system');
-  setTimeout(() => { localStorage.clear(); window.location.href = 'SignIn.html'; }, 700);
+  setTimeout(() => { localStorage.clear(); window.location.href = '/signin'; }, 700);
 });
 
   checkBanStatusOnLoad();
@@ -2519,7 +2519,7 @@ document.getElementById('logoutBtn').addEventListener('click', e => {
   document.getElementById('voiceCancelBtn').addEventListener('click', cancelVoiceRecording);
 
   document.getElementById('rebookBtn').addEventListener('click', () => {
-    window.location.href = 'index.html';
+    window.location.href = '/';
   });
   document.querySelectorAll('#starRow .star').forEach(star => {
   star.addEventListener('click', () => {
@@ -2564,7 +2564,7 @@ document.getElementById('ratingSubmitBtn')?.addEventListener('click', async () =
 
   document.getElementById('logoutBtn').addEventListener('click', () => {
     localStorage.clear();
-    window.location.href = 'SignIn.html';
+    window.location.href = '/signin';
   });
 
   if ('Notification' in window && Notification.permission === 'default') {

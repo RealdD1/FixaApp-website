@@ -3,7 +3,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const token = localStorage.getItem("token");
     if (!token) {
         // Redirect to the sign-in page if no token is found
-        window.location.href = "SignIn.html";
+        window.location.href = "/signin";
         return;
     }
 
@@ -26,7 +26,7 @@ async function fetchAndDisplayBookings(token) {
                 // Handle unauthorized access (token expired or invalid)
                 alert("Session expired. Please sign in again.");
                 localStorage.clear();
-                window.location.href = "SignIn.html";
+                window.location.href = "/signin";
                 return;
             }
             throw new Error(`HTTP error! Status: ${response.status}`);

@@ -367,7 +367,7 @@ const BASE = `${API}/api/admin`;    // match your app.use('/…', adminRoutes) p
       }
 
       localStorage.setItem('adminToken', data.token);
-      window.location.href = 'admin-dashboard.html';
+      window.location.href = '/admin-dashboard';
     } catch (err) {
       showError('totpError', 'Network error');
     } finally {
@@ -403,7 +403,7 @@ const BASE = `${API}/api/admin`;    // match your app.use('/…', adminRoutes) p
       }
 
       localStorage.setItem('adminToken', data.token);
-      window.location.href = 'admin-dashboard.html';
+      window.location.href = '/admin-dashboard';
     } catch (err) {
       showError('setupError', 'Network error');
     } finally {

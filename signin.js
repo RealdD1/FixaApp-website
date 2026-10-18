@@ -65,7 +65,7 @@ document.getElementById('signupForm').addEventListener('submit', function(e) {
     password
   ).then(response => {
     alert("Signup successful! Now you can sign in.");
-    window.location.href = "SignIn.html";
+    window.location.href = "/signin";
   }).catch(error => {
     alert("Signup failed: " + error.message);
     console.error(error);
