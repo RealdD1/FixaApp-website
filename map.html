@@ -5,11 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Fixa Map</title>
 
-  <!-- 1) Environment config (API URL) — must load first -->
   <script src="config.js"></script>
-  <!-- 2) Socket.IO client (loaded once) -->
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-  <!-- 3) Leaflet -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
@@ -17,116 +14,95 @@
     body, html { margin: 0; padding: 0; height: 100%; font-family: Arial, sans-serif; }
     #map { height: 100%; width: 100%; background: #00172b; }
 
+    /* loader */
     #loader {
-      position: fixed; inset: 0;
-      background: rgba(0, 23, 43, 0.9);
+      position: fixed; inset: 0; background: rgba(0, 23, 43, 0.9);
       display: flex; justify-content: center; align-items: center; flex-direction: column;
       z-index: 1000; padding: 20px; text-align: center;
     }
     .spinner {
-      border: 6px solid rgba(255, 215, 0, 0.2);
-      border-top: 6px solid gold;
-      border-radius: 50%;
-      width: 60px; height: 60px;
-      animation: spin 1s linear infinite;
-      margin-bottom: 15px;
+      border: 6px solid rgba(255, 215, 0, 0.2); border-top: 6px solid gold; border-radius: 50%;
+      width: 60px; height: 60px; animation: spin 1s linear infinite; margin-bottom: 15px;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
     .loader-text { color: gold; font-size: 1.2rem; max-width: 420px; }
     #loader.failed .spinner { display: none; }
     #loader.failed .loader-text { color: #ff8a8a; }
-    #retryBtn {
-      display: none; margin-top: 16px; padding: 10px 22px;
-      background: gold; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;
-    }
+    #retryBtn { display: none; margin-top: 16px; padding: 10px 22px; background: gold; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
     #loader.failed #retryBtn { display: inline-block; }
-.artisan-pin{ background: var(--sc, gold); }                       /* was: background: gold */
-.pin-wrap:not(.offline) .artisan-pin{ animation: pulse 2s infinite; }   /* DELETE this rule */
-.pin-wrap.available:not(.dim) .artisan-pin{ animation: pulse 2s infinite; }
-.pin-wrap.offline{ opacity:.45; filter:grayscale(.6); }            /* DELETE this one too */
-.pin-wrap.dim{ opacity:.55; }
-@keyframes pulse{
-  0%{box-shadow:0 0 0 0 rgba(34,197,94,.6)} 70%{box-shadow:0 0 0 20px rgba(34,197,94,0)} 100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}
-}
-.pin-status{position:absolute;top:-3px;right:-3px;width:14px;height:14px;border-radius:50%;background:var(--sc,gold);border:2px solid #fff;z-index:2}
-.avail-badge{display:inline-block;margin-top:6px;padding:4px 12px;border-radius:12px;border:1px solid;font-size:.8rem;font-weight:700}
-#legend{position:fixed;left:10px;bottom:24px;z-index:999;background:rgba(0,23,43,.88);color:#fff;padding:8px 10px;border-radius:10px;font-size:11px;line-height:1.7}
-#legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px}
 
-    .customer-dot {
-      width: 16px; height: 16px;
-      background: #007bff;
-      border: 2px solid white;
-      border-radius: 50%;
-      box-shadow: 0 0 6px rgba(0, 0, 0, 0.5);
+    /* artisan pins */
+    .pin-wrap { position: relative; width: 44px; height: 54px; --sc: gold; }
+    .artisan-pin {
+      width: 44px; height: 44px; border-radius: 50%; overflow: hidden;
+      border: 3px solid var(--sc); background: var(--sc);
+      box-shadow: 0 3px 10px rgba(0,0,0,.45); box-sizing: border-box;
+    }
+    .artisan-pin img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .pin-wrap::after {                       /* little pointer under the circle */
+      content: ""; position: absolute; left: 50%; bottom: 2px; transform: translateX(-50%);
+      border-left: 7px solid transparent; border-right: 7px solid transparent;
+      border-top: 10px solid var(--sc);
+    }
+    .pin-status {
+      position: absolute; top: -3px; right: -3px; width: 14px; height: 14px; border-radius: 50%;
+      background: var(--sc); border: 2px solid #fff; z-index: 2;
+    }
+    .pin-wrap.available:not(.dim) .artisan-pin { animation: pulse 2s infinite; }
+    .pin-wrap.offline { opacity: .45; filter: grayscale(.6); }
+    .pin-wrap.dim { opacity: .6; }
+    @keyframes pulse {
+      0%   { box-shadow: 0 0 0 0 rgba(34,197,94,.6); }
+      70%  { box-shadow: 0 0 0 18px rgba(34,197,94,0); }
+      100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
     }
 
-    .modal {
-      display: none;
-      position: fixed; inset: 0; z-index: 2000;
-      background: rgba(0, 0, 0, 0.6);
-      justify-content: center; align-items: center;
-    }
+    .avail-badge { display: inline-block; margin-top: 6px; padding: 4px 12px; border-radius: 12px; border: 1px solid; font-size: .8rem; font-weight: 700; }
+    #legend { position: fixed; left: 10px; bottom: 24px; z-index: 999; background: rgba(0,23,43,.88); color: #fff; padding: 8px 10px; border-radius: 10px; font-size: 11px; line-height: 1.7; }
+    #legend i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; }
+
+    .customer-dot { width: 16px; height: 16px; background: #007bff; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 6px rgba(0,0,0,.5); }
+
+    /* modal */
+    .modal { display: none; position: fixed; inset: 0; z-index: 2000; background: rgba(0,0,0,.6); justify-content: center; align-items: center; }
     .modal-content {
-      background: #002544; color: white;
-      border-radius: 20px;
-      padding: 25px;
-      width: 350px; max-width: 95%;
-      max-height: 92vh; overflow-y: auto;
-      text-align: center;
-      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
-      animation: bounceIn 0.5s forwards;
+      background: #002544; color: white; border-radius: 20px; padding: 25px;
+      width: 350px; max-width: 95%; max-height: 92vh; overflow-y: auto; text-align: center;
+      box-shadow: 0 8px 25px rgba(0,0,0,.4); animation: bounceIn .5s forwards;
     }
-    @keyframes bounceIn {
-      0%   { transform: scale(0.7); opacity: 0; }
-      60%  { transform: scale(1.05); opacity: 1; }
-      80%  { transform: scale(0.97); }
-      100% { transform: scale(1); }
-    }
+    @keyframes bounceIn { 0% { transform: scale(.7); opacity: 0; } 60% { transform: scale(1.05); opacity: 1; } 80% { transform: scale(.97); } 100% { transform: scale(1); } }
     .close { float: right; font-size: 24px; font-weight: bold; color: #FFD700; cursor: pointer; }
-    .profile-pic {
-      width: 90px; height: 90px; border-radius: 50%;
-      border: 3px solid #FFD700; margin: 15px auto; display: block; object-fit: cover;
-    }
+    .profile-pic { width: 90px; height: 90px; border-radius: 50%; border: 3px solid #FFD700; margin: 15px auto; display: block; object-fit: cover; }
     .artisan-header { display: flex; flex-direction: column; align-items: center; margin-bottom: 10px; }
     .artisan-header h2 { margin: 0 0 4px; }
     .artisan-header p { margin: 0 0 6px; color: #cbd5e1; }
     .artisan-rating { color: gold; font-size: 1.1rem; margin-bottom: 5px; }
-    .verification-badge {
-      display: inline-flex; align-items: center; color: white;
-      padding: 4px 10px; border-radius: 12px; font-size: 0.8rem; font-weight: bold; margin-top: 5px;
-    }
+    .verification-badge { display: inline-flex; align-items: center; color: white; padding: 4px 10px; border-radius: 12px; font-size: .8rem; font-weight: bold; margin-top: 5px; }
     .verification-badge.verified { background-color: #388e3c; }
     .verification-badge.not-verified { background-color: #d32f2f; }
     .verification-badge .badge-icon { margin-right: 5px; font-size: 1rem; }
 
-    .guide {
-      background: #012A4A; border-radius: 12px; padding: 12px;
-      margin: 15px 0; text-align: left; font-size: 13px;
-    }
+    .guide { background: #012A4A; border-radius: 12px; padding: 12px; margin: 15px 0; text-align: left; font-size: 13px; }
     .guide h3 { margin-top: 0; }
     .guide ul { padding-left: 18px; margin: 0; }
 
     .estimator { background: #012A4A; padding: 15px; border-radius: 12px; margin-top: 15px; text-align: left; }
     .estimator h3 { margin-top: 0; text-align: center; }
     .estimator label, .estimator select, .estimator input { display: block; width: 100%; margin-bottom: 10px; box-sizing: border-box; }
-    .estimator select, .estimator input {
-      padding: 8px; border-radius: 6px; border: 1px solid #FFD700;
-      background-color: #00172B; color: white;
-    }
+    .estimator select, .estimator input { padding: 8px; border-radius: 6px; border: 1px solid #FFD700; background-color: #00172B; color: white; }
     .estimator p { margin: 6px 0; }
 
     .btn { margin: 10px 5px; padding: 10px 20px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; }
-    .chat-btn { background: #FFD700; color: #00172B; }
     .book-btn { background: #0066CC; color: #fff; }
 
-    .leaflet-control-attribution { background: rgba(0,23,43,0.7) !important; color: #cbd5e1 !important; }
+    .leaflet-control-attribution { background: rgba(0,23,43,.7) !important; color: #cbd5e1 !important; }
     .leaflet-control-attribution a { color: #FFD700 !important; }
   </style>
 </head>
 <body>
-<div id="map"></div>
-<div id="legend"></div>
+  <div id="map"></div>
+  <div id="legend"></div>
+
   <div id="loader">
     <div class="spinner"></div>
     <div class="loader-text" id="loaderText">Loading artisans near you...</div>
@@ -134,7 +110,7 @@
   </div>
 
   <div id="artisanModal" class="modal">
-    <div class="modal-content">
+    <div class="modal-content" id="modalContent">
       <span class="close" id="closeModalBtn" title="Close">&times;</span>
       <img id="artisanPic" class="profile-pic" alt="Artisan">
 
@@ -197,29 +173,43 @@
       '<path d="M15 80c4-20 20-26 30-26s26 6 30 26z" fill="#FFD700"/></svg>'
     );
 
-    const assetUrl = (p) => !p ? '' : /^(https?:|blob:|data:)/i.test(p) ? p : `${API_URL}/${String(p).replace(/^\/+/, '')}`;
+    // Works for Cloudinary URLs (full https) and old local paths. For Cloudinary it
+    // asks for a small, face-cropped, auto-format version so pins stay light.
+    function avatarUrl(p, size) {
+      if (!p) return '';
+      let url = /^(https?:|blob:|data:)/i.test(p) ? p : `${API_URL}/${String(p).replace(/^\/+/, '')}`;
+      if (/res\.cloudinary\.com/.test(url) && url.includes('/upload/') && !/\/upload\/[^/]*(w_|c_)/.test(url)) {
+        url = url.replace('/upload/', `/upload/f_auto,q_auto,w_${size},h_${size},c_fill,g_face/`);
+      }
+      return url;
+    }
 
-const STATUS = {
-  available: { label: 'Available', color: '#22c55e' },
-  busy:      { label: 'Busy',      color: '#f97316' },
-  on_job:    { label: 'On a job',  color: '#3b82f6' },
-  break:     { label: 'On break',  color: '#a855f7' },
-  offline:   { label: 'Offline',   color: '#6b7280' }
-};
-const statusKey = (a) => {
-  const s = a.availabilityStatus || (a.available ? 'available' : 'busy');
-  return STATUS[s] ? s : 'available';
-};
-document.getElementById('legend').innerHTML =
-  Object.values(STATUS).map(s => `<div><i style="background:${s.color}"></i>${s.label}</div>`).join('');
+    const STATUS = {
+      available: { label: 'Available', color: '#22c55e' },
+      busy:      { label: 'Busy',      color: '#f97316' },
+      on_job:    { label: 'On a job',  color: '#3b82f6' },
+      break:     { label: 'On break',  color: '#a855f7' },
+      offline:   { label: 'Offline',   color: '#6b7280' }
+    };
+    const statusKey = (a) => {
+      const s = a.availabilityStatus || (a.available ? 'available' : 'busy');
+      return STATUS[s] ? s : 'available';
+    };
+
+    document.getElementById('legend').innerHTML =
+      Object.values(STATUS).map(s => `<div><i style="background:${s.color}"></i>${s.label}</div>`).join('');
+
+    // Keys must match the category names artisans can pick in my-services.html
     const baseRates = {
-      "Electrician": 5000, "Painter": 3000, "Tiler": 4000, "Mechanic": 6000, "Welder": 4500,
-      "Generator Repairer": 5000, "POP Installer": 7000, "Fashion Designer": 4000, "Make-Up Artist": 3500,
-      "CCTV Installer": 6000, "Solar Panel Installer": 8000, "Cook/Caterer": 3000, "Handyman": 2500,
-      "Carpenter": 4000, "HVAC Technician": 7500, "Mobile Mechanic": 6500, "Gardener": 2000,
-      "Roof Repair Specialist": 7000, "Tech Support": 5000, "Appliance Repairer": 4500,
-      "Interior Designer": 10000, "Window Installer": 3500, "Furniture Assembler": 3000,
-      "Nanny/House help": 2500, "Massage Therapist": 4000
+      "Electrician": 5000, "Plumber": 4500, "Painter": 3000, "Tiler": 4000, "Mechanic": 6000,
+      "Welder": 4500, "Generator Repairer": 5000, "POP Installer": 7000, "Fashion Designer": 4000,
+      "Make-Up Artist": 3500, "CCTV Installer": 6000, "Solar Panel": 8000, "Solar Panel Installer": 8000,
+      "Cook/Caterer": 3000, "Handyman": 2500, "Carpenter": 4000, "HVAC Tech": 7500,
+      "HVAC Technician": 7500, "Mobile Mechanic": 6500, "Gardener": 2000,
+      "Roof Repair Specialist": 7000, "Tech Support": 5000, "Appliance Repair": 4500,
+      "Appliance Repairer": 4500, "Interior Designer": 10000, "Window Installer": 3500,
+      "Furniture Assembler": 3000, "Nanny/House help": 2500, "Massage Therapist": 4000,
+      "Nail Technician": 3000, "Hair Dresser": 3500, "House Cleaner/Janitor": 2500, "Janitor": 2500
     };
 
     let user = null;
@@ -264,76 +254,59 @@ document.getElementById('legend').innerHTML =
     }
     $('retryBtn').addEventListener('click', () => window.location.reload());
 
+    // ── MAP ──
     map = L.map('map', { zoomControl: true }).setView(NIGERIA_CENTER, 6);
-// Esri Dark Gray Canvas — free, no API key, and explicitly licensed for production use
-// (unlike tile.openstreetmap.org, which only tolerates light/non-commercial traffic).
-// Note the tile URL order is {z}/{y}/{x} for Esri, not {z}/{x}/{y} like OSM/Carto.
-L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
-  attribution: 'Tiles &copy; Esri &mdash; Source: Esri, DeLorme, NAVTEQ, USGS, Intermap, iPC, NRCAN, Esri Japan, METI, Esri China (Hong Kong), Esri (Thailand), TomTom, 2012',
-  maxZoom: 19,
-}).addTo(map);
-  
+    // Esri World Street Map: free, no API key. Tile order is {z}/{y}/{x}.
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+      attribution: 'Tiles &copy; Esri &mdash; Source: Esri, DeLorme, NAVTEQ, USGS, Intermap, iPC, NRCAN, Esri Japan, METI, Esri China (Hong Kong), Esri (Thailand), TomTom',
+      maxZoom: 19,
+    }).addTo(map);
+
+    // ── PINS ──
+    function buildPinElement(artisan, online) {
+      const key = statusKey(artisan);
+      const wrap = document.createElement('div');
+      wrap.className = 'pin-wrap ' + key + (online ? '' : ' dim');
+      wrap.style.setProperty('--sc', STATUS[key].color);
+
+      const pin = document.createElement('div');
+      pin.className = 'artisan-pin';
+      const img = document.createElement('img');
+      img.alt = artisan.name || 'Artisan';
+      img.src = avatarUrl(artisan.profilePic, 96) || DEFAULT_AVATAR;
+      img.onerror = () => { img.onerror = null; img.src = DEFAULT_AVATAR; };
+      pin.appendChild(img);
+
+      const dot = document.createElement('span');
+      dot.className = 'pin-status';
+      wrap.appendChild(pin);
+      wrap.appendChild(dot);
+      return wrap;
+    }
+
     function pinIcon(artisan, online) {
-      const el = buildPinElement(artisan, online);
       return L.divIcon({
-        html: el.outerHTML,
+        html: buildPinElement(artisan, online).outerHTML,
         className: '',
         iconSize: [44, 54],
         iconAnchor: [22, 54],
       });
     }
-    function buildPinElement(artisan, online) {
-  const key = statusKey(artisan);
-  const wrap = document.createElement('div');
-  wrap.className = 'pin-wrap ' + key + (online ? '' : ' dim');
-  wrap.style.setProperty('--sc', STATUS[key].color);
 
-  const pin = document.createElement('div');
-  pin.className = 'artisan-pin';
-  const img = document.createElement('img');
-  img.alt = artisan.name || 'Artisan';
-  img.src = assetUrl(artisan.profilePic) || DEFAULT_AVATAR;
-  img.onerror = () => { img.onerror = null; img.src = DEFAULT_AVATAR; };
-  pin.appendChild(img);
+    function addArtisanMarker(artisan, online) {
+      const coords = artisan.location?.coordinates;
+      if (!Array.isArray(coords) || coords.length !== 2) return;
+      const [lng, lat] = coords;
+      if (typeof lat !== 'number' || typeof lng !== 'number') return;
+      if (lat === 0 && lng === 0) return;
 
-  const dot = document.createElement('span');
-  dot.className = 'pin-status';
-  wrap.appendChild(pin);
-  wrap.appendChild(dot);
-  return wrap;
-}
-
-function addArtisanMarker(artisan, online) {
-  const coords = artisan.location?.coordinates;
-  if (!Array.isArray(coords) || coords.length !== 2) return;
-  const [lng, lat] = coords;
-  if (typeof lat !== 'number' || typeof lng !== 'number') return;
-  if (lat === 0 && lng === 0) return;
-
-  const marker = L.marker([lat, lng], { icon: pinIcon(artisan, online) }).addTo(map);
-  marker.on('click', () => {
-    const e = markersByArtisan.get(String(artisan._id));      // always read the latest state
-    showArtisanProfile(e ? e.artisan : artisan, [lat, lng], e ? e.online : online);
-  });
-  markersByArtisan.set(String(artisan._id), { marker, artisan, online });
-}
-
-function renderStatusBadge(artisan, online) {
-  const key = statusKey(artisan), st = STATUS[key];
-  const el = $('availBadge');
-  el.textContent = st.label + (online || key === 'offline' ? '' : ' · not online now');
-  el.style.background = st.color + '22';
-  el.style.color = st.color;
-  el.style.borderColor = st.color;
-
-  const ok = key === 'available';
-  const book = $('bookBtn');
-  book.disabled = !ok;
-  book.textContent = ok ? '📅 Book' : `Unavailable: ${st.label}`;
-  book.style.opacity = ok ? '1' : '.5';
-  book.style.cursor = ok ? 'pointer' : 'not-allowed';
-}
-
+      const marker = L.marker([lat, lng], { icon: pinIcon(artisan, online) }).addTo(map);
+      marker.on('click', () => {
+        const e = markersByArtisan.get(String(artisan._id));   // always read the latest state
+        showArtisanProfile(e ? e.artisan : artisan, [lat, lng], e ? e.online : online);
+      });
+      markersByArtisan.set(String(artisan._id), { marker, artisan, online });
+    }
 
     function setMarkerOnline(entry, online) {
       entry.online = online;
@@ -345,6 +318,23 @@ function renderStatusBadge(artisan, online) {
       markersByArtisan.clear();
     }
 
+    function renderStatusBadge(artisan, online) {
+      const key = statusKey(artisan), st = STATUS[key];
+      const el = $('availBadge');
+      el.textContent = st.label + (online || key === 'offline' ? '' : ' · not online now');
+      el.style.background = st.color + '22';
+      el.style.color = st.color;
+      el.style.borderColor = st.color;
+
+      const ok = key === 'available';
+      const book = $('bookBtn');
+      book.disabled = !ok;
+      book.textContent = ok ? '📅 Book' : `Unavailable: ${st.label}`;
+      book.style.opacity = ok ? '1' : '.5';
+      book.style.cursor = ok ? 'pointer' : 'not-allowed';
+    }
+
+    // ── DATA ──
     async function loadArtisans(category) {
       showLoader('Loading artisans near you...');
       clearArtisanMarkers();
@@ -375,8 +365,7 @@ function renderStatusBadge(artisan, online) {
 
         if (!userLocated && markersByArtisan.size) {
           if (markersByArtisan.size === 1) {
-            const only = markersByArtisan.values().next().value;
-            map.setView(only.marker.getLatLng(), 14);
+            map.setView(markersByArtisan.values().next().value.marker.getLatLng(), 14);
           } else {
             const group = L.featureGroup([...markersByArtisan.values()].map((e) => e.marker));
             map.fitBounds(group.getBounds().pad(0.2));
@@ -389,10 +378,7 @@ function renderStatusBadge(artisan, online) {
     }
 
     function locateCustomer() {
-      if (!navigator.geolocation) {
-        console.warn('Geolocation is not supported by this browser.');
-        return;
-      }
+      if (!navigator.geolocation) return;
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           userLocated = true;
@@ -413,91 +399,91 @@ function renderStatusBadge(artisan, online) {
       );
     }
 
-function initSocket() {
-  const socket = io(API_URL, {
-    auth: { token: customerToken },
-    transports: ['websocket', 'polling'],
-  });
+    // ── SOCKET ──
+    function initSocket() {
+      const socket = io(API_URL, {
+        auth: { token: customerToken },
+        transports: ['websocket', 'polling'],
+      });
 
-  socket.on('connect_error', (err) => console.warn('[Socket]', err.message));
+      socket.on('connect_error', (err) => console.warn('[Socket]', err.message));
 
-  socket.on('artisanOffline', ({ artisanId }) => {
-    const entry = markersByArtisan.get(String(artisanId));
-    if (entry) setMarkerOnline(entry, false);
-  });
+      socket.on('artisanOffline', ({ artisanId }) => {
+        const entry = markersByArtisan.get(String(artisanId));
+        if (entry) setMarkerOnline(entry, false);
+      });
 
-  socket.on('artisanOnline', (data) => {
-    const { artisanId, userId, coordinates, category, name, profilePic } = data || {};
-    if (!artisanId) return;
+      socket.on('artisanOnline', (data) => {
+        const { artisanId, userId, coordinates, category, name, profilePic } = data || {};
+        if (!artisanId) return;
 
-    const existing = markersByArtisan.get(String(artisanId));
-    if (existing) {
-      setMarkerOnline(existing, true);
-      return;
+        const existing = markersByArtisan.get(String(artisanId));
+        if (existing) { setMarkerOnline(existing, true); return; }
+
+        if (selectedCategory && category !== selectedCategory) return;
+        if (!Array.isArray(coordinates) || coordinates.length !== 2) return;
+
+        addArtisanMarker({
+          _id: artisanId, user: userId, name, profilePic, category,
+          availabilityStatus: data.availabilityStatus || 'available',
+          location: { coordinates },
+        }, true);
+      });
+
+      // Make sure your backend emits this exact event name when an artisan changes status
+      socket.on('artisanAvailabilityUpdated', ({ artisanId, status }) => {
+        const entry = markersByArtisan.get(String(artisanId));
+        if (!entry) return;
+        entry.artisan.availabilityStatus = status;
+        entry.artisan.available = status === 'available';
+        setMarkerOnline(entry, entry.online);
+        if (currentArtisan && String(currentArtisan._id) === String(artisanId) && artisanModal.style.display === 'flex') {
+          renderStatusBadge(entry.artisan, entry.online);
+        }
+      });
     }
 
-    if (selectedCategory && category !== selectedCategory) return;
-    if (!Array.isArray(coordinates) || coordinates.length !== 2) return;
+    // ── PROFILE MODAL ──
+    function showArtisanProfile(artisan, latlng, online) {
+      map.flyTo(latlng, 15, { duration: 0.8 });
 
-    addArtisanMarker({
-      _id: artisanId,
-      user: userId,
-      name, profilePic, category,
-      availabilityStatus: data.availabilityStatus || 'available',
-      location: { coordinates },
-    }, true);
-  });
+      const avg = typeof artisan.averageRating === 'number' ? artisan.averageRating
+                : typeof artisan.rating === 'number' ? artisan.rating : null;
+      const count = artisan.reviewCount || 0;
+      $('artisanRating').textContent = avg !== null && count > 0
+        ? `⭐ ${avg.toFixed(1)} / 5 (${count} review${count === 1 ? '' : 's'})`
+        : '⭐ No reviews yet';
 
-  socket.on('artisanAvailabilityUpdated', ({ artisanId, status }) => {
-    const entry = markersByArtisan.get(String(artisanId));
-    if (!entry) return;
-    entry.artisan.availabilityStatus = status;
-    entry.artisan.available = status === 'available';
-    setMarkerOnline(entry, entry.online);
-    if (currentArtisan && String(currentArtisan._id) === String(artisanId) && artisanModal.style.display === 'flex') {
-      renderStatusBadge(entry.artisan, entry.online);
+      const isVerified = !!(artisan.verification || artisan.isVerified || artisan.verified);
+
+      $('artisanName').textContent       = artisan.name || '';
+      $('artisanOccupation').textContent = artisan.category || '';
+      $('artisanDetails').textContent    = artisan.bio || 'No details available.';
+
+      const pic = $('artisanPic');
+      pic.onerror = () => { pic.onerror = null; pic.src = DEFAULT_AVATAR; };
+      pic.src = avatarUrl(artisan.profilePic, 240) || DEFAULT_AVATAR;
+
+      $('badgeText').textContent = isVerified ? 'Verified' : 'Not Verified';
+      $('badgeIcon').textContent = isVerified ? '✓' : '✕';
+      $('verificationBadge').className = 'verification-badge ' + (isVerified ? 'verified' : 'not-verified');
+
+      currentArtisan = artisan;
+      hoursInput.value = '';
+      complexityInput.value = '1';
+      updateEstimator();
+      renderStatusBadge(artisan, online);
+
+      artisanModal.style.display = 'flex';
+      $('modalContent').scrollTop = 0;
     }
-  });
-}
-function showArtisanProfile(artisan, latlng, online) {
-  map.flyTo(latlng, 15, { duration: 0.8 });
-
-const avg = typeof artisan.averageRating === 'number' ? artisan.averageRating
-          : typeof artisan.rating === 'number' ? artisan.rating
-          : null;
-const reviewCount = artisan.reviewCount || 0;
-
-$('artisanRating').textContent = avg !== null
-  ? `⭐ ${avg.toFixed(1)} / 5 (${reviewCount} review${reviewCount === 1 ? '' : 's'})`
-  : '⭐ No reviews yet';  const isVerified = !!artisan.verification;
-
-  $('artisanName').textContent       = artisan.name || '';
-  $('artisanOccupation').textContent = artisan.category || '';
-  $('artisanDetails').textContent    = artisan.bio || 'No details available.';
-  $('artisanRating').textContent     = `⭐ ${rating} / 5`;
-
-  const pic = $('artisanPic');
-  pic.onerror = () => { pic.onerror = null; pic.src = DEFAULT_AVATAR; };
-  pic.src = assetUrl(artisan.profilePic) || DEFAULT_AVATAR;
-  $('badgeText').textContent = isVerified ? 'Verified' : 'Not Verified';
-  $('badgeIcon').textContent = isVerified ? '✓' : '✕';
-  $('verificationBadge').className = 'verification-badge ' + (isVerified ? 'verified' : 'not-verified');
-
-  currentArtisan = artisan;
-  hoursInput.value = '';
-  complexityInput.value = '1';
-  updateEstimator();
-
-  renderStatusBadge(artisan, online);
-  artisanModal.style.display = 'flex';
-}
 
     function closeArtisanModal() { artisanModal.style.display = 'none'; }
-
     $('closeModalBtn').addEventListener('click', closeArtisanModal);
     artisanModal.addEventListener('click', (e) => { if (e.target === artisanModal) closeArtisanModal(); });
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeArtisanModal(); });
 
+    // ── ESTIMATOR ──
     function calculatePriceRange(category, hours, complexity) {
       const base = baseRates[category] || 3000;
       const estimate = base * hours * complexity;
@@ -530,9 +516,9 @@ $('artisanRating').textContent = avg !== null
 
     $('bookBtn').addEventListener('click', () => {
       if (!currentArtisan) return alert('No artisan selected');
+      if (statusKey(currentArtisan) !== 'available') return alert('This artisan is not available right now.');
       if (estimatedPrice <= 0) return alert('Please enter a valid price estimate.');
 
-      if (currentArtisan && statusKey(currentArtisan) !== 'available') return alert('This artisan is not available right now.');
       localStorage.setItem('bookingData', JSON.stringify({
         artisanId: currentArtisan._id,
         artisanName: currentArtisan.name,
@@ -546,14 +532,10 @@ $('artisanRating').textContent = avg !== null
       window.location.href = '/booking';
     });
 
-
     initSocket();
     locateCustomer();
     loadArtisans(selectedCategory);
   })();
   </script>
-
-  <!-- Existing shared script: open it and make sure it uses FIXA_CONFIG.API_URL (no localhost) -->
-  <script src="socket-connection.js"></script>
 </body>
 </html>

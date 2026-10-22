@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NPF Digital Command Centre</title>
+<style>
+:root{--navy:#0f2144;--gold:#b8860b;--bg:#f5f6fa;--card:#fff;--tx:#0f1b33;--mut:#667089;--bd:#e3e6ee;--soft:#eaf0fb;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#0b1428;--card:#121e38;--tx:#eef1f8;--mut:#9aa6c2;--bd:#22304f;--soft:#1a2a4d}}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--tx);font-size:14px}
+button,input,select,textarea{font:inherit;color:inherit}
+.app{display:flex;min-height:100vh}
+.side{width:230px;background:var(--navy);color:#dfe6f5;padding:16px 12px;display:flex;flex-direction:column;flex-shrink:0}
+.brand{display:flex;gap:10px;align-items:center;padding:4px 6px 16px;border-bottom:1px solid #ffffff1f;margin-bottom:14px}
+.logo{width:36px;height:36px;border-radius:10px;background:var(--gold);display:grid;place-items:center;font-weight:700;color:#fff}
+.brand b{display:block;font-size:13px;line-height:1.2}.brand small{font-size:10px;letter-spacing:.12em;color:#9fb0d3}
+.nav{display:flex;flex-direction:column;gap:4px;flex:1}
+.nav button{background:none;border:0;text-align:left;padding:10px 12px;border-radius:8px;color:#c9d4ec;cursor:pointer;display:flex;justify-content:space-between}
+.nav button.on{background:#ffffff1c;color:#fff;font-weight:600}
+.badge{background:var(--gold);color:#fff;border-radius:99px;padding:0 7px;font-size:11px;line-height:18px}
+.me{border-top:1px solid #ffffff1f;padding-top:12px;font-size:12px}.me small{color:#9fb0d3;display:block}
+.main{flex:1;min-width:0;padding:24px 28px}
+.eyebrow{color:var(--gold);font-size:11px;letter-spacing:.14em;font-weight:600}
+h1{margin:4px 0 4px;font-size:26px}h2{font-size:16px;margin:0 0 12px}.mut{color:var(--mut)}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:20px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:18px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:18px}
+.stat b{font-size:28px;display:block;margin-top:6px}
+.btn{background:var(--gold);color:#fff;border:0;border-radius:8px;padding:10px 16px;font-weight:600;cursor:pointer}
+.btn.alt{background:var(--soft);color:var(--tx)}
+.row{display:grid;grid-template-columns:2fr 1fr;gap:14px}
+@media(max-width:820px){.app{flex-direction:column}.sid e{width:100%}.nav{flex-direction:row;flex-wrap:wrap}.row{grid-template-columns:1fr}.main{padding:16px}}
+.scroll{overflow-x:auto}table{width:100%;border-collapse:collapse;min-width:560px}
+th{text-align:left;font-size:11px;letter-spacing:.06em;color:var(--mut);text-transform:uppercase;padding:8px;border-bottom:1px solid var(--bd)}
+td{padding:10px 8px;border-bottom:1px solid var(--bd)}tr.click{cursor:pointer}tr.click:hover{background:var(--soft)}
+.pill{padding:2px 9px;border-radius:99px;font-size:12px;font-weight:600;background:var(--soft)}
+.pill.Received{background:#fdf1d3;color:#8a6200}.pill.Investigating,.pill.Assigned{background:#dbe8ff;color:#1c4cae}.pill.Resolved{background:#d6f3e3;color:#17653c}.pill.Closed{background:#e6e8ee;color:#444}
+label{display:block;font-weight:600;margin:12px 0 5px;font-size:13px}
+input,select,textarea{width:100%;padding:10px;border:1px solid var(--bd);border-radius:8px;background:var(--card)}
+textarea{min-height:90px;resize:vertical}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:560px){.two{grid-template-columns:1fr}}
+.bar{display:flex;align-items:center;gap:8px;margin:7px 0}.bar span{width:110px;font-size:12px}.bar i{display:block;height:10px;background:var(--gold);border-radius:6px}
+.tl{border-left:2px solid var(--bd);margin:10px 0 0 6px;padding-left:16px}.tl div{position:relative;margin-bottom:14px}
+.tl div:before{content:"";position:absolute;left:-23px;top:3px;width:12px;height:12px;border-radius:50%;background:var(--gold)}
+.login{min-height:100vh;display:grid;place-items:center;padding:20px;background:var(--navy)}
+.login .card{width:100%;max-width:400px}
+.tabs{display:flex;gap:6px;background:var(--soft);padding:4px;border-radius:10px;margin:14px 0}.tabs button{flex:1;border:0;background:none;padding:9px;border-radius:8px;cursor:pointer;font-weight:600}.tabs button.on{background:var(--card)}
+.err{color:#c0392b;font-size:13px;margin-top:8px;min-height:18px}.link{background:none;border:0;color:var(--gold);cursor:pointer;padding:0;font-weight:600}
+</style></head>
+<body><div id="root"></div>
+<script>
+const KEY="npf_v1",TYPES=["Theft","Robbery","Assault","Kidnapping","Fraud","Vandalism","Domestic violence","Other"],STAT=["Received","Assigned","Investigating","Resolved","Closed"],OFF=["Insp. Above Okoro","Sgt. jerry boy","Insp. Ebuka","Sgt. Otanwa","Unassigned"];
+const $=s=>document.querySelector(s),esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmt=t=>new Date(t).toLocaleString("en-NG",{dateStyle:"medium",timeStyle:"short"});
+const now=Date.now();
+let db={reports:[
+ {id:"NPF-2026-0001",type:"Robbery",loc:"Wuse Zone 4, Abuja",desc:"Armed men robbed a shop at about 8pm.",by:"demo@reporter.ng",name:"Demo Reporter",anon:false,status:"Investigating",officer:"Insp. Bello",t:now-864e5*3,hist:[{s:"Received",n:"Report logged",t:now-864e5*3},{s:"Investigating",n:"Team deployed to scene",t:now-864e5*2}]},
+ {id:"NPF-2026-0002",type:"Fraud",loc:"Garki, Abuja",desc:"Online seller took payment and vanished.",by:"demo@reporter.ng",name:"Demo Reporter",anon:false,status:"Received",officer:"Unassigned",t:now-864e5,hist:[{s:"Received",n:"Report logged",t:now-864e5}]},
+ {id:"NPF-2026-0003",type:"Vandalism",loc:"Maitama, Abuja",desc:"Street lights destroyed overnight.",by:"anon",name:"Anonymous",anon:true,status:"Resolved",officer:"Sgt. Eze",t:now-864e5*6,hist:[{s:"Received",n:"Report logged",t:now-864e5*6},{s:"Resolved",n:"Suspects identified and warned",t:now-864e5*4}]}],
+ users:[{name:"Demo Reporter",email:"demo@reporter.ng",pass:"demo123"}]};
+try{const s=localStorage.getItem(KEY);if(s)db=JSON.parse(s)}catch(e){}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(db))}catch(e){}};
+let S={user:null,view:"",sel:null,mode:"admin",reg:false,err:"",q:"",f:""};
+
+function render(){
+ $("#root").innerHTML=!S.user?loginUI():(S.user.role==="admin"?adminUI():reporterUI());
+}
+function loginUI(){
+ const a=S.mode==="admin";
+ return `<div class="login"><div class="card"><div class="brand" style="border-color:var(--bd)"><div class="logo">★</div><div><b>NIGERIA POLICE FORCE</b><small class="mut">DIGITAL COMMAND CENTRE</small></div></div>
+ <div class="tabs"><button class="${a?"on":""}" onclick="S.mode='admin';S.err='';render()">Admin / Officer</button><button class="${a?"":"on"}" onclick="S.mode='rep';S.err='';render()">Reporter</button></div>
+ ${!a&&S.reg?`<label>Full name</label><input id="n">`:""}
+ <label>Email</label><input id="e" type="email" value="${a?"admin@npf.gov.ng":""}"><label>Password</label><input id="p" type="password" value="${a?"Admin@123":""}">
+ <div class="err">${esc(S.err)}</div>
+ <button class="btn" style="width:100%;margin-top:6px" onclick="doLogin()">${!a&&S.reg?"Create account":"Sign in"}</button>
+ ${a?`<p class="mut" style="font-size:12px">Demo admin: admin@npf.gov.ng / Admin@123</p>`:`<p class="mut" style="font-size:12px;text-align:center">${S.reg?"Have an account?":"New here?"} <button class="link" onclick="S.reg=!S.reg;S.err='';render()">${S.reg?"Sign in":"Create account"}</button><br>Demo: demo@reporter.ng / demo123</p>`}
+ </div></div>`;
+}
+function doLogin(){
+ const e=$("#e").value.trim().toLowerCase(),p=$("#p").value;
+ if(S.mode==="admin"){
+  if(e==="admin@npf.gov.ng"&&p==="Admin@123"){S.user={role:"admin",name:"A. Okafor",email:e};S.view="over";S.err="";}else S.err="Invalid admin credentials.";
+ }else if(S.reg){
+  const n=$("#n").value.trim();
+  if(!n||!e||p.length<6){S.err="Enter name, email and a password of 6+ characters.";return render()}
+  if(db.users.find(u=>u.email===e)){S.err="Account already exists.";return render()}
+  db.users.push({name:n,email:e,pass:p});save();S.user={role:"rep",name:n,email:e};S.view="new";S.err="";
+ }else{
+  const u=db.users.find(u=>u.email===e&&u.pass===p);
+  if(u){S.user={role:"rep",name:u.name,email:e};S.view="mine";S.err=""}else S.err="Incorrect email or password.";
+ }
+ render();
+}
+const logout=()=>{S.user=null;S.sel=null;render()};
+const shell=(items,body,title,sub)=>`<div class="app"><aside class="side"><div class="brand"><div class="logo">★</div><div><b>NIGERIA POLICE FORCE</b><small>DIGITAL COMMAND CENTRE</small></div></div>
+<div class="nav">${items.map(([k,l,b])=>`<button class="${S.view===k?"on":""}" onclick="S.view='${k}';S.sel=null;render()"><span>${l}</span>${b?`<span class="badge">${b}</span>`:""}</button>`).join("")}</div>
+<div class="me"><b>${esc(S.user.name)}</b><small>${S.user.role==="admin"?"Duty officer · FCT Command":"Reporter"}</small><button class="link" style="margin-top:8px;color:#e8c46a" onclick="logout()">Sign out</button></div></aside>
+<main class="main"><div class="top"><div><div class="eyebrow">${sub}</div><h1>${title}</h1><div class="mut">${new Date().toLocaleDateString("en-NG",{dateStyle:"full"})}</div></div></div>${body}</main></div>`;
+const pill=s=>`<span class="pill ${s}">${s}</span>`;
+
+/* ADMIN */
+function adminUI(){
+ const R=db.reports,n=s=>R.filter(r=>r.status===s).length,open=R.filter(r=>!["Resolved","Closed"].includes(r.status)).length;
+ let b="",t="";
+ if(S.view==="over"){
+  t="Command overview";
+  const c={};R.forEach(r=>c[r.type]=(c[r.type]||0)+1);const mx=Math.max(1,...Object.values(c));
+  b=`<div class="grid"><div class="card stat"><span class="mut">Total reports</span><b>${R.length}</b></div><div class="card stat"><span class="mut">New / unassigned</span><b>${n("Received")}</b></div><div class="card stat"><span class="mut">Active cases</span><b>${open}</b></div><div class="card stat"><span class="mut">Resolved</span><b>${n("Resolved")}</b></div></div>
+  <div class="row"><div class="card"><h2>Recent reports</h2>${table(R.slice().sort((a,b)=>b.t-a.t).slice(0,5))}</div>
+  <div class="card"><h2>Reports by crime type</h2>${Object.entries(c).map(([k,v])=>`<div class="bar"><span>${k}</span><i style="width:${v/mx*100}%"></i><b>${v}</b></div>`).join("")||'<p class="mut">No data</p>'}</div></div>`;
+ }else if(S.view==="rep"){
+  t="Crime reports";
+  const L=R.filter(r=>(!S.f||r.status===S.f)&&(r.id+r.type+r.loc).toLowerCase().includes(S.q.toLowerCase())).sort((a,b)=>b.t-a.t);
+  b=S.sel?detail(R.find(r=>r.id===S.sel)):`<div class="card"><div class="two" style="margin-bottom:10px"><input placeholder="Search ID, type, location" value="${esc(S.q)}" oninput="S.q=this.value;render();const i=$('input');i.focus();i.setSelectionRange(99,99)"><select onchange="S.f=this.value;render()"><option value="">All statuses</option>${STAT.map(s=>`<option ${S.f===s?"selected":""}>${s}</option>`).join("")}</select></div>${table(L,true)}</div>`;
+ }
+ return shell([["over","Command overview"],["rep","Crime reports",n("Received")||""]],b,t,"LIVE OPERATIONS");
+}
+function table(L,full){
+ if(!L.length)return'<p class="mut">No reports found.</p>';
+ return `<div class="scroll"><table><tr><th>ID</th><th>Type</th><th>Location</th><th>Status</th>${full?"<th>Officer</th>":""}<th>Filed</th></tr>${L.map(r=>`<tr class="click" onclick="S.view='rep';S.sel='${r.id}';render()"><td><b>${r.id}</b></td><td>${r.type}</td><td>${esc(r.loc)}</td><td>${pill(r.status)}</td>${full?`<td>${r.officer}</td>`:""}<td>${fmt(r.t)}</td></tr>`).join("")}</table></div>`;
+}
+function detail(r){
+ return `<button class="link" onclick="S.sel=null;render()">← Back to reports</button><div class="row" style="margin-top:12px"><div class="card"><h2>${r.id} · ${r.type} ${pill(r.status)}</h2>
+ <p><b>Location:</b> ${esc(r.loc)}<br><b>Reported by:</b> ${r.anon?"Anonymous":esc(r.name)}<br><b>Filed:</b> ${fmt(r.t)}</p><p>${esc(r.desc)}</p>${timeline(r)}</div>
+ <div class="card"><h2>Update case</h2><label>Status</label><select id="st">${STAT.map(s=>`<option ${r.status===s?"selected":""}>${s}</option>`).join("")}</select>
+ <label>Assigned officer</label><select id="of">${OFF.map(s=>`<option ${r.officer===s?"selected":""}>${s}</option>`).join("")}</select>
+ <label>Note to reporter</label><textarea id="nt" placeholder="Progress update"></textarea><button class="btn" style="margin-top:12px" onclick="upd('${r.id}')">Save update</button></div></div>`;
+}
+function upd(id){
+ const r=db.reports.find(r=>r.id===id);r.status=$("#st").value;r.officer=$("#of").value;
+ r.hist.push({s:r.status,n:$("#nt").value.trim()||"Status updated"+(r.officer!=="Unassigned"?" · "+r.officer:""),t:Date.now()});save();render();
+}
+const timeline=r=>`<h2 style="margin-top:18px">Case timeline</h2><div class="tl">${r.hist.slice().reverse().map(h=>`<div><b>${h.s}</b> <span class="mut">· ${fmt(h.t)}</span><br>${esc(h.n)}</div>`).join("")}</div>`;
+
+/* REPORTER */
+function reporterUI(){
+ const mine=db.reports.filter(r=>r.by===S.user.email).sort((a,b)=>b.t-a.t);let b="",t="";
+ if(S.view==="new"){
+  t="Report a crime";
+  b=`<div class="card" style="max-width:640px"><div class="two"><div><label>Crime type</label><select id="ty">${TYPES.map(x=>`<option>${x}</option>`).join("")}</select></div><div><label>Location</label><input id="lc" placeholder="Area, city, landmark"></div></div>
+  <label>What happened?</label><textarea id="ds" placeholder="Describe the incident, time, and any suspects"></textarea>
+  <label style="font-weight:400"><input type="checkbox" id="an" style="width:auto;margin-right:6px">Hide my identity from officers</label><div class="err" id="er"></div>
+  <button class="btn" onclick="submitRep()">Submit report</button><p class="mut" style="font-size:12px">In an emergency, call 112 or 199 immediately.</p></div>`;
+ }else if(S.view==="mine"){
+  t="My reports";
+  b=S.sel?(r=>`<button class="link" onclick="S.sel=null;render()">← Back</button><div class="card" style="margin-top:12px;max-width:640px"><h2>${r.id} · ${r.type} ${pill(r.status)}</h2><p><b>Location:</b> ${esc(r.loc)}<br><b>Officer:</b> ${r.officer}</p><p>${esc(r.desc)}</p>${timeline(r)}</div>`)(db.reports.find(r=>r.id===S.sel))
+  :`<div class="card">${mine.length?table(mine):'<p class="mut">You have not filed any reports yet.</p>'}</div>`;
+ }else{
+  t="Track a report";
+  b=`<div class="card" style="max-width:480px"><label>Tracking ID</label><input id="tid" placeholder="NPF-2026-0001"><button class="btn" style="margin-top:12px" onclick="track()">Track</button><div class="err" id="er"></div></div>`;
+ }
+ return shell([["new","Report a crime"],["mine","My reports",mine.length||""],["trk","Track by ID"]],b,t,"COMMUNITY PORTAL");
+}
+function submitRep(){
+ const lc=$("#lc").value.trim(),ds=$("#ds").value.trim();
+ if(!lc||ds.length<10){$("#er").textContent="Add a location and a description (10+ characters).";return}
+ const id="NPF-2026-"+String(db.reports.length+1).padStart(4,"0"),t=Date.now();
+ db.reports.push({id,type:$("#ty").value,loc:lc,desc:ds,by:S.user.email,name:S.user.name,anon:$("#an").checked,status:"Received",officer:"Unassigned",t,hist:[{s:"Received",n:"Report logged",t}]});
+ save();S.view="mine";S.sel=id;render();
+}
+function track(){
+ const r=db.reports.find(r=>r.id===$("#tid").value.trim().toUpperCase()&&r.by===S.user.email);
+ if(!r){$("#er").textContent="No report of yours matches that ID.";return}
+ S.view="mine";S.sel=r.id;render();
+}
+render();
+</script></body></html>
