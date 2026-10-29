@@ -8,33 +8,20 @@
 <script src="config.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script>
-  // follow the theme the artisan picked on the dashboard
   try { document.documentElement.setAttribute('data-theme', localStorage.getItem('fixa-theme') === 'light' ? 'light' : 'dark'); } catch (e) {}
 </script>
 <style>
   :root {
-    --bg: #041b2b;
-    --card: #0b2a44;
-    --card-2: #103453;
-    --line: rgba(255, 255, 255, .10);
-    --text: #ffffff;
-    --muted: #9fb0c3;
-    --gold: #ffd700;
-    --gold-ink: #1a1400;
-    --danger: #ef4444;
+    --bg: #041b2b; --card: #0b2a44; --card-2: #103453;
+    --line: rgba(255,255,255,.10); --text: #ffffff; --muted: #9fb0c3;
+    --gold: #ffd700; --gold-ink: #1a1400; --danger: #ef4444;
   }
   html[data-theme="light"] {
-    --bg: #ffffff;
-    --card: #f5f8fc;
-    --card-2: #e9f0f8;
-    --line: rgba(11, 42, 74, .14);
-    --text: #111111;
-    --muted: #555f6d;
+    --bg: #ffffff; --card: #f5f8fc; --card-2: #e9f0f8;
+    --line: rgba(11,42,74,.14); --text: #111111; --muted: #555f6d;
   }
-
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   [hidden] { display: none !important; }
-
   html, body { background: var(--bg); color: var(--text); }
   body {
     font-family: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
@@ -43,11 +30,9 @@
     -webkit-font-smoothing: antialiased;
   }
   .wrap { max-width: 520px; margin: 0 auto; }
-
   button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
   :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 
-  /* ── header ── */
   .top { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
   .back {
     width: 40px; height: 40px; flex-shrink: 0; border-radius: 12px;
@@ -58,15 +43,19 @@
   h1 { font-size: 21px; font-weight: 800; letter-spacing: -.2px; }
   .top p { font-size: 13px; color: var(--muted); margin-top: 2px; }
 
-  /* ── cards ── */
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 16px; margin-bottom: 14px; }
   .card h2 { font-size: 15px; font-weight: 700; }
   .card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
   .selected-label { font-size: 13px; font-weight: 700; color: var(--gold); text-align: right; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   html[data-theme="light"] .selected-label { color: #8a6700; }
   .hint { font-size: 12.5px; color: var(--muted); margin-top: 10px; line-height: 1.45; }
+  .lock-note {
+    font-size: 12.5px; line-height: 1.45; margin-bottom: 12px; padding: 10px 12px; border-radius: 12px;
+    background: color-mix(in srgb, var(--gold) 12%, transparent); border: 1px solid color-mix(in srgb, var(--gold) 35%, transparent);
+  }
+  .warn-note { font-size: 12.5px; line-height: 1.45; margin-bottom: 14px; padding: 10px 12px; border-radius: 12px;
+    background: color-mix(in srgb, var(--danger) 10%, transparent); border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent); }
 
-  /* ── summary ── */
   .sum-top { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
   .avatar { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; border: 2px solid var(--gold); background: #0b3a5c; flex-shrink: 0; }
   .avatar.big { width: 88px; height: 88px; }
@@ -81,9 +70,9 @@
   }
   .pill::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
 
-  /* ── photo ── */
   .photo-row { display: flex; align-items: center; gap: 16px; }
   .avatar-btn { position: relative; border-radius: 50%; flex-shrink: 0; }
+  .avatar-btn:disabled { cursor: not-allowed; }
   .avatar-btn.drag .avatar { border-style: dashed; filter: brightness(1.15); }
   .cam {
     position: absolute; right: -2px; bottom: -2px; width: 30px; height: 30px; border-radius: 50%;
@@ -94,7 +83,6 @@
   .photo-help small { display: block; font-size: 12px; color: var(--muted); margin-top: 4px; }
   .link { color: var(--danger); font-size: 13px; font-weight: 700; margin-top: 6px; padding: 4px 0; }
 
-  /* ── fields ── */
   .field, select {
     width: 100%; height: 48px; padding: 0 14px; border-radius: 12px;
     border: 1.5px solid var(--line); background: var(--card-2); color: var(--text);
@@ -105,8 +93,8 @@
   option { background: #0b2a44; color: #fff; }
   html[data-theme="light"] option { background: #fff; color: #111; }
 
-  /* ── service tiles ── */
   .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; }
+  .grid.locked { pointer-events: none; opacity: .5; }
   @media (min-width: 480px) { .grid { grid-template-columns: repeat(4, 1fr); } }
   .tile {
     position: relative; min-height: 88px; padding: 12px 6px 10px;
@@ -125,7 +113,6 @@
   }
   .empty { text-align: center; color: var(--muted); font-size: 13.5px; padding: 22px 0 8px; }
 
-  /* ── availability select ── */
   .select-wrap { position: relative; }
   .dot { position: absolute; left: 15px; top: 50%; width: 10px; height: 10px; margin-top: -5px; border-radius: 50%; pointer-events: none; z-index: 1; }
   select {
@@ -135,7 +122,6 @@
     background-repeat: no-repeat; background-position: right 15px center;
   }
 
-  /* ── buttons ── */
   .btn {
     height: 50px; padding: 0 20px; border-radius: 14px; font-weight: 700; font-size: 15px;
     display: inline-flex; align-items: center; justify-content: center; gap: 8px;
@@ -143,9 +129,10 @@
   .btn:disabled { opacity: .65; cursor: not-allowed; }
   .btn-gold { background: var(--gold); color: var(--gold-ink); }
   .btn-ghost { background: color-mix(in srgb, var(--text) 8%, transparent); border: 1px solid var(--line); }
+  .btn-danger { background: var(--danger); color: #fff; }
   .btn-block { width: 100%; }
-  .spin { width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgba(26, 20, 0, .25); border-top-color: var(--gold-ink); animation: sp .6s linear infinite; }
-  .spin.light { border-color: rgba(255, 255, 255, .25); border-top-color: var(--gold); }
+  .spin { width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgba(26,20,0,.25); border-top-color: var(--gold-ink); animation: sp .6s linear infinite; }
+  .spin.light { border-color: rgba(255,255,255,.25); border-top-color: var(--gold); }
   @keyframes sp { to { transform: rotate(360deg); } }
 
   .actions {
@@ -156,19 +143,25 @@
   .actions .inner { max-width: 520px; margin: 0 auto; display: flex; gap: 10px; }
   .actions .btn-gold { flex: 1; }
 
-  /* ── states ── */
   .state { text-align: center; padding: 34px 16px; color: var(--muted); font-size: 14px; }
   .state .spin { margin: 0 auto 12px; width: 26px; height: 26px; }
   .state h2 { color: var(--text); margin-bottom: 6px; }
   .state .btn { margin-top: 16px; }
 
-  /* ── toast ── */
+  /* confirm dialog */
+  .overlay { position: fixed; inset: 0; z-index: 60; background: rgba(0,0,0,.65); display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .dialog { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 20px; max-width: 380px; width: 100%; }
+  .dialog h3 { font-size: 17px; margin-bottom: 8px; }
+  .dialog p { font-size: 13.5px; color: var(--muted); line-height: 1.5; margin-bottom: 16px; }
+  .dialog .row { display: flex; gap: 10px; }
+  .dialog .row .btn { flex: 1; }
+
   .toast {
-    position: fixed; left: 50%; top: calc(14px + env(safe-area-inset-top)); z-index: 50;
+    position: fixed; left: 50%; top: calc(14px + env(safe-area-inset-top)); z-index: 80;
     max-width: min(92vw, 420px); padding: 12px 16px; border-radius: 12px;
     font-size: 14px; font-weight: 700; text-align: center; pointer-events: none;
     transform: translate(-50%, -160%); transition: transform .25s ease;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, .35);
+    box-shadow: 0 8px 24px rgba(0,0,0,.35);
   }
   .toast.show { transform: translate(-50%, 0); }
   .toast.success { background: var(--gold); color: var(--gold-ink); }
@@ -210,11 +203,16 @@
         <div id="sumStatus" class="pill"></div>
       </div>
     </div>
+    <p id="sumLock" class="lock-note" hidden>🔒 Your service and photo are locked to protect customers from fraud. To change them, contact <b>support@fixaapp.net</b>.</p>
     <button type="button" id="editBtn" class="btn btn-ghost btn-block">Edit profile</button>
   </section>
 
   <!-- edit form -->
   <div id="form" hidden>
+    <div id="firstTimeWarn" class="warn-note" hidden>
+      ⚠️ <b>Choose carefully.</b> Your service and profile photo can only be set <b>once</b>. After you save, changing them needs approval from Fixa support.
+    </div>
+
     <section class="card">
       <div class="card-head"><h2>Profile photo</h2></div>
       <div class="photo-row">
@@ -223,7 +221,7 @@
           <span class="cam" aria-hidden="true">&#128247;</span>
         </button>
         <div class="photo-help">
-          <p>Tap the photo to change it. A clear face photo gets more bookings.</p>
+          <p id="photoHelp">Tap the photo to change it. Use a clear photo of your face.</p>
           <small>JPG, PNG, GIF or WebP, up to 5 MB</small>
           <button type="button" id="discardPhoto" class="link" hidden>Discard new photo</button>
         </div>
@@ -236,6 +234,7 @@
         <h2>Your service</h2>
         <span id="selectedLabel" class="selected-label">None selected</span>
       </div>
+      <p id="lockNote" class="lock-note" hidden>🔒 Locked to protect customers from fraud. Contact <b>support@fixaapp.net</b> to change it. You can still update your availability below.</p>
       <input id="catSearch" class="field" type="search" placeholder="Search services" autocomplete="off" enterkeyhint="search" aria-label="Search services">
       <div id="catGrid" class="grid"></div>
       <p id="catEmpty" class="empty" hidden>No service matches your search.</p>
@@ -265,6 +264,18 @@
   </div>
 </div>
 
+<!-- first-save confirmation -->
+<div id="confirmOverlay" class="overlay" hidden>
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+    <h3 id="confirmTitle">Lock your service and photo?</h3>
+    <p>You are about to set <b id="confirmCat"></b> as your service. This and your profile photo <b>cannot be changed again</b> without contacting Fixa support.</p>
+    <div class="row">
+      <button type="button" id="confirmNo" class="btn btn-ghost">Go back</button>
+      <button type="button" id="confirmYes" class="btn btn-gold">Yes, save</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script>
@@ -275,7 +286,7 @@
   var token = localStorage.getItem('token');
   if (!token) { location.replace('/signin'); return; }
 
-  // Names must match exactly what customers search for and what the price estimator uses.
+  // Must match the CATEGORIES list in artisanController.js exactly.
   var CATEGORIES = [
     ['Electrician', '\u26A1'], ['Plumber', '\uD83D\uDEB0'], ['Massage Therapist', '\uD83D\uDC86'],
     ['Nail Technician', '\uD83D\uDC85'], ['Hair Dresser', '\uD83D\uDC87'], ['House Cleaner/Janitor', '\uD83E\uDDF9'],
@@ -302,9 +313,17 @@
   var $ = function (id) { return document.getElementById(id); };
   var profile = {}, hasProfile = false, selectedFile = null, selectedCat = '', saving = false, toastTimer = null;
 
-  function picUrl(p) {
+  var isLocked = function () { return profile.profileLocked === true; };
+
+  /* Cloudinary URLs get a small, face-cropped, auto-format version.
+     Old local paths (/uploads/...) are wiped by Render, so they just fall back to the default avatar. */
+  function picUrl(p, size) {
     if (!p) return '';
-    return /^(https?:|blob:|data:)/i.test(p) ? p : API + '/' + String(p).replace(/^\/+/, '');
+    var url = /^(https?:|blob:|data:)/i.test(p) ? p : API + '/' + String(p).replace(/^\/+/, '');
+    if (size && /res\.cloudinary\.com/.test(url) && url.indexOf('/upload/') !== -1 && !/\/upload\/[^/]*(w_|c_)/.test(url)) {
+      url = url.replace('/upload/', '/upload/f_auto,q_auto,w_' + size + ',h_' + size + ',c_fill,g_face/');
+    }
+    return url;
   }
   function statusOf(d) {
     var s = d.availabilityStatus || (d.available ? 'available' : 'busy');
@@ -323,7 +342,7 @@
     t.textContent = msg;
     t.className = 'toast show ' + (type || 'success');
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(function () { t.classList.remove('show'); }, 3200);
+    toastTimer = setTimeout(function () { t.classList.remove('show'); }, 3600);
   }
   function show(which) {
     ['loading', 'error', 'summary', 'form', 'actions'].forEach(function (id) {
@@ -335,25 +354,39 @@
   /* ── views ── */
   function renderSummary() {
     var st = STATUS[statusOf(profile)];
-    setImg($('sumPic'), picUrl(profile.profilePic));
+    setImg($('sumPic'), picUrl(profile.profilePic, 128));
     $('sumIcon').textContent = iconOf(profile.category);
     $('sumCat').textContent = profile.category || 'No service selected';
     var pill = $('sumStatus');
     pill.textContent = st.label;
     pill.style.setProperty('--c', st.color);
+    $('sumLock').hidden = !isLocked();
+    $('editBtn').textContent = isLocked() ? 'Edit availability' : 'Edit profile';
     show(['summary']);
   }
 
   function openForm() {
+    var locked = isLocked();
     selectedFile = null;
     selectedCat = profile.category || '';
-    setImg($('photoPreview'), picUrl(profile.profilePic));
+    setImg($('photoPreview'), picUrl(profile.profilePic, 200));
     $('discardPhoto').hidden = true;
     $('availSelect').value = statusOf(profile);
     paintAvail();
     $('catSearch').value = '';
     renderGrid();
-    $('cancelBtn').hidden = !hasProfile;   // first-time setup has nothing to go back to
+
+    // lock state
+    $('photoBtn').disabled = locked;
+    $('photoHelp').textContent = locked
+      ? 'Your photo is locked. Contact support to change it.'
+      : 'Tap the photo to change it. Use a clear photo of your face.';
+    $('catSearch').hidden = locked;
+    $('catGrid').classList.toggle('locked', locked);
+    $('lockNote').hidden = !locked;
+    $('firstTimeWarn').hidden = locked;
+
+    $('cancelBtn').hidden = !hasProfile;
     show(['form', 'actions']);
     window.scrollTo(0, 0);
   }
@@ -362,7 +395,7 @@
     var q = $('catSearch').value.trim().toLowerCase();
     var list = CATEGORIES.slice();
     var known = list.some(function (c) { return c[0] === selectedCat; });
-    if (selectedCat && !known) list.unshift([selectedCat, '\uD83D\uDEE0\uFE0F']);   // keep an old custom category visible
+    if (selectedCat && !known) list.unshift([selectedCat, '\uD83D\uDEE0\uFE0F']);
     list = list.filter(function (c) { return c[0].toLowerCase().indexOf(q) !== -1; });
 
     var grid = $('catGrid');
@@ -375,7 +408,11 @@
       var i = document.createElement('span'); i.className = 'ico'; i.textContent = c[1];
       var n = document.createElement('span'); n.textContent = c[0];
       b.appendChild(i); b.appendChild(n);
-      b.addEventListener('click', function () { selectedCat = c[0]; renderGrid(); });
+      b.addEventListener('click', function () {
+        if (isLocked()) return;
+        selectedCat = c[0];
+        renderGrid();
+      });
       grid.appendChild(b);
     });
     $('catEmpty').hidden = list.length > 0;
@@ -393,7 +430,7 @@
 
   /* ── photo ── */
   function handleFile(file) {
-    if (!file) return;
+    if (!file || isLocked()) return;
     if (['image/jpeg', 'image/png', 'image/gif', 'image/webp'].indexOf(file.type) === -1) {
       return toast('Only JPG, PNG, GIF or WebP images are allowed', 'error');
     }
@@ -434,9 +471,30 @@
     }, function (e) { console.warn('Geolocation unavailable:', e.message); }, { enableHighAccuracy: true, timeout: 10000 });
   }
 
+  function askConfirm(cat) {
+    return new Promise(function (resolve) {
+      $('confirmCat').textContent = cat;
+      $('confirmOverlay').hidden = false;
+      function done(v) {
+        $('confirmOverlay').hidden = true;
+        $('confirmYes').onclick = null; $('confirmNo').onclick = null;
+        resolve(v);
+      }
+      $('confirmYes').onclick = function () { done(true); };
+      $('confirmNo').onclick = function () { done(false); };
+    });
+  }
+
   async function save() {
     if (saving) return;
-    if (!selectedCat) return toast('Select a service first', 'error');
+    var locked = isLocked();
+
+    if (!locked) {
+      if (!selectedCat) return toast('Select a service first', 'error');
+      if (!selectedFile && !profile.profilePic) return toast('Add a profile photo first', 'error');
+      if (!(await askConfirm(selectedCat))) return;   // confirm BEFORE the button locks up
+    }
+
     saving = true;
     var btn = $('saveBtn'), cancel = $('cancelBtn'), original = btn.innerHTML;
     btn.disabled = true; cancel.disabled = true;
@@ -444,8 +502,10 @@
     var status = $('availSelect').value;
     try {
       var fd = new FormData();
-      if (selectedFile) fd.append('profilePic', selectedFile);
-      fd.append('category', selectedCat);
+      if (!locked) {
+        if (selectedFile) fd.append('profilePic', selectedFile);
+        fd.append('category', selectedCat);
+      }
       fd.append('availabilityStatus', status);
 
       var res = await fetch(API + '/api/artisans/profile', {
@@ -459,7 +519,7 @@
       hasProfile = !!profile.category;
       sendLocation();
       renderSummary();
-      toast('Changes saved');
+      toast(isLocked() && !locked ? 'Saved. Your service and photo are now locked.' : 'Changes saved');
     } catch (err) {
       console.error(err);
       toast(err.message || 'Network error. Try again.', 'error');
@@ -476,19 +536,19 @@
   $('catSearch').addEventListener('input', renderGrid);
   $('availSelect').addEventListener('change', paintAvail);
 
-  $('photoBtn').addEventListener('click', function () { $('photoInput').click(); });
+  $('photoBtn').addEventListener('click', function () { if (!isLocked()) $('photoInput').click(); });
   $('photoInput').addEventListener('change', function (e) { handleFile(e.target.files[0]); e.target.value = ''; });
   $('discardPhoto').addEventListener('click', function () {
     selectedFile = null;
-    setImg($('photoPreview'), picUrl(profile.profilePic));
+    setImg($('photoPreview'), picUrl(profile.profilePic, 200));
     $('discardPhoto').hidden = true;
   });
   var pb = $('photoBtn');
-  pb.addEventListener('dragover', function (e) { e.preventDefault(); pb.classList.add('drag'); });
+  pb.addEventListener('dragover', function (e) { if (isLocked()) return; e.preventDefault(); pb.classList.add('drag'); });
   pb.addEventListener('dragleave', function () { pb.classList.remove('drag'); });
   pb.addEventListener('drop', function (e) {
     e.preventDefault(); pb.classList.remove('drag');
-    if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+    if (!isLocked() && e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
   });
 
   load();
