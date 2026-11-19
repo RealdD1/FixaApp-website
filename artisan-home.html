@@ -1477,8 +1477,7 @@ document.getElementById('withdrawNowBtn')?.addEventListener('click', async (e) =
   if (!confirm('Withdraw your full wallet balance to your bank account now?')) return;
   const btn = e.currentTarget; btn.disabled = true; btn.textContent = 'Sending…';
   try {
-    const r = await fetch(`${BASE}/api/payouts/withdraw`, {
-      method: 'POST',
+const r = await fetch(`${HIST_BASE}/api/payouts/withdraw`, {      method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
       body: JSON.stringify({})
     });
