@@ -1585,16 +1585,21 @@ async function viewDispute(id) {
 
         if (!resolution) { toast('Please write a resolution note', 'error'); return; }
 
-        try {
-          await api(`/admin/disputes/${id}/resolve`, {
-            method: 'PUT',
-            body: JSON.stringify({ resolutionType, refundAmount, resolution })
-          });
-          toast('Dispute resolved successfully', 'success');
-          loadDisputes();
-        } catch (e) {
-          toast('Failed: ' + e.message, 'error');
-        }
+    if (resolutionType === 'refund_partial' && !(refundAmount > 0)) {
+  toast('Enter the partial refund amount', 'error'); return;
+}
+
+try {
+  const r = await api(`/admin/disputes/${id}/resolve`, {
+    method: 'PUT',
+    body: JSON.stringify({ resolutionType, refundAmount, resolution })
+  });
+  toast(r.outcome || 'Dispute resolved', 'success');
+  loadDisputes();
+  loadPayments();
+} catch (e) {
+  toast('Failed: ' + e.message, 'error');
+}
       } : null
     );
 
@@ -1629,15 +1634,21 @@ async function resolveDispute(id) {
       const resolutionType = document.getElementById('resType').value;
       const refundAmount = Number(document.getElementById('resAmount').value || 0);
       const resolution = document.getElementById('resNote').value.trim();
-      try {
-        await api(`/admin/disputes/${id}/resolve`, {
-          method: 'PUT',
-          body: JSON.stringify({ resolutionType, refundAmount, resolution })
-        });
-        toast('Dispute resolved', 'success');
-        loadDisputes();
-      } catch(e) { toast('Failed: ' + e.message, 'error'); }
-    }
+     if (resolutionType === 'refund_partial' && !(refundAmount > 0)) {
+  toast('Enter the partial refund amount', 'error'); return;
+}
+
+try {
+  const r = await api(`/admin/disputes/${id}/resolve`, {
+    method: 'PUT',
+    body: JSON.stringify({ resolutionType, refundAmount, resolution })
+  });
+  toast(r.outcome || 'Dispute resolved', 'success');
+  loadDisputes();
+  loadPayments();
+} catch (e) {
+  toast('Failed: ' + e.message, 'error');
+}}
   );
 }
 
