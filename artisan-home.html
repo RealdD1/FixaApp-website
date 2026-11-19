@@ -929,6 +929,11 @@ html,body{background:var(--fixa-bg);color:var(--fixa-text);transition:background
     <div>
       <div style="font-size:11px;color:#9aa6b2;text-transform:uppercase;letter-spacing:.5px">Wallet Balance</div>
       <div id="walletBalanceDisplay" style="font-size:26px;font-weight:800;color:#ffd700;margin-top:4px">₦0</div>
+      <!-- in wallet card, under walletBalanceDisplay -->
+<div id="escrowDisplay" style="font-size:12px;color:#ffc107;margin-top:4px"></div>
+
+<!-- earnings tile -->
+<strong id="monthEarningsDisplay">₦0</strong>
     </div>
     <button type="button" id="viewPayoutHistoryBtn" style="background:rgba(255,215,0,.1);color:#ffd700;border:1px solid rgba(255,215,0,.25);padding:8px 14px;border-radius:10px;font-weight:700;font-size:12px;cursor:pointer">History</button>
   </div>
@@ -1084,7 +1089,39 @@ html,body{background:var(--fixa-bg);color:var(--fixa-text);transition:background
 
       </div>
     </section>
+<script>
+(function () {
+  const BASE = (window.FIXA_CONFIG && window.FIXA_CONFIG.API_URL) || window.location.origin;
+  const naira = n => '₦' + Number(n || 0).toLocaleString();
 
+  async function loadWallet() {
+    try {
+      const res = await fetch(`${BASE}/api/payouts/dashboard`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      });
+      if (!res.ok) return;
+      const d = await res.json();
+      document.getElementById('walletBalanceDisplay').textContent = naira(d.walletBalance);
+      document.getElementById('monthEarningsDisplay').textContent = naira(d.monthEarnings);
+      document.getElementById('escrowDisplay').textContent =
+        d.escrowBalance ? `🔒 ${naira(d.escrowBalance)} in escrow (released on job completion)` : '';
+      document.getElementById('lastPayoutDisplay').textContent =
+        d.lastPayoutAt ? `Last payout: ${new Date(d.lastPayoutAt).toLocaleDateString()}` : 'No payouts yet';
+      document.getElementById('payoutMethodDisplay').textContent = d.payoutSummary
+        ? `${d.payoutSummary.bankName} •••• ${d.payoutSummary.last4} (${d.payoutSummary.frequency})`
+        : 'No payout account set — add one in Account → Payout Settings';
+    } catch (e) { console.error('[wallet]', e); }
+  }
+  window.loadWallet = loadWallet;
+  loadWallet();
+
+  // live refresh
+  (function hook() {
+    if (!window.socket) return setTimeout(hook, 500);
+    ['paymentEscrowed', 'paymentReleased', 'topUpPaid'].forEach(ev => window.socket.on(ev, loadWallet));
+  })();
+})();
+</script>
     
 <script>
 (function () {
