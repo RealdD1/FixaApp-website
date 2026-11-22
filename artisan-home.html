@@ -880,6 +880,25 @@ html,body{background:var(--fixa-bg);color:var(--fixa-text);transition:background
 
   /* keyboard covers the home-indicator area, so drop that padding */
   body.chat-open.kb-open #chatFooter { padding-bottom: 8px !important; }
+.wd-modal{display:none;position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.7);align-items:center;justify-content:center;padding:20px}
+.wd-modal.open{display:flex}
+.wd-box{width:100%;max-width:380px;background:#0a1f33;border:1px solid rgba(255,215,0,.3);border-radius:16px;padding:22px;color:#fff}
+.wd-box h3{color:#ffd700;margin-bottom:12px}
+.wd-avail{background:rgba(255,215,0,.08);border:1px solid rgba(255,215,0,.2);border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:#9aa6b2;text-transform:uppercase;letter-spacing:.5px}
+.wd-avail strong{display:block;font-size:24px;color:#ffd700;margin-top:4px;text-transform:none;letter-spacing:0}
+.wd-box label{display:block;font-size:12px;color:#9aa6b2;margin-bottom:6px}
+.wd-box input{width:100%;padding:12px;border-radius:10px;border:1.5px solid rgba(255,255,255,.15);background:#023850;color:#fff;font-size:18px;font-weight:700;outline:none}
+.wd-box input:focus{border-color:#ffd700}
+.wd-quick{display:flex;gap:6px;margin:10px 0}
+.wd-quick button{flex:1;padding:8px 0;border-radius:8px;border:1px solid rgba(255,215,0,.3);background:transparent;color:#ffd700;font-weight:700;font-size:12px;cursor:pointer}
+.wd-quick button:active{background:rgba(255,215,0,.15)}
+#wdError{min-height:18px;font-size:12px;color:#ff7b7b;margin-bottom:6px}
+#wdBank{font-size:12px;color:#9aa6b2;margin-bottom:14px}
+.wd-actions{display:flex;gap:10px}
+.wd-actions button{flex:1;padding:12px;border-radius:10px;border:none;font-weight:700;cursor:pointer}
+#wdCancel{background:rgba(255,255,255,.08);color:#fff}
+#wdConfirm{background:#ffd700;color:#000}
+#wdConfirm:disabled{opacity:.5;cursor:not-allowed}
 }
   </style>
 </head>
@@ -1092,7 +1111,8 @@ html,body{background:var(--fixa-bg);color:var(--fixa-text);transition:background
   const naira = n => '₦' + Number(n || 0).toLocaleString();
   const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
   const headers = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
-
+window.__withdrawable = Number(d.withdrawableBalance ?? d.walletBalance ?? 0);
+window.__payoutSummary = d.payoutSummary || null;
   async function loadDashboard() {
     try {
       const [sumRes, walletRes] = await Promise.all([
@@ -1271,6 +1291,30 @@ html,body{background:var(--fixa-bg);color:var(--fixa-text);transition:background
 </button>
   </div>
 
+  <div id="withdrawModal" class="wd-modal">
+  <div class="wd-box">
+    <h3>Withdraw funds</h3>
+    <div class="wd-avail">Available to withdraw <strong id="wdAvailable">₦0</strong></div>
+
+    <label for="wdAmount">Amount (₦)</label>
+    <input type="number" id="wdAmount" inputmode="numeric" min="0" step="1" placeholder="Enter amount">
+
+    <div class="wd-quick">
+      <button type="button" data-pct="25">25%</button>
+      <button type="button" data-pct="50">50%</button>
+      <button type="button" data-pct="75">75%</button>
+      <button type="button" data-pct="100">Max</button>
+    </div>
+
+    <div id="wdError"></div>
+    <div id="wdBank"></div>
+
+    <div class="wd-actions">
+      <button type="button" id="wdCancel">Cancel</button>
+      <button type="button" id="wdConfirm">Withdraw</button>
+    </div>
+  </div>
+</div>
   <!-- Bottom nav -->
   <div class="bottom-nav">
     <button class="nav-btn active" onclick="showPage('homePage', this)">
@@ -1473,21 +1517,76 @@ html,body{background:var(--fixa-bg);color:var(--fixa-text);transition:background
       closeHistoryModal();
     }
   });
-document.getElementById('withdrawNowBtn')?.addEventListener('click', async (e) => {
-  if (!confirm('Withdraw your full wallet balance to your bank account now?')) return;
-  const btn = e.currentTarget; btn.disabled = true; btn.textContent = 'Sending…';
+// ---------- Withdraw with custom amount ----------
+const MIN_WITHDRAW = 1000;   // adjust to your gateway's minimum
+const wdModal   = document.getElementById('withdrawModal');
+const wdAmount  = document.getElementById('wdAmount');
+const wdError   = document.getElementById('wdError');
+const wdConfirm = document.getElementById('wdConfirm');
+const fmt = n => '₦' + Number(n || 0).toLocaleString();
+
+function openWithdraw() {
+  const bal = window.__withdrawable || 0;
+  document.getElementById('wdAvailable').textContent = fmt(bal);
+  const p = window.__payoutSummary;
+  document.getElementById('wdBank').textContent = p
+    ? `To: ${p.bankName} •••• ${p.last4}`
+    : 'No payout account set. Add one in Account → Payout Settings.';
+  wdAmount.value = '';
+  wdAmount.max = bal;
+  wdError.textContent = '';
+  wdConfirm.disabled = !p || bal < MIN_WITHDRAW;
+  if (bal < MIN_WITHDRAW) wdError.textContent = `Minimum withdrawal is ${fmt(MIN_WITHDRAW)}.`;
+  wdModal.classList.add('open');
+}
+function closeWithdraw() { wdModal.classList.remove('open'); }
+
+function validateAmount() {
+  const bal = window.__withdrawable || 0;
+  const amt = Number(wdAmount.value);
+  if (!wdAmount.value)            return 'Enter an amount.';
+  if (!Number.isInteger(amt))     return 'Enter a whole naira amount.';
+  if (amt < MIN_WITHDRAW)         return `Minimum withdrawal is ${fmt(MIN_WITHDRAW)}.`;
+  if (amt > bal)                  return `You can withdraw at most ${fmt(bal)}.`;
+  return '';
+}
+
+document.getElementById('withdrawNowBtn')?.addEventListener('click', () => {
+  window.loadDashboard?.();   // refresh balance, then show the modal
+  openWithdraw();
+});
+document.getElementById('wdCancel').addEventListener('click', closeWithdraw);
+wdModal.addEventListener('click', e => { if (e.target === wdModal) closeWithdraw(); });
+wdAmount.addEventListener('input', () => { wdError.textContent = ''; });
+
+document.querySelectorAll('.wd-quick button').forEach(b => b.addEventListener('click', () => {
+  const bal = window.__withdrawable || 0;
+  wdAmount.value = Math.floor(bal * Number(b.dataset.pct) / 100);
+  wdError.textContent = '';
+}));
+
+wdConfirm.addEventListener('click', async () => {
+  const err = validateAmount();
+  if (err) { wdError.textContent = err; return; }
+  const amount = Number(wdAmount.value);
+
+  wdConfirm.disabled = true; wdConfirm.textContent = 'Sending…';
   try {
-const r = await fetch(`${HIST_BASE}/api/payouts/withdraw`, {      method: 'POST',
+    const r = await fetch(`${HIST_BASE}/api/payouts/withdraw`, {
+      method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
-      body: JSON.stringify({})
+      body: JSON.stringify({ amount })
     });
     const d = await r.json();
-    if (!r.ok) throw new Error(d.message);
-    window.showStatusMessage?.(`₦${d.amount.toLocaleString()} is on its way to your bank 🎉`, 'success');
+    if (!r.ok) throw new Error(d.message || 'Withdrawal failed');
+    closeWithdraw();
+    window.showStatusMessage?.(`${fmt(d.amount ?? amount)} is on its way to your bank 🎉`, 'success');
     window.loadDashboard?.();
-  } catch (err) {
-    window.showStatusMessage?.(err.message, 'error');
-  } finally { btn.disabled = false; btn.textContent = 'Withdraw'; }
+  } catch (e) {
+    wdError.textContent = e.message;
+  } finally {
+    wdConfirm.disabled = false; wdConfirm.textContent = 'Withdraw';
+  }
 });
   // Listen for completion events on the main socket (no duplicate socket!)
   function attachToSharedSocket() {
