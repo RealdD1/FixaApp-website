@@ -880,7 +880,7 @@ html,body{background:var(--fixa-bg);color:var(--fixa-text);transition:background
 
   /* keyboard covers the home-indicator area, so drop that padding */
   body.chat-open.kb-open #chatFooter { padding-bottom: 8px !important; }
-.wd-modal{display:none;position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.7);align-items:center;justify-content:center;padding:20px}
+.wd-modal{display:none;position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.7);align-items:center;justify-content:center;padding:20px}}
 .wd-modal.open{display:flex}
 .wd-box{width:100%;max-width:380px;background:#0a1f33;border:1px solid rgba(255,215,0,.3);border-radius:16px;padding:22px;color:#fff}
 .wd-box h3{color:#ffd700;margin-bottom:12px}
@@ -899,7 +899,7 @@ html,body{background:var(--fixa-bg);color:var(--fixa-text);transition:background
 #wdCancel{background:rgba(255,255,255,.08);color:#fff}
 #wdConfirm{background:#ffd700;color:#000}
 #wdConfirm:disabled{opacity:.5;cursor:not-allowed}
-}
+
   </style>
 </head>
 <body>
@@ -1111,8 +1111,7 @@ html,body{background:var(--fixa-bg);color:var(--fixa-text);transition:background
   const naira = n => '₦' + Number(n || 0).toLocaleString();
   const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
   const headers = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
-window.__withdrawable = Number(d.withdrawableBalance ?? d.walletBalance ?? 0);
-window.__payoutSummary = d.payoutSummary || null;
+
   async function loadDashboard() {
     try {
       const [sumRes, walletRes] = await Promise.all([
@@ -1127,9 +1126,13 @@ window.__payoutSummary = d.payoutSummary || null;
         set('monthEarningsDisplay', naira(s.monthEarnings));
       }
 
-      if (walletRes.ok) {
-        const d = await walletRes.json();
-        set('walletBalanceDisplay', naira(d.walletBalance));
+    if (walletRes.ok) {
+  const d = await walletRes.json();
+  window.__withdrawable = Number(d.withdrawableBalance ?? d.walletBalance ?? 0);
+  window.__payoutSummary = d.payoutSummary || null;
+
+  set('walletBalanceDisplay', naira(d.walletBalance));
+  
         set('escrowDisplay', d.escrowBalance
           ? `🔒 ${naira(d.escrowBalance)} in escrow (released on job completion)` : '');
         set('lastPayoutDisplay', d.lastPayoutAt
