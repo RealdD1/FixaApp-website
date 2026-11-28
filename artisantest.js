@@ -38,6 +38,7 @@ const BASE_URL        = window.FIXA_CONFIG.API_URL;
 let lastRenderedDateStr = null;
 let newDividerBeforeId = null;
 let newDividerCount = 0;
+const renderedMessageIds = new Set();
 
   // Chat phase state
   let activeBooking = null;
@@ -107,6 +108,11 @@ let newDividerCount = 0;
     const senderId = normalizeId(m.senderId ?? m.sender ?? m.from ?? '');
     return senderId && senderId === artisanDatabaseId;
   }
+  function setChatOpen(open) {
+  document.getElementById('jobsPage')?.classList.toggle('conv-open', open);
+  document.documentElement.classList.toggle('chat-open', open);
+  document.body.classList.toggle('chat-open', open);
+}
 
   function updatePeerStatus(isOnline, lastSeen) {
     const el = document.getElementById('convStatus');
@@ -1092,10 +1098,10 @@ el.addEventListener('click', () => {
   // OPEN CHAT — properly updates header with name & avatar
   // ═══════════════════════════════════════════════════════════
   async function openChat(chatId, peerName, unreadAtOpen = 0) {
-    document.documentElement.classList.add('chat-open');
-document.body.classList.add('chat-open');
+    setChatOpen(true);
     lastRenderedDateStr = null;
-     newDividerBeforeId = null;
+    renderedMsgIds.clear();
+    newDividerBeforeId = null;
     activeChatId = chatId;
     FixaChatUI.enter();
     if (socket?.connected) socket.emit('joinChat', String(chatId));
@@ -1184,9 +1190,8 @@ document.body.classList.add('chat-open');
   window.openChat = openChat;
 
   function closeChat() {
-    document.documentElement.classList.add('chat-open');
-document.body.classList.add('chat-open');
-    FixaChatUI.exit();  
+    setChatOpen(false);
+    FixaChatUI.exit();
     if (activeChatId && socket?.connected) socket.emit('leaveChat', String(activeChatId));
     activeChatId = null;
     activeBookingId = null;
@@ -1216,88 +1221,79 @@ function markChatRead(chatId) {
   // ═══════════════════════════════════════════════════════════
   // RENDER MESSAGE
   // ═══════════════════════════════════════════════════════════
-  function appendMessage(m) {
-    
-    if (!m) return;
-    const container = document.getElementById('messages');
-    if (!container) return;
+ function appendMessage(m) {
+  if (!m) return;
+  const container = document.getElementById('messages');
+  if (!container) return;
 
-    const msgId = m._id || m.id;
-    if (msgId && container.querySelector(`[data-msg-id="${msgId}"]`)) return;
+  const msgId = m._id || m.id;
+  if (msgId && renderedMsgIds.has(msgId)) return;
 
-    const isMe = computeIsMe(m);
-    const msgDate = new Date(m.createdAt || Date.now());
-const dateStr = msgDate.toDateString();
-if (dateStr !== lastRenderedDateStr) {
-  const sep = document.createElement('div');
-  sep.style.cssText = 'text-align:center;margin:10px 0;font-size:11px;color:#9aa6b2';
-  sep.innerHTML = `<span style="background:rgba(255,255,255,.06);padding:3px 12px;border-radius:999px">${
-    dateStr === new Date().toDateString() ? 'Today' : msgDate.toLocaleDateString()}</span>`;
-  container.appendChild(sep);
-  lastRenderedDateStr = dateStr;
-}
-if (msgId && newDividerBeforeId && String(msgId) === String(newDividerBeforeId)) {
-  const d = document.createElement('div');
-  d.className = 'fixa-new-divider';
-  d.id = 'newMsgDivider';
-  d.innerHTML = `<span>${newDividerCount} unread message${newDividerCount > 1 ? 's' : ''}</span>`;
-  container.appendChild(d);
-  newDividerBeforeId = null;
-}
-    const wrapper = document.createElement('div');
-    wrapper.dataset.msgId = msgId || `temp-${Date.now()}`;
-    wrapper.style.cssText = `display:flex;flex-direction:column;align-items:${isMe ? 'flex-end' : 'flex-start'};margin-bottom:12px;padding:0 10px`;
+  const isMe = computeIsMe(m);
+  const msgDate = new Date(m.createdAt || Date.now());
+  const dateStr = msgDate.toDateString();
 
-    const bubble = document.createElement('div');
-    bubble.style.cssText = `max-width:75%;padding:8px 12px;border-radius:${isMe ? '18px 18px 2px 18px' : '18px 18px 18px 2px'};background:${isMe ? '#ffd700' : '#4468a3'};color:${isMe ? '#000' : '#fff'};box-shadow:0 2px 5px rgba(0,0,0,0.1);display:flex;flex-direction:column;gap:8px`;
+  if (dateStr !== lastRenderedDateStr) {
+    const sep = document.createElement('div');
+    sep.className = 'date-sep';
+    sep.innerHTML = `<span>${dateStr === new Date().toDateString() ? 'Today' : msgDate.toLocaleDateString()}</span>`;
+    container.appendChild(sep);
+    lastRenderedDateStr = dateStr;
+  }
+  if (msgId && newDividerBeforeId && String(msgId) === String(newDividerBeforeId)) {
+    const d = document.createElement('div');
+    d.className = 'fixa-new-divider';
+    d.id = 'newMsgDivider';
+    d.innerHTML = `<span>${newDividerCount} unread message${newDividerCount > 1 ? 's' : ''}</span>`;
+    container.appendChild(d);
+    newDividerBeforeId = null;
+  }
 
-    if (m.image || (m.mediaUrl && !String(m.mediaUrl).match(/\.(webm|mp3|wav|ogg)$/i))) {
-      const src = m.image || m.mediaUrl;
-      const fullSrc = String(src).startsWith('blob:') || String(src).startsWith('http')
-        ? src : `${BASE_URL}${String(src).startsWith('/') ? '' : '/'}${src}`;
+  const row = document.createElement('div');
+  row.className = `msg-row ${isMe ? 'sent' : 'recv'}`;
+  row.dataset.msgId = msgId || `local-${Date.now()}`;
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+
+  const mediaSrc = m.voiceNote || m.image || m.mediaUrl;
+  if (mediaSrc) {
+    const fullSrc = assetUrl(mediaSrc);
+    const isAudio = /\.(webm|mp3|wav|ogg)$/i.test(String(mediaSrc));
+    if (m.voiceNote || isAudio) {
+      const audio = document.createElement('audio');
+      audio.controls = true; audio.src = fullSrc; audio.preload = 'metadata';
+      bubble.appendChild(audio);
+    } else {
       const img = document.createElement('img');
-      img.src = fullSrc;
-      img.style.cssText = 'max-width:250px;border-radius:10px;display:block;cursor:pointer';
+      img.src = fullSrc; img.loading = 'lazy'; img.style.cursor = 'pointer';
       img.addEventListener('click', () => window.open(fullSrc, '_blank'));
       bubble.appendChild(img);
     }
-
-    if (m.voiceNote || (m.mediaUrl && String(m.mediaUrl).match(/\.(webm|mp3|wav|ogg)$/i))) {
-      const src = m.voiceNote || m.mediaUrl;
-      const fullSrc = String(src).startsWith('blob:') || String(src).startsWith('http')
-        ? src : `${BASE_URL}${String(src).startsWith('/') ? '' : '/'}${src}`;
-      const audio = document.createElement('audio');
-      audio.controls = true;
-      audio.src = fullSrc;
-      audio.preload = 'metadata';
-      audio.style.cssText = 'height:35px;max-width:220px';
-      bubble.appendChild(audio);
-    }
-
-    if (m.text && m.text !== 'Voice note' && m.text !== 'Image') {
-      const t = document.createElement('div');
-      t.textContent = m.text;
-      t.style.cssText = 'font-size:14.5px;line-height:1.4;word-break:break-word';
-      bubble.appendChild(t);
-    }
-
-    
-    bubble.classList.add('bubble-meta-wrap'); // optional, not required
-    wrapper.appendChild(bubble);
-        const meta = document.createElement('div');
-    meta.style.cssText = 'font-size:10px;opacity:.65;text-align:right;margin-top:4px;color:' + (isMe ? '#000' : '#fff');
-    meta.dataset.seen = String(!!m.seenAt || !!m.seen);
-    meta.dataset.delivered = String(!!m.deliveredAt || !!m.delivered);
-    meta.textContent = formatTimeShort(m.createdAt || Date.now());
-    if (isMe) meta.textContent += (m.seenAt || m.seen) ? ' ✓✓' : (m.deliveredAt || m.delivered) ? ' ✓' : ' ·';
-    bubble.appendChild(meta);
-        meta.classList.add('bubble-meta');
-    if (isMe) wrapper.classList.add('msg-row', 'sent');
-       container.appendChild(wrapper);
-    const nearBottom = (container.scrollHeight - container.clientHeight - container.scrollTop) < 120;
-    if (!nearBottom && !isMe) FixaChatUI.noteIncoming();
-    if (nearBottom || isMe) container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
   }
+
+  const text = m.text || m.content;
+  if (text && text !== 'Voice note' && text !== 'Image') {
+    const t = document.createElement('div');
+    t.textContent = text;
+    bubble.appendChild(t);
+  }
+
+  const meta = document.createElement('div');
+  meta.className = 'bubble-meta';
+  meta.dataset.seen = String(!!m.seenAt || !!m.seen);
+  meta.dataset.delivered = String(!!m.deliveredAt || !!m.delivered);
+  meta.textContent = formatTimeShort(m.createdAt || Date.now());
+  if (isMe) meta.textContent += (m.seenAt || m.seen) ? ' ✓✓' : (m.deliveredAt || m.delivered) ? ' ✓' : ' ·';
+  bubble.appendChild(meta);
+
+  row.appendChild(bubble);
+  container.appendChild(row);
+  if (msgId) renderedMsgIds.add(msgId);
+
+  const nearBottom = (container.scrollHeight - container.clientHeight - container.scrollTop) < 120;
+  if (!nearBottom && !isMe) FixaChatUI.noteIncoming();
+  if (nearBottom || isMe) container.scrollTop = container.scrollHeight;
+}
 
   function replaceOptimisticMessage(localId, realMsg) {
     document.querySelector(`[data-msg-id="${localId}"]`)?.remove();
@@ -1563,8 +1559,7 @@ function handleIncomingSocketMessage(payload) {
   // NAVIGATION
   // ═══════════════════════════════════════════════════════════
 function showPage(pageId, clickedBtn) {
-  if (pageId !== 'jobsPage') FixaChatUI.exit();
-  document.querySelectorAll('.page').forEach(p => {
+  if (pageId !== 'jobsPage') { if (activeChatId) closeChat(); FixaChatUI.exit(); setChatOpen(false); }  document.querySelectorAll('.page').forEach(p => {
     
     p.classList.remove('active');
     p.style.display = 'none';

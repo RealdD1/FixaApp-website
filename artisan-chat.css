@@ -1,0 +1,78 @@
+/* artisan-chat.css — load LAST. Mirrors the customer chat layout. */
+
+:root { --font-family:'Plus Jakarta Sans',system-ui,-apple-system,sans-serif; --border-radius:14px; }
+html body { font-family:var(--font-family); }
+
+/* ── Messages page container ── */
+html body #jobsPage:not(.active) { display:none !important; }
+html body #jobsPage {
+  padding:0 !important;
+  height:calc(100dvh - 70px);          /* 70px = bottom nav */
+  max-height:calc(100dvh - 70px);
+  overflow:hidden;
+}
+html body #jobsPage .messages-shell {
+  flex:1 1 0; min-height:0; height:auto; width:100%; overflow:hidden;
+}
+
+/* ── Conversation column ── */
+html body #individualChatView {
+  display:flex; flex-direction:column; min-width:0; min-height:0; overflow:hidden;
+}
+html body #messages {
+  flex:1 1 0; min-height:0; height:auto !important;
+  overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch;
+  padding:12px 10px;
+}
+html body #topUpRequestBtn { flex:0 0 auto; width:auto !important; margin:6px 12px; }
+
+/* ── Header: same safe-area handling as the customer page ── */
+html body.chat-open .chat-header { padding-top:calc(12px + env(safe-area-inset-top)); }
+
+/* ── Composer (no !important on display, JS toggles it inline) ── */
+html body #chatFooter.chat-footer {
+  display:flex; align-items:flex-end; gap:6px; margin:0; flex:0 0 auto; position:relative;
+  padding:8px 10px calc(8px + env(safe-area-inset-bottom));
+  background:var(--fixa-card); border-top:1px solid var(--fixa-border);
+}
+html body.kb-open #chatFooter { padding-bottom:8px; }
+html body #chatFooter .chat-icon-btn {
+  background:none; border:0; padding:0; width:40px; min-width:40px; height:42px;
+  border-radius:50%; font-size:20px;
+}
+
+/* ── Bubbles (same classes as the customer page) ── */
+.msg-row { display:flex; margin:3px 0; }
+.msg-row.sent { justify-content:flex-end; }
+.msg-row.recv { justify-content:flex-start; }
+.bubble { max-width:75%; padding:9px 14px; font-size:13.5px; line-height:1.45; word-break:break-word; position:relative; }
+.msg-row.sent .bubble { background:var(--fixa-outgoing); color:var(--fixa-outgoing-text); border-bottom-right-radius:4px; }
+.msg-row.recv .bubble { background:var(--fixa-incoming); color:var(--fixa-text); border-bottom-left-radius:4px; }
+.bubble img   { max-width:220px; border-radius:10px; display:block; margin:4px 0; }
+.bubble audio { width:220px; display:block; margin:4px 0; height:34px; }
+.bubble-meta  { font-size:10px; opacity:.65; text-align:right; margin-top:4px; }
+.msg-row.recv .bubble-meta { text-align:left; }
+.date-sep { text-align:center; margin:10px 0; font-size:11px; color:var(--fixa-muted); }
+.date-sep span { background:var(--fixa-surface); padding:3px 12px; border-radius:999px; }
+
+/* ── MOBILE: list OR conversation, like the customer page ── */
+@media (max-width:768px) {
+  html body #jobsPage .messages-shell { display:block; position:relative; }
+  html body #jobsPage #chatListView {
+    position:static; display:flex; width:100%; height:100%; transform:none; border-right:0;
+  }
+  html body #jobsPage #individualChatView { display:none; width:100%; height:100%; }
+  html body #jobsPage.conv-open #chatListView { display:none; }
+  html body #jobsPage.conv-open #individualChatView { display:flex; }
+
+  /* conversation = exactly the visible area above the keyboard */
+  html body.chat-open #jobsPage.conv-open {
+    position:fixed; left:0; right:0; bottom:auto;
+    top:var(--app-top,0px);
+    height:var(--app-h,100dvh); max-height:var(--app-h,100dvh);
+    z-index:250; background:var(--fixa-bg,#041b2b);
+  }
+  html.chat-open, html.chat-open body { overflow:hidden; height:100%; overscroll-behavior:none; }
+  html body.chat-open { padding-bottom:0; }
+  html body.chat-open .bottom-nav { display:none !important; }
+}
