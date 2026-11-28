@@ -38,7 +38,7 @@ const BASE_URL        = window.FIXA_CONFIG.API_URL;
 let lastRenderedDateStr = null;
 let newDividerBeforeId = null;
 let newDividerCount = 0;
-const renderedMessageIds = new Set();
+const renderedMsgIds = new Set();
 
   // Chat phase state
   let activeBooking = null;
