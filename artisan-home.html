@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />   <script src="config.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
    <script src="session.js"></script>
    <script src="fixa-push.js"></script>
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
@@ -1609,90 +1609,25 @@ wdConfirm.addEventListener('click', async () => {
 })();
 </script>
 <script>
-(function () {
-  'use strict';
-  const vv = window.visualViewport;
-  const root = document.documentElement;
-  const mobile = window.matchMedia('(max-width: 768px)');
-  const $ = id => document.getElementById(id);
-  const input = $('msgInput');
-  let baseH = Math.max(window.innerHeight, vv ? vv.height : 0);
-  let raf = 0, lastKb = false;
-
-  const scrollToBottom = () => { const m = $('messages'); if (m) m.scrollTop = m.scrollHeight; };
-
-  // chat is "open" on mobile when the Messages page is active AND the composer is visible
-  function chatIsOpen() {
-    const page = $('jobsPage'), footer = $('chatFooter');
-    return mobile.matches && !!page && page.classList.contains('active')
-        && !!footer && footer.getClientRects().length > 0;
+(function(){
+  const b=document.createElement('div');
+  b.style.cssText='position:fixed;top:60px;left:6px;z-index:99999;background:#000c;color:#0f0;font:11px monospace;padding:4px 6px;border-radius:6px;pointer-events:none;white-space:pre';
+  document.addEventListener('DOMContentLoaded',()=>document.body.appendChild(b));
+  const vv=window.visualViewport;
+  function p(){
+    const j=document.getElementById('jobsPage'), r=j?j.getBoundingClientRect():{top:0,height:0};
+    b.textContent=[
+      'innerH '+innerHeight,
+      'vv.h '+Math.round(vv.height)+'  top '+Math.round(vv.offsetTop),
+      'screen '+screen.height,
+      'standalone '+(navigator.standalone===true),
+      'app-h '+getComputedStyle(document.documentElement).getPropertyValue('--app-h'),
+      'page top/h '+Math.round(r.top)+'/'+Math.round(r.height),
+      'body '+document.body.className
+    ].join('\n');
   }
-
-  function update() {
-    raf = 0;
-    const open = chatIsOpen();
-    root.classList.toggle('chat-open', open);
-    document.body.classList.toggle('chat-open', open);
-
-    if (!open) {
-      root.style.removeProperty('--app-h');
-      root.style.removeProperty('--app-top');
-      document.body.classList.remove('kb-open');
-      lastKb = false;
-      return;
-    }
-
-    const h = vv ? vv.height : window.innerHeight;
-    const top = vv ? vv.offsetTop : 0;
-    baseH = Math.max(baseH, window.innerHeight, h);
-    const kb = baseH - h > 120;
-
-    root.style.setProperty('--app-h', h + 'px');
-    root.style.setProperty('--app-top', top + 'px');
-    document.body.classList.toggle('kb-open', kb);
-
-    if (kb && !lastKb) scrollToBottom();   // keep latest message visible as keyboard rises
-    lastKb = kb;
-  }
-  const schedule = () => { if (!raf) raf = requestAnimationFrame(update); };
-
-  // keyboard / viewport changes
-  vv?.addEventListener('resize', schedule);
-  vv?.addEventListener('scroll', schedule);
-  window.addEventListener('resize', schedule);
-  window.addEventListener('orientationchange', () => { baseH = 0; setTimeout(schedule, 300); });
-
-  // react when chat opens/closes (whatever code toggles these)
-  const mo = new MutationObserver(schedule);
-  ['jobsPage', 'chatFooter', 'chatListView'].forEach(id => {
-    const el = $(id);
-    if (el) mo.observe(el, { attributes: true, attributeFilter: ['class', 'style'] });
-  });
-  mobile.addEventListener?.('change', schedule);
-
-  if (input) {
-    // iOS scrolls the whole page to reveal the field; undo that, the fixed container handles it
-    input.addEventListener('focus', () => {
-      schedule();
-      setTimeout(() => { window.scrollTo(0, 0); schedule(); scrollToBottom(); }, 60);
-      setTimeout(() => { window.scrollTo(0, 0); schedule(); }, 350);   // after keyboard animation
-    });
-    input.addEventListener('blur', () => setTimeout(schedule, 100));
-
-    // auto-grow up to 120px (WhatsApp style)
-    const fit = () => {
-      input.style.height = '42px';
-      input.style.height = Math.min(input.scrollHeight, 120) + 'px';
-    };
-    input.addEventListener('input', fit);
-    input.addEventListener('keydown', e => { if (e.key === 'Enter') setTimeout(fit, 0); });
-    $('sendBtn')?.addEventListener('click', () => setTimeout(fit, 0));
-
-    // tapping Send must not dismiss the keyboard
-    $('sendBtn')?.addEventListener('mousedown', e => e.preventDefault());
-  }
-
-  schedule();
+  vv.addEventListener('resize',p); vv.addEventListener('scroll',p);
+  setInterval(p,300);
 })();
 </script>
 
