@@ -1613,28 +1613,7 @@ wdConfirm.addEventListener('click', async () => {
   attachToSharedSocket();
 })();
 </script>
-<script>
-(function(){
-  const b=document.createElement('div');
-  b.style.cssText='position:fixed;top:60px;left:6px;z-index:99999;background:#000c;color:#0f0;font:11px monospace;padding:4px 6px;border-radius:6px;pointer-events:none;white-space:pre';
-  document.addEventListener('DOMContentLoaded',()=>document.body.appendChild(b));
-  const vv=window.visualViewport;
-  function p(){
-    const j=document.getElementById('jobsPage'), r=j?j.getBoundingClientRect():{top:0,height:0};
-    b.textContent=[
-      'innerH '+innerHeight,
-      'vv.h '+Math.round(vv.height)+'  top '+Math.round(vv.offsetTop),
-      'screen '+screen.height,
-      'standalone '+(navigator.standalone===true),
-      'app-h '+getComputedStyle(document.documentElement).getPropertyValue('--app-h'),
-      'page top/h '+Math.round(r.top)+'/'+Math.round(r.height),
-      'body '+document.body.className
-    ].join('\n');
-  }
-  vv.addEventListener('resize',p); vv.addEventListener('scroll',p);
-  setInterval(p,300);
-})();
-</script>
+
 
 </body>
 </html>
